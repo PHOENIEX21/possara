@@ -72,9 +72,11 @@ export function useAvatarUpload() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["own-profile"] });
       qc.invalidateQueries({ queryKey: ["profile-by-username"] });
+      qc.invalidateQueries({ queryKey: ["profile-by-id"] });
       qc.invalidateQueries({ queryKey: ["active-stories"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["feed-posts"] });
+      qc.invalidateQueries({ queryKey: ["member-directory"] });
     },
   });
 }
