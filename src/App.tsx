@@ -9,7 +9,6 @@ import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Discover } from "./pages/Discover";
-import { Learn } from "./pages/Learn";
 import { Connect } from "./pages/Connect";
 import { Contribute } from "./pages/Contribute";
 import { Opportunities } from "./pages/Opportunities";
@@ -28,6 +27,12 @@ import { Saved } from "./pages/Saved";
 import { Impact } from "./pages/Impact";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
+import { Study } from "./pages/Study";
+import { StudyTopic } from "./pages/StudyTopic";
+import { StudyPractice } from "./pages/StudyPractice";
+import { StudyTogether } from "./pages/StudyTogether";
+import { StudyThread } from "./pages/StudyThread";
+import { StudySettings } from "./pages/StudySettings";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +52,13 @@ export default function App() {
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/discover" element={<Discover />} />
-              <Route path="/learn" element={<Learn />} />
+              <Route path="/learn" element={<Study />} />
+              <Route path="/study" element={<Study />} />
+              <Route path="/study/topic/:id" element={<StudyTopic />} />
+              <Route path="/study/practice" element={<StudyPractice />} />
+              <Route path="/study/practice/:topicId" element={<StudyPractice />} />
+              <Route path="/study/together" element={<StudyTogether />} />
+              <Route path="/study/together/:id" element={<StudyThread />} />
               <Route path="/connect" element={<Connect />} />
               <Route path="/contribute" element={<Contribute />} />
               <Route path="/opportunities" element={<Opportunities />} />
@@ -68,6 +79,7 @@ export default function App() {
                 <Route path="/messages/:userId" element={<Messages />} />
                 <Route path="/saved" element={<Saved />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/study/settings" element={<StudySettings />} />
                 <Route path="/submit-opportunity" element={<SubmitOpportunity />} />
               </Route>
 
