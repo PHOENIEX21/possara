@@ -14,6 +14,7 @@ interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
+  { value: "study", label: "Study", help: "Ask a learning question, share study progress, tips or something useful for students." },
   { value: "inspire", label: "Inspire", help: "Encouragement, lessons or a story that can lift someone." },
   { value: "care", label: "Care", help: "Supportive, thoughtful or community-minded posts." },
   { value: "talent", label: "Talent", help: "Showcase a skill, project, craft, idea or achievement." },
@@ -28,14 +29,14 @@ export function PostComposer({ postType = "general", placeholder, showCategoryPi
   const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [topic, setTopic] = useState<string>(showHomeTopicPicker ? "inspire" : "");
+  const [topic, setTopic] = useState<string>(showHomeTopicPicker ? "study" : "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  if (!userId) return <div className="rounded-2xl border border-paper-dim bg-white shadow-sm px-5 py-4 text-sm text-ink-light">Sign in to share a story, a project, or a skill.</div>;
+  if (!userId) return <div className="rounded-2xl border border-paper-dim bg-white shadow-sm px-5 py-4 text-sm text-ink-light">Sign in to share a story, a project, a study update or a skill.</div>;
 
   const firstName = profile?.full_name?.split(" ")[0];
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) { const file = e.target.files?.[0]; if (!file) return; setImageFile(file); setImagePreview(URL.createObjectURL(file)); setExpanded(true); }
@@ -68,7 +69,7 @@ export function PostComposer({ postType = "general", placeholder, showCategoryPi
     });
     setContent("");
     setCategoryId("");
-    if (showHomeTopicPicker) setTopic("inspire");
+    if (showHomeTopicPicker) setTopic("study");
     clearImage();
     setExpanded(false);
   }
@@ -102,9 +103,9 @@ export function PostComposer({ postType = "general", placeholder, showCategoryPi
   return <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white shadow-sm px-5 py-4">
     <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
     <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarSelect} className="hidden" />
-    {showHomeTopicPicker && <div className="mb-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">What kind of post is this?</p><div className="flex flex-wrap gap-2">{HOME_TOPICS.map((item) => <button key={item.value} type="button" onClick={() => setTopic(item.value)} title={item.help} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${topic === item.value ? "border-brand bg-brand-light text-brand-dark" : "border-ink-faint/30 text-ink-light hover:bg-paper-dim"}`}>{item.label}</button>)}</div><p className="mt-2 text-xs text-ink-faint">Jobs, scholarships and admissions belong in Opportunities, not the Home feed.</p></div>}
-    {showCategoryPicker && <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mb-2 rounded-full border border-ink-faint/30 bg-paper-dim/50 px-3 py-1 text-xs font-medium text-ink-light outline-none focus:border-brand"><option value="">Motivation / Story (Home feed)</option>{categories?.map((cat) => <option key={cat.id} value={cat.id}>{cat.name} feed</option>)}</select>}
-    <textarea autoFocus value={content} onChange={(e) => setContent(e.target.value)} placeholder={placeholder ?? "Share a story, a project, or something you've learned…"} rows={3} className="w-full resize-none text-[15px] outline-none placeholder:text-ink-faint" />
+    {showHomeTopicPicker && <div className="mb-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">What kind of post is this?</p><div className="flex flex-wrap gap-2">{HOME_TOPICS.map((item) => <button key={item.value} type="button" onClick={() => setTopic(item.value)} title={item.help} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${topic === item.value ? "border-brand bg-brand-light text-brand-dark" : "border-ink-faint/30 text-ink-light hover:bg-paper-dim"}`}>{item.label}</button>)}</div><p className="mt-2 text-xs text-ink-faint">Study posts are for learning conversations and progress. Jobs, scholarships and admissions belong in Opportunities.</p></div>}
+    {showCategoryPicker && <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mb-2 rounded-full border border-ink-faint/30 bg-paper-dim/50 px-3 py-1 text-xs font-medium text-ink-light outline-none focus:border-brand"><option value="">Community post (Home feed)</option>{categories?.map((cat) => <option key={cat.id} value={cat.id}>{cat.name} feed</option>)}</select>}
+    <textarea autoFocus value={content} onChange={(e) => setContent(e.target.value)} placeholder={placeholder ?? "Share a story, a project, a study update or something you've learned…"} rows={3} className="w-full resize-none text-[15px] outline-none placeholder:text-ink-faint" />
     {imagePreview && <div className="relative mt-2 inline-block"><img src={imagePreview} alt="" className="max-h-64 rounded-lg object-cover" /><button type="button" onClick={clearImage} className="absolute right-2 top-2 rounded-full bg-ink/70 p-1 text-paper hover:bg-ink" aria-label="Remove image"><X size={14} /></button></div>}
     <div className="mt-3 flex items-center justify-between border-t border-paper-dim pt-3"><button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><ImageIcon size={16} /> Photo</button><div className="flex items-center gap-2"><button type="button" onClick={() => { setExpanded(false); setContent(""); clearImage(); }} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button><button type="submit" disabled={!content.trim() || createPost.isPending || (showHomeTopicPicker && !topic)} className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-40">{createPost.isPending ? "Posting…" : "Post"}</button></div></div>
     {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
