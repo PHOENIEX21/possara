@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus, ShieldCheck } from "lucide-react";
+import { Building2, Plus, ShieldCheck, FileText, Images, GraduationCap } from "lucide-react";
 import {
   useAdminOrganizations,
   useCreateOrganization,
@@ -14,6 +14,13 @@ import {
   useUnverifiedOrganizations,
   useVerifyOrganization,
 } from "../hooks/useAdminData";
+import {
+  useAdminActiveMoments,
+  useAdminDeleteMoment,
+  useAdminRecentPosts,
+  useAdminSetPostStatus,
+  useAdminStudyOverview,
+} from "../hooks/useAdminContent";
 import { useAuth } from "../store/auth";
 import type { UserRole } from "../types/database";
 
@@ -87,6 +94,30 @@ function OrganizationDirectoryAdmin(){
   </Section>;
 }
 
+function ContentAdmin(){
+  const posts=useAdminRecentPosts();
+  const setPostStatus=useAdminSetPostStatus();
+  const moments=useAdminActiveMoments();
+  const deleteMoment=useAdminDeleteMoment();
+  const study=useAdminStudyOverview();
+  return <div className="space-y-5">
+    <Section title="Study overview">
+      <div className="mb-3 flex items-center gap-2 text-sm text-ink-light"><GraduationCap size={17}/>Monitor learning activity without mixing it into social moderation.</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">{[["Topics",study.data?.topics],["Questions",study.data?.questions],["Learners",study.data?.learners],["Discussions",study.data?.discussions],["Attempts",study.data?.attempts]].map(([label,value])=><div key={label as string} className="rounded-xl bg-paper p-3"><p className="text-xl font-semibold">{value??"—"}</p><p className="text-xs text-ink-faint">{label as string}</p></div>)}</div><ErrorText error={study.error}/>
+    </Section>
+
+    <Section title="Recent posts">
+      <div className="mb-3 flex items-center gap-2 text-sm text-ink-light"><FileText size={17}/>Review recent posts and remove or restore content when necessary.</div>
+      <div className="space-y-2">{posts.data?.map(post=>{const profile=Array.isArray(post.profiles)?post.profiles[0]:post.profiles;return <div key={post.id} className="rounded-xl border border-paper-dim p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-ink-faint">{profile?.full_name??"Member"}{post.topic?` · ${post.topic}`:""}</p><p className="mt-1 line-clamp-2 text-sm text-ink">{post.content}</p></div><span className="shrink-0 rounded-full bg-paper-dim px-2 py-0.5 text-[10px]">{post.status}</span></div><div className="mt-2 flex gap-2">{post.status==="published"?<button onClick={()=>setPostStatus.mutate({id:post.id,status:"removed"})} className="rounded-full border border-flag px-3 py-1 text-xs font-medium text-flag">Remove</button>:<button onClick={()=>setPostStatus.mutate({id:post.id,status:"published"})} className="rounded-full bg-trust px-3 py-1 text-xs font-medium text-white">Restore</button>}</div></div>})}</div><ErrorText error={posts.error||setPostStatus.error}/>
+    </Section>
+
+    <Section title="Active Moments">
+      <div className="mb-3 flex items-center gap-2 text-sm text-ink-light"><Images size={17}/>Moderate currently active Moments when something inappropriate is reported or noticed.</div>
+      <div className="space-y-2">{moments.data?.map(moment=>{const profile=Array.isArray(moment.profiles)?moment.profiles[0]:moment.profiles;return <div key={moment.id} className="flex items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div className="min-w-0"><p className="text-sm font-medium">{profile?.full_name??"Member"}</p><p className="truncate text-xs text-ink-faint">{moment.caption||"Moment without caption"}</p></div><button onClick={()=>deleteMoment.mutate({id:moment.id,storagePath:moment.storage_path})} className="rounded-full border border-flag px-3 py-1 text-xs font-medium text-flag">Remove</button></div>})}</div><ErrorText error={moments.error||deleteMoment.error}/>
+    </Section>
+  </div>;
+}
+
 export function Admin() {
   const { email, role, isVerified } = useAuth();
   const pendingOpps = usePendingOpportunities();
@@ -102,9 +133,10 @@ export function Admin() {
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
 
   return <div className="mx-auto max-w-4xl space-y-5 pb-10">
-    <div className="flex items-start gap-3"><div className="rounded-xl bg-trust-light p-2 text-trust-dark"><ShieldCheck size={22}/></div><div><h1 className="text-2xl">Admin</h1><p className="text-sm text-ink-light">Moderation, verification, organizations and member-role controls.</p></div></div>
+    <div className="flex items-start gap-3"><div className="rounded-xl bg-trust-light p-2 text-trust-dark"><ShieldCheck size={22}/></div><div><h1 className="text-2xl">Admin</h1><p className="text-sm text-ink-light">Moderation, Study oversight, organizations, verification and member-role controls.</p></div></div>
     <div className="rounded-2xl bg-trust-light px-4 py-3 text-sm text-trust-dark">Signed in as <b>{email ?? "admin"}</b> · role <b>{role ?? "loading"}</b> · {isVerified ? "verified" : "not verified"}</div>
 
+    <ContentAdmin/>
     <OrganizationDirectoryAdmin/>
 
     <Section title="Opportunities awaiting review">
