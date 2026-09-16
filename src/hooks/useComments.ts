@@ -4,7 +4,7 @@ import { useAuth } from "../store/auth";
 import type { Comment, Profile } from "../types/database";
 
 export interface CommentWithAuthor extends Comment {
-  profiles: Pick<Profile, "full_name" | "avatar_url"> | null;
+  profiles: Pick<Profile, "full_name" | "avatar_url" | "username"> | null;
 }
 
 export function useComments(postId: string, enabled: boolean) {
@@ -12,7 +12,7 @@ export function useComments(postId: string, enabled: boolean) {
     queryKey: ["comments", postId],
     enabled,
     queryFn: async (): Promise<CommentWithAuthor[]> => {
-      const { data, error } = await supabase.from("comments").select("*, profiles(full_name, avatar_url)").eq("post_id", postId).is("deleted_at", null).order("created_at", { ascending: true });
+      const { data, error } = await supabase.from("comments").select("*, profiles(full_name, avatar_url, username)").eq("post_id", postId).is("deleted_at", null).order("created_at", { ascending: true });
       if (error) throw error;
       return (data as CommentWithAuthor[]) ?? [];
     },
