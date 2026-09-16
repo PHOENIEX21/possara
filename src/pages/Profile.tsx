@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Camera, MessageCircle, Pencil, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
-import { useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
+import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useFollowStatus, useToggleFollow, useFollowCounts } from "../hooks/useFollow";
 import { useOpportunityCategories } from "../components/CategoryChips";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
+import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import type { Profile as ProfileType } from "../types/database";
 
 function FollowButton({targetUserId}:{targetUserId:string}){
@@ -23,24 +24,31 @@ function MessageButton({targetUserId}:{targetUserId:string}){
   return <button onClick={()=>navigate(`/messages/${targetUserId}`)} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-1.5 text-sm font-medium"><MessageCircle size={15}/>Message</button>;
 }
 
-function ProfileView({profile,own,onEdit}:{profile:ProfileType;own?:boolean;onEdit?:()=>void}){
+function ProfileView({profile,own,onEdit,onOwnAvatarClick,avatarUploading}:{profile:ProfileType;own?:boolean;onEdit?:()=>void;onOwnAvatarClick?:()=>void;avatarUploading?:boolean}){
   const {data:counts}=useFollowCounts(profile.id);
-  return <div className="max-w-2xl overflow-hidden rounded-3xl border border-black/[.06] bg-white shadow-card">
-    <div className="h-28 bg-paper-dim">{profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}</div>
-    <div className="px-5 pb-6">
-      <div className="-mt-10 flex items-end justify-between gap-3">
-        <div>{profile.avatar_url?<img src={profile.avatar_url} alt="" className="h-20 w-20 rounded-full border-4 border-white object-cover"/>:<div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-trust-light text-2xl text-trust-dark">{(profile.full_name??"?").charAt(0).toUpperCase()}</div>}</div>
-        <div className="flex gap-2">{own&&onEdit?<button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-2 text-sm font-medium"><Pencil size={14}/>Edit profile</button>:<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}</div>
+  const [photoOpen,setPhotoOpen]=useState(false);
+  const name=profile.full_name??"Member";
+  const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="h-20 w-20 rounded-full border-4 border-white object-cover"/>:<div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-trust-light text-2xl text-trust-dark">{name.charAt(0).toUpperCase()}</div>;
+
+  return <>
+    <div className="max-w-2xl overflow-hidden rounded-3xl border border-black/[.06] bg-white shadow-card">
+      <div className="h-28 bg-paper-dim">{profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}</div>
+      <div className="px-5 pb-6">
+        <div className="-mt-10 flex items-end justify-between gap-3">
+          {own&&onOwnAvatarClick?<button type="button" onClick={onOwnAvatarClick} disabled={avatarUploading} className="group relative rounded-full" aria-label="Change profile photo" title="Change profile photo">{avatarContent}<span className="absolute inset-1 flex items-center justify-center rounded-full bg-ink/55 text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100"><Camera size={20}/></span></button>:profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="rounded-full" aria-label={`View ${name} profile photo`}>{avatarContent}</button>:avatarContent}
+          <div className="flex gap-2">{own&&onEdit?<button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-2 text-sm font-medium"><Pencil size={14}/>Edit profile</button>:<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}</div>
+        </div>
+        <h1 className="mt-3 text-2xl">{name}</h1>
+        {profile.username&&<p className="text-sm text-ink-faint">@{profile.username}</p>}
+        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}
+        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">{profile.workplace&&<span>{profile.workplace}</span>}{profile.school&&<span>{profile.school}</span>}{profile.location&&<span>{profile.location}</span>}{profile.country&&<span>{profile.country}</span>}</div>
+        {counts&&<p className="mt-2 text-sm text-ink-faint">{counts.followers} followers · {counts.following} following</p>}
+        {profile.bio&&<p className="mt-4 whitespace-pre-line text-[15px] leading-6 text-ink-light">{profile.bio}</p>}
+        {profile.skills?.length>0&&<div className="mt-5"><h2 className="text-sm font-medium">Skills</h2><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(s=><span key={s} className="rounded-full bg-paper-dim px-2.5 py-1 text-xs text-ink-light">{s}</span>)}</div></div>}
       </div>
-      <h1 className="mt-3 text-2xl">{profile.full_name??"Member"}</h1>
-      {profile.username&&<p className="text-sm text-ink-faint">@{profile.username}</p>}
-      {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}
-      <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">{profile.workplace&&<span>{profile.workplace}</span>}{profile.school&&<span>{profile.school}</span>}{profile.location&&<span>{profile.location}</span>}{profile.country&&<span>{profile.country}</span>}</div>
-      {counts&&<p className="mt-2 text-sm text-ink-faint">{counts.followers} followers · {counts.following} following</p>}
-      {profile.bio&&<p className="mt-4 whitespace-pre-line text-[15px] leading-6 text-ink-light">{profile.bio}</p>}
-      {profile.skills?.length>0&&<div className="mt-5"><h2 className="text-sm font-medium">Skills</h2><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(s=><span key={s} className="rounded-full bg-paper-dim px-2.5 py-1 text-xs text-ink-light">{s}</span>)}</div></div>}
     </div>
-  </div>;
+    {photoOpen&&profile.avatar_url&&<ProfilePhotoViewer src={profile.avatar_url} name={name} onClose={()=>setPhotoOpen(false)}/>} 
+  </>;
 }
 
 function EditOwnProfile({onDone}:{onDone:()=>void}){
@@ -102,18 +110,39 @@ function EditOwnProfile({onDone}:{onDone:()=>void}){
 }
 
 export function Profile(){
-  const {username}=useParams<{username:string}>();
+  const {username,id}=useParams<{username?:string;id?:string}>();
   const {userId}=useAuth();
   const {data:ownProfile,isLoading}=useOwnProfile();
+  const avatarUpload=useAvatarUpload();
+  const avatarInputRef=useRef<HTMLInputElement>(null);
+  const [avatarStatus,setAvatarStatus]=useState<string|null>(null);
   const [editing,setEditing]=useState(false);
-  const isOwn=username==="me"||!!(ownProfile?.username&&username===ownProfile.username);
-  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;return editing?<EditOwnProfile onDone={()=>setEditing(false)}/>:<div className="space-y-4"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)}/><Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link></div>;}
+  const isOwn=username==="me"||!!(id&&id===userId)||!!(ownProfile?.username&&username===ownProfile.username);
+
+  async function changeOwnAvatar(e:React.ChangeEvent<HTMLInputElement>){
+    const file=e.target.files?.[0];if(!file)return;setAvatarStatus(null);
+    try{await avatarUpload.mutateAsync(file);setAvatarStatus("Profile photo updated.");}catch(error){setAvatarStatus((error as Error).message);}finally{e.target.value="";}
+  }
+
+  if(isOwn){
+    if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;
+    if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;
+    return editing?<EditOwnProfile onDone={()=>setEditing(false)}/>:<div className="space-y-4"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnAvatarClick={()=>avatarInputRef.current?.click()} avatarUploading={avatarUpload.isPending}/><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnAvatar} className="hidden"/>{avatarUpload.isPending&&<p className="text-sm text-ink-light">Uploading profile photo…</p>}{avatarStatus&&<p className={`text-sm ${avatarStatus==="Profile photo updated."?"text-trust-dark":"text-flag"}`}>{avatarStatus}</p>}<Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link></div>;
+  }
+  if(id)return <PublicProfileById id={id}/>;
   if(username)return <PublicProfile username={username}/>;
   return <p className="text-ink-light">No profile specified.</p>;
 }
 
 function PublicProfile({username}:{username:string}){
   const {data:profile,isLoading,error}=useProfileByUsername(username);
+  if(isLoading)return <p className="text-ink-light">Loading…</p>;
+  if(error||!profile)return <p className="text-flag">This profile couldn't be found.</p>;
+  return <ProfileView profile={profile}/>;
+}
+
+function PublicProfileById({id}:{id:string}){
+  const {data:profile,isLoading,error}=useProfileById(id);
   if(isLoading)return <p className="text-ink-light">Loading…</p>;
   if(error||!profile)return <p className="text-flag">This profile couldn't be found.</p>;
   return <ProfileView profile={profile}/>;
