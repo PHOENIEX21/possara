@@ -4,19 +4,25 @@ import { useAuth } from "../store/auth";
 import type { Post, Profile, UserRole } from "../types/database";
 
 export interface PostWithAuthor extends Post {
-  profiles: Pick<Profile, "full_name" | "avatar_url"> | null;
+  profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
   spark_count: number;
   viewer_reacted: boolean;
   author_role: UserRole | null;
   comment_count: number;
 }
-interface UseFeedPostsOptions { postType?: "general" | "resource" | "opportunity" | "event"; categorySlug?: string; categorySlugs?: string[]; noCategoryOnly?: boolean; }
+interface UseFeedPostsOptions {
+  postType?: "general" | "resource" | "opportunity" | "event";
+  categorySlug?: string;
+  categorySlugs?: string[];
+  noCategoryOnly?: boolean;
+  topic?: string;
+}
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic } = options;
   const { userId } = useAuth();
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, userId],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
@@ -24,10 +30,16 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         const { data: cats } = await supabase.from("opportunity_categories").select("id").in("slug", slugsToResolve);
         categoryIds = (cats ?? []).map((c) => c.id);
       }
-      let query = supabase.from("posts").select("*, profiles(full_name, avatar_url)").eq("status", "published").order("created_at", { ascending: false }).limit(30);
+      let query = supabase
+        .from("posts")
+        .select("*, profiles(full_name, avatar_url, username, headline, profession)")
+        .eq("status", "published")
+        .order("created_at", { ascending: false })
+        .limit(30);
       if (postType) query = query.eq("type", postType);
       if (noCategoryOnly) query = query.is("category_id", null);
       else if (categoryIds) query = query.in("category_id", categoryIds);
+      if (topic) query = query.eq("topic", topic);
       const { data: posts, error } = await query;
       if (error) throw error;
       if (!posts?.length) return [];
@@ -50,7 +62,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, type = "general", categoryId }: { content: string; imageFile: File | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, type = "general", categoryId, topic }: { content: string; imageFile: File | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
       let mediaUrls: string[] | null = null;
       if (imageFile) {
@@ -63,7 +75,7 @@ export function useCreatePost() {
         const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
         mediaUrls = [publicUrlData.publicUrl];
       }
-      const { error } = await supabase.from("posts").insert({ author_id: userId, content, media_urls: mediaUrls, type, category_id: categoryId ?? null });
+      const { error } = await supabase.from("posts").insert({ author_id: userId, content, media_urls: mediaUrls, type, category_id: categoryId ?? null, topic: topic ?? null });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
