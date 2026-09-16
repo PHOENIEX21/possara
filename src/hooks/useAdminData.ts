@@ -53,6 +53,69 @@ export function useUnverifiedOrganizations() {
   });
 }
 
+export function useAdminOrganizations() {
+  return useQuery({
+    queryKey: ["admin", "organizations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("id,name,slug,website,description,industry,country,state,headquarters,verified")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateOrganization() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; website?: string; description?: string; industry?: string; country?: string; state?: string; headquarters?: string }) => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Sign in again before creating an organization.");
+      const base = input.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "organization";
+      let slug = base;
+      const { data: existing } = await supabase.from("organizations").select("slug").eq("slug", slug).maybeSingle();
+      if (existing) slug = `${base}-${Date.now().toString().slice(-6)}`;
+      const { data, error } = await supabase.from("organizations").insert({
+        owner_id: authData.user.id,
+        name: input.name.trim(),
+        slug,
+        website: input.website?.trim() || null,
+        description: input.description?.trim() || null,
+        industry: input.industry?.trim() || null,
+        country: input.country?.trim() || null,
+        state: input.state?.trim() || null,
+        headquarters: input.headquarters?.trim() || null,
+        verified: false,
+        is_sponsored: false,
+      }).select("id,slug").single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin"] });
+      qc.invalidateQueries({ queryKey: ["organization-directory"] });
+    },
+  });
+}
+
+export function useUpdateOrganizationDirectoryMeta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; industry?: string | null; country?: string | null; state?: string | null; headquarters?: string | null }) => {
+      const { data, error } = await supabase.from("organizations").update(updates).eq("id", id).select("id");
+      if (error) throw error;
+      if (!data?.length) throw noRows("Organization update");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "organizations"] });
+      qc.invalidateQueries({ queryKey: ["organization-directory"] });
+      qc.invalidateQueries({ queryKey: ["organization"] });
+    },
+  });
+}
+
 export function useVerifyOrganization() {
   const qc = useQueryClient();
   return useMutation({
@@ -65,6 +128,7 @@ export function useVerifyOrganization() {
       qc.invalidateQueries({ queryKey: ["admin"] });
       qc.invalidateQueries({ queryKey: ["opportunities"] });
       qc.invalidateQueries({ queryKey: ["organization"] });
+      qc.invalidateQueries({ queryKey: ["organization-directory"] });
     },
   });
 }
