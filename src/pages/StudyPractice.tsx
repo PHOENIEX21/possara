@@ -35,6 +35,7 @@ function TopicPractice({topicId}:{topicId:string}){
 
   if(isLoading)return <div className="feed-skeleton"/>;
   if(error||!questions?.length)return <p className="text-flag">No practice questions are published for this topic yet.</p>;
+  if(!current)return <p className="text-flag">This practice question could not be loaded.</p>;
   if(finished)return <div className="mx-auto max-w-xl rounded-3xl border border-paper-dim bg-white p-6 text-center shadow-sm"><CheckCircle2 size={34} className="mx-auto text-brand"/><h1 className="mt-3 text-2xl font-semibold">Practice complete</h1><p className="mt-2 text-4xl font-semibold">{score}/{questions.length}</p><p className="mt-1 text-ink-light">{percent}% correct</p><div className="mt-5 flex justify-center gap-2"><button onClick={()=>{setIndex(0);setScore(0);setSelected(null);setAnswered(false);setFinished(false)}} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white">Try again</button><Link to="/study" className="rounded-full border border-ink-faint/30 px-5 py-2 text-sm font-medium">Back to Study</Link></div></div>;
 
   return <div className="mx-auto max-w-2xl">
