@@ -91,14 +91,16 @@ export function PostComposer({ postType = "general", placeholder, showCategoryPi
     <div className="flex items-center gap-3 rounded-2xl border border-paper-dim bg-white shadow-sm px-4 py-3">
       {avatarButton}
       <button onClick={() => setExpanded(true)} className="flex-1 rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">{placeholder ? placeholder : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}</button>
-      <button onClick={() => { setExpanded(true); fileInputRef.current?.click(); }} aria-label="Add photo" className="shrink-0 text-trust-dark hover:text-trust"><ImageIcon size={20} /></button>
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+      <button onClick={() => fileInputRef.current?.click()} aria-label="Add photo" className="shrink-0 text-trust-dark hover:text-trust"><ImageIcon size={20} /></button>
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
       <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarSelect} className="hidden" />
     </div>
+    {avatarUpload.isPending&&<p className="mt-1 px-2 text-xs text-ink-light">Uploading profile photo…</p>}
     {avatarMessage && <p className={`mt-1 px-2 text-xs ${avatarMessage === "Profile photo updated." ? "text-trust-dark" : "text-flag"}`}>{avatarMessage}</p>}
   </div>;
 
   return <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white shadow-sm px-5 py-4">
+    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
     <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarSelect} className="hidden" />
     {showHomeTopicPicker && <div className="mb-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">What kind of post is this?</p><div className="flex flex-wrap gap-2">{HOME_TOPICS.map((item) => <button key={item.value} type="button" onClick={() => setTopic(item.value)} title={item.help} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${topic === item.value ? "border-brand bg-brand-light text-brand-dark" : "border-ink-faint/30 text-ink-light hover:bg-paper-dim"}`}>{item.label}</button>)}</div><p className="mt-2 text-xs text-ink-faint">Jobs, scholarships and admissions belong in Opportunities, not the Home feed.</p></div>}
     {showCategoryPicker && <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mb-2 rounded-full border border-ink-faint/30 bg-paper-dim/50 px-3 py-1 text-xs font-medium text-ink-light outline-none focus:border-brand"><option value="">Motivation / Story (Home feed)</option>{categories?.map((cat) => <option key={cat.id} value={cat.id}>{cat.name} feed</option>)}</select>}
