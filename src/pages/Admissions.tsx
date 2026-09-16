@@ -1,0 +1,7 @@
+import { GraduationCap, Clock3, ShieldCheck } from "lucide-react";
+import { useOpportunities } from "../hooks/useOpportunities";
+import { OpportunityCard } from "../components/OpportunityCard";
+export function Admissions() {
+  const { data, isLoading, error } = useOpportunities({ limit: 50, categorySlug: "admissions" });
+  return <div className="page-stack"><section className="page-hero"><div className="page-icon bg-trust-light text-trust-dark"><GraduationCap size={22}/></div><div><p className="eyebrow">Student centre</p><h1>Admissions</h1><p>Post-UTME, application windows, school updates and important deadlines — organized in one trusted feed.</p></div></section><div className="grid grid-cols-3 gap-2"><div className="mini-stat"><Clock3 size={16}/><span>Open now</span></div><div className="mini-stat"><GraduationCap size={16}/><span>Schools</span></div><div className="mini-stat"><ShieldCheck size={16}/><span>Sources</span></div></div>{isLoading && <div className="feed-skeleton"/>}{error && <p className="text-flag">Couldn't load admission updates.</p>}{!isLoading && !error && data?.length === 0 && <div className="empty-state"><GraduationCap size={28}/><h2>No admission updates yet</h2><p>Verified admission and registration updates will appear here as they are published.</p></div>}<div>{data?.map((opp)=><OpportunityCard key={opp.id} opportunity={opp} organization={opp.organizations} category={opp.opportunity_categories}/>)}</div></div>;
+}
