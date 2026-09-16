@@ -57,6 +57,7 @@ export default function App() {
               <Route path="/advertise" element={<Advertise />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
               <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/profile/id/:id" element={<Profile />} />
               <Route path="/organizations/:slug" element={<OrganizationPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/impact" element={<Impact />} />
