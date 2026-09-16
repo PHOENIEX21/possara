@@ -3,10 +3,21 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import type { Post, Profile, UserRole } from "../types/database";
 
+export type PostReactionType = "like" | "spark" | "insightful" | "useful";
+
+const POST_REACTION_TYPES: PostReactionType[] = ["like", "spark", "insightful", "useful"];
+
+function emptyReactionCounts(): Record<PostReactionType, number> {
+  return { like: 0, spark: 0, insightful: 0, useful: 0 };
+}
+
 export interface PostWithAuthor extends Post {
   profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
   spark_count: number;
   viewer_reacted: boolean;
+  reaction_count: number;
+  reaction_counts: Record<PostReactionType, number>;
+  viewer_reaction: PostReactionType | null;
   author_role: UserRole | null;
   comment_count: number;
 }
@@ -47,17 +58,45 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       if (error) throw error;
       if (!posts?.length) return [];
       const postIds = posts.map((p) => p.id);
-      const { data: reactions } = await supabase.from("reactions").select("post_id, user_id").in("post_id", postIds).eq("type", "spark");
+      const { data: reactions } = await supabase
+        .from("reactions")
+        .select("post_id, user_id, type")
+        .in("post_id", postIds)
+        .in("type", POST_REACTION_TYPES);
       const authorIds = [...new Set(posts.map((p) => p.author_id).filter((id): id is string => !!id))];
       const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("user_id", authorIds.length ? authorIds : ["00000000-0000-0000-0000-000000000000"]);
       const roleByUser = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
       const { data: comments } = await supabase.from("comments").select("post_id").in("post_id", postIds).is("deleted_at", null);
       const commentCountByPost = new Map<string, number>();
       (comments ?? []).forEach((c) => { if (c.post_id) commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1); });
-      const countByPost = new Map<string, number>();
-      const viewerReactedSet = new Set<string>();
-      (reactions ?? []).forEach((r) => { if (!r.post_id) return; countByPost.set(r.post_id, (countByPost.get(r.post_id) ?? 0) + 1); if (userId && r.user_id === userId) viewerReactedSet.add(r.post_id); });
-      return posts.map((p) => ({ ...p, spark_count: countByPost.get(p.id) ?? 0, viewer_reacted: viewerReactedSet.has(p.id), author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null, comment_count: commentCountByPost.get(p.id) ?? 0 }));
+
+      const reactionCountsByPost = new Map<string, Record<PostReactionType, number>>();
+      const reactionTotalByPost = new Map<string, number>();
+      const viewerReactionByPost = new Map<string, PostReactionType>();
+      (reactions ?? []).forEach((r) => {
+        if (!r.post_id || !POST_REACTION_TYPES.includes(r.type as PostReactionType)) return;
+        const type = r.type as PostReactionType;
+        const current = reactionCountsByPost.get(r.post_id) ?? emptyReactionCounts();
+        current[type] += 1;
+        reactionCountsByPost.set(r.post_id, current);
+        reactionTotalByPost.set(r.post_id, (reactionTotalByPost.get(r.post_id) ?? 0) + 1);
+        if (userId && r.user_id === userId) viewerReactionByPost.set(r.post_id, type);
+      });
+
+      return posts.map((p) => {
+        const counts = reactionCountsByPost.get(p.id) ?? emptyReactionCounts();
+        const viewerReaction = viewerReactionByPost.get(p.id) ?? null;
+        return {
+          ...p,
+          spark_count: counts.spark,
+          viewer_reacted: viewerReaction === "spark",
+          reaction_count: reactionTotalByPost.get(p.id) ?? 0,
+          reaction_counts: counts,
+          viewer_reaction: viewerReaction,
+          author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null,
+          comment_count: commentCountByPost.get(p.id) ?? 0,
+        };
+      });
     },
   });
 }
@@ -97,14 +136,20 @@ export function useCreatePost() {
 export function useTogglePostReaction() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ postId, currentlyReacted }: { postId: string; currentlyReacted: boolean }) => {
+    mutationFn: async ({ postId, reaction, currentReaction }: { postId: string; reaction: PostReactionType; currentReaction: PostReactionType | null }) => {
       if (!userId) throw new Error("Sign in to react to posts.");
-      if (currentlyReacted) {
-        const { error } = await supabase.from("reactions").delete().eq("post_id", postId).eq("user_id", userId).eq("type", "spark");
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("reactions").insert({ post_id: postId, user_id: userId, type: "spark" });
-        if (error) throw error;
+
+      const { error: deleteError } = await supabase
+        .from("reactions")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId)
+        .in("type", POST_REACTION_TYPES);
+      if (deleteError) throw deleteError;
+
+      if (currentReaction !== reaction) {
+        const { error: insertError } = await supabase.from("reactions").insert({ post_id: postId, user_id: userId, type: reaction });
+        if (insertError) throw insertError;
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
