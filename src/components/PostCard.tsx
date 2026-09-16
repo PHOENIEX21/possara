@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ShieldCheck, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
@@ -6,6 +7,7 @@ import { useComments, useCreateComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { ReportButton } from "./ReportButton";
+import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import type { PostWithAuthor } from "../hooks/useFeedPosts";
 
 function useDeletePost() {
@@ -52,12 +54,19 @@ function collapsedContent(content: string, maxChars = 420) {
   return `${slice.slice(0, lastSpace > 280 ? lastSpace : maxChars).trimEnd()}…`;
 }
 
+function profilePath(userId: string | null, username: string | null | undefined, currentUserId: string | null) {
+  if (!userId) return "/connect";
+  if (userId === currentUserId) return "/profile/me";
+  return username ? `/profile/${username}` : `/profile/id/${userId}`;
+}
+
 function CommentThread({ postId }: { postId: string }) {
   const { userId } = useAuth();
   const { data: comments, isLoading } = useComments(postId, true);
   const createComment = useCreateComment(postId);
   const deleteComment = useDeleteComment(postId);
   const [text, setText] = useState("");
+  const [photo, setPhoto] = useState<{src:string;name:string}|null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,15 +79,17 @@ function CommentThread({ postId }: { postId: string }) {
     {isLoading && <p className="text-sm text-ink-faint">Loading comments…</p>}
     {comments?.map((c) => {
       const name = c.profiles?.full_name ?? "A member of the community";
+      const path = profilePath(c.author_id, c.profiles?.username, userId);
       return <div key={c.id} className="flex gap-2.5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper-dim text-xs font-medium text-ink-light">{name.charAt(0).toUpperCase()}</div>
+        {c.profiles?.avatar_url?<button type="button" onClick={()=>setPhoto({src:c.profiles!.avatar_url!,name})} className="h-7 w-7 shrink-0 rounded-full"><img src={c.profiles.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover"/></button>:<Link to={path} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper-dim text-xs font-medium text-ink-light">{name.charAt(0).toUpperCase()}</Link>}
         <div className="flex-1 rounded-lg bg-paper px-3 py-2">
-          <div className="flex items-start justify-between gap-2"><p className="text-xs font-medium">{name}</p>{userId === c.author_id && <button onClick={() => deleteComment.mutate(c.id)} disabled={deleteComment.isPending} className="text-ink-faint hover:text-flag" aria-label="Delete comment"><Trash2 size={12} /></button>}</div>
+          <div className="flex items-start justify-between gap-2"><Link to={path} className="text-xs font-medium hover:underline">{name}</Link>{userId === c.author_id && <button onClick={() => deleteComment.mutate(c.id)} disabled={deleteComment.isPending} className="text-ink-faint hover:text-flag" aria-label="Delete comment"><Trash2 size={12} /></button>}</div>
           <p className="text-sm text-ink">{c.content}</p>
         </div>
       </div>;
     })}
     {userId ? <form onSubmit={handleSubmit} className="flex gap-2"><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a comment…" className="flex-1 rounded-full border border-ink-faint/30 px-3 py-1.5 text-sm outline-none focus:border-trust" /><button type="submit" disabled={!text.trim() || createComment.isPending} className="rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-paper disabled:opacity-40">Send</button></form> : <p className="text-sm text-ink-faint">Sign in to comment.</p>}
+    {photo&&<ProfilePhotoViewer src={photo.src} name={photo.name} onClose={()=>setPhoto(null)}/>} 
   </div>;
 }
 
@@ -90,9 +101,13 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [deleted, setDeleted] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [photoOpen,setPhotoOpen]=useState(false);
   const name = post.profiles?.full_name ?? "A member of the community";
   const initial = name.charAt(0).toUpperCase();
   const longPost = post.content.length > 420 || post.content.split("\n").length > 7;
+  const path = profilePath(post.author_id, post.profiles?.username, userId);
+  const headline = post.profiles?.headline || post.profiles?.profession;
+  const topicLabel = post.topic ? post.topic.charAt(0).toUpperCase()+post.topic.slice(1) : null;
 
   if (deleted) return null;
 
@@ -103,9 +118,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
   return <article className="rounded-2xl border border-paper-dim bg-white p-5 shadow-sm">
     <div className="flex items-start justify-between gap-3">
-      <div className="flex items-center gap-3">
-        {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{initial}</div>}
-        <div><div className="flex items-center gap-1.5"><p className="text-[15px] font-medium leading-tight">{name}</p>{(post.author_role === "admin" || post.author_role === "moderator") && <span className="inline-flex items-center gap-0.5 rounded-full bg-trust-light px-1.5 py-0.5 text-[11px] font-medium text-trust-dark" title="Official post from the POSSARA team"><ShieldCheck size={10} /> Official</span>}</div><p className="text-xs text-ink-faint">{timeAgo(post.created_at)}</p></div>
+      <div className="flex min-w-0 items-center gap-3">
+        {post.profiles?.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}><img src={post.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" /></button>:<Link to={path} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{initial}</Link>}
+        <div className="min-w-0"><div className="flex items-center gap-1.5"><Link to={path} className="truncate text-[15px] font-medium leading-tight hover:underline">{name}</Link>{(post.author_role === "admin" || post.author_role === "moderator") && <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-trust-light px-1.5 py-0.5 text-[11px] font-medium text-trust-dark" title="Official post from the POSSARA team"><ShieldCheck size={10} /> Official</span>}</div>{headline&&<Link to={path} className="block truncate text-xs text-ink-light hover:underline">{headline}</Link>}<div className="flex items-center gap-2 text-xs text-ink-faint"><span>{timeAgo(post.created_at)}</span>{topicLabel&&<><span>·</span><span>{topicLabel}</span></>}</div></div>
       </div>
       {userId === post.author_id && (confirmingDelete ? <div className="flex shrink-0 items-center gap-2 text-xs"><span className="text-ink-faint">Delete this post?</span><button onClick={handleDelete} disabled={deletePost.isPending} className="font-medium text-flag hover:underline">Yes</button><button onClick={() => setConfirmingDelete(false)} className="text-ink-faint hover:underline">No</button></div> : <button onClick={() => setConfirmingDelete(true)} className="text-ink-faint hover:text-flag" aria-label="Delete post"><Trash2 size={15} /></button>)}
     </div>
@@ -123,5 +138,6 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       <div className="ml-auto"><ReportButton postId={post.id} /></div>
     </div>
     {commentsOpen && <CommentThread postId={post.id} />}
+    {photoOpen&&post.profiles?.avatar_url&&<ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={()=>setPhotoOpen(false)}/>} 
   </article>;
 }
