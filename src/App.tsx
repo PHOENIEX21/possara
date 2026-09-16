@@ -19,6 +19,7 @@ import { Advertise } from "./pages/Advertise";
 import { SubmitOpportunity } from "./pages/SubmitOpportunity";
 import { OpportunityDetail } from "./pages/OpportunityDetail";
 import { Profile } from "./pages/Profile";
+import { Organizations } from "./pages/Organizations";
 import { OrganizationPage } from "./pages/OrganizationPage";
 import { SearchPage } from "./pages/SearchPage";
 import { Notifications } from "./pages/Notifications";
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/profile/id/:id" element={<Profile />} />
+              <Route path="/organizations" element={<Organizations />} />
               <Route path="/organizations/:slug" element={<OrganizationPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/impact" element={<Impact />} />
