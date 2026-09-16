@@ -1,10 +1,16 @@
 import { Link } from "react-router-dom";
-import { Briefcase, GraduationCap, School, MoreHorizontal, ArrowRight, Search, Sparkles } from "lucide-react";
+import { Briefcase, Building2, GraduationCap, School, MoreHorizontal, ArrowRight, Search, Sparkles } from "lucide-react";
 import { OpportunityCard } from "../components/OpportunityCard";
 import { useMatchedOpportunities } from "../hooks/useMatchedOpportunities";
 import { useAuth } from "../store/auth";
 
-const categories=[{to:"/jobs",title:"Jobs",copy:"Current roles and career openings",icon:Briefcase,cls:"bg-brand-light text-brand-dark"},{to:"/scholarships",title:"Scholarships",copy:"Funding for your next step",icon:GraduationCap,cls:"bg-opportunity-light text-opportunity-dark"},{to:"/admissions",title:"Admissions",copy:"School news, screening & deadlines",icon:School,cls:"bg-trust-light text-trust-dark"},{to:"/discover",title:"More",copy:"Grants, internships and fellowships",icon:MoreHorizontal,cls:"bg-paper-dim text-ink-light"}];
+const categories=[
+  {to:"/jobs",title:"Jobs",copy:"Current roles and career openings",icon:Briefcase,cls:"bg-brand-light text-brand-dark"},
+  {to:"/organizations",title:"Organizations",copy:"Browse employers and institutions by industry or state",icon:Building2,cls:"bg-paper-dim text-ink"},
+  {to:"/scholarships",title:"Scholarships",copy:"Funding for your next step",icon:GraduationCap,cls:"bg-opportunity-light text-opportunity-dark"},
+  {to:"/admissions",title:"Admissions",copy:"School news, screening & deadlines",icon:School,cls:"bg-trust-light text-trust-dark"},
+  {to:"/discover",title:"More",copy:"Grants, internships and fellowships",icon:MoreHorizontal,cls:"bg-paper-dim text-ink-light"}
+];
 
 export function Opportunities(){
   const {userId}=useAuth();
