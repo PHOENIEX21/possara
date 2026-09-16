@@ -16,13 +16,14 @@ interface UseFeedPostsOptions {
   categorySlugs?: string[];
   noCategoryOnly?: boolean;
   topic?: string;
+  authorId?: string;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId } = options;
   const { userId } = useAuth();
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, userId],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
@@ -34,12 +35,14 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         .from("posts")
         .select("*, profiles(full_name, avatar_url, username, headline, profession)")
         .eq("status", "published")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(30);
       if (postType) query = query.eq("type", postType);
       if (noCategoryOnly) query = query.is("category_id", null);
       else if (categoryIds) query = query.in("category_id", categoryIds);
       if (topic) query = query.eq("topic", topic);
+      if (authorId) query = query.eq("author_id", authorId);
       const { data: posts, error } = await query;
       if (error) throw error;
       if (!posts?.length) return [];
@@ -75,7 +78,16 @@ export function useCreatePost() {
         const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
         mediaUrls = [publicUrlData.publicUrl];
       }
-      const { error } = await supabase.from("posts").insert({ author_id: userId, content, media_urls: mediaUrls, type, category_id: categoryId ?? null, topic: topic ?? null });
+      const { error } = await supabase.from("posts").insert({
+        author_id: userId,
+        content,
+        media_urls: mediaUrls,
+        type,
+        category_id: categoryId ?? null,
+        topic: topic ?? null,
+        status: "published",
+        visibility: "public",
+      });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
