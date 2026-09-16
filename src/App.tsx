@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
 import { AppLayout } from "./layouts/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { RequireAuth } from "./components/RouteGuards";
+import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -27,6 +27,7 @@ import { Messages } from "./pages/Messages";
 import { Saved } from "./pages/Saved";
 import { Impact } from "./pages/Impact";
 import { Settings } from "./pages/Settings";
+import { Admin } from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -40,37 +41,40 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/discover" element={<Discover />} />
-            <Route path="/learn" element={<Learn />} />
-            <Route path="/connect" element={<Connect />} />
-            <Route path="/contribute" element={<Contribute />} />
-            <Route path="/opportunities" element={<Opportunities />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/scholarships" element={<Scholarships />} />
-            <Route path="/admissions" element={<Admissions />} />
-            <Route path="/advertise" element={<Advertise />} />
-            <Route path="/opportunities/:id" element={<OpportunityDetail />} />
-            <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/organizations/:slug" element={<OrganizationPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/impact" element={<Impact />} />
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/discover" element={<Discover />} />
+              <Route path="/learn" element={<Learn />} />
+              <Route path="/connect" element={<Connect />} />
+              <Route path="/contribute" element={<Contribute />} />
+              <Route path="/opportunities" element={<Opportunities />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/scholarships" element={<Scholarships />} />
+              <Route path="/admissions" element={<Admissions />} />
+              <Route path="/advertise" element={<Advertise />} />
+              <Route path="/opportunities/:id" element={<OpportunityDetail />} />
+              <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/organizations/:slug" element={<OrganizationPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/impact" element={<Impact />} />
 
-            <Route element={<RequireAuth />}>
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/messages/:userId" element={<Messages />} />
-              <Route path="/saved" element={<Saved />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/submit-opportunity" element={<SubmitOpportunity />} />
+              <Route element={<RequireAuth />}>
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/:userId" element={<Messages />} />
+                <Route path="/saved" element={<Saved />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/submit-opportunity" element={<SubmitOpportunity />} />
+              </Route>
+
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin" element={<Admin />} />
+              </Route>
             </Route>
-
-          </Route>
-        </Routes>
+          </Routes>
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
