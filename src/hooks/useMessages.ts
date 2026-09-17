@@ -156,6 +156,26 @@ export function useSendMessage(otherUserId: string) {
   });
 }
 
+export function useForwardMessage() {
+  const { userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ message, targetUserId }: { message: ThreadMessage; targetUserId: string }) => {
+      if (!userId) throw new Error("Sign in to forward messages.");
+      if (!targetUserId || targetUserId === userId) throw new Error("Choose another POSSARA member.");
+      const { error } = await supabase.from("messages").insert({
+        sender_id: userId,
+        recipient_id: targetUserId,
+        content: message.content,
+        forwarded_from_id: message.forwarded_from_id ?? message.id,
+      });
+      if (error) throw error;
+      return targetUserId;
+    },
+    onSuccess: (targetUserId) => invalidateMessaging(queryClient, userId, targetUserId),
+  });
+}
+
 export function useMarkThreadRead(otherUserId: string) {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
