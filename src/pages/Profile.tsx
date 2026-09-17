@@ -77,9 +77,7 @@ type ProfileViewProps = {
   profile: ProfileType;
   own?: boolean;
   onEdit?: () => void;
-  onOwnAvatarClick?: () => void;
   onOwnCoverClick?: () => void;
-  avatarUploading?: boolean;
   coverUploading?: boolean;
 };
 
@@ -87,9 +85,7 @@ function ProfileView({
   profile,
   own = false,
   onEdit,
-  onOwnAvatarClick,
   onOwnCoverClick,
-  avatarUploading = false,
   coverUploading = false,
 }: ProfileViewProps) {
   const { data: counts } = useFollowCounts(profile.id);
@@ -109,53 +105,49 @@ function ProfileView({
       <div className="max-w-2xl overflow-hidden rounded-3xl border border-black/[.06] bg-white shadow-card">
         <div className="relative h-32 bg-gradient-to-br from-brand-light via-paper-dim to-trust-light sm:h-40">
           {profile.cover_url && <img src={profile.cover_url} alt="" className="h-full w-full object-cover" />}
-          {own && onOwnCoverClick && (
-            <button
-              type="button"
-              onClick={onOwnCoverClick}
-              disabled={coverUploading}
-              className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm disabled:opacity-60"
-            >
-              <ImageIcon size={14} />
-              {coverUploading ? "Uploading…" : profile.cover_url ? "Change cover" : "Add cover"}
-            </button>
-          )}
         </div>
 
         <div className="px-5 pb-6">
           <div className="-mt-10 flex items-end justify-between gap-3">
-            {own && onOwnAvatarClick ? (
+            {profile.avatar_url ? (
               <button
                 type="button"
-                onClick={onOwnAvatarClick}
-                disabled={avatarUploading}
-                className="group relative rounded-full"
-                aria-label="Change profile photo"
-                title="Change profile photo"
+                onClick={() => setPhotoOpen(true)}
+                className="rounded-full transition hover:scale-[1.02]"
+                aria-label={`View ${name} profile photo`}
+                title="View profile photo"
               >
-                {avatarContent}
-                <span className="absolute inset-1 flex items-center justify-center rounded-full bg-ink/55 text-white opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">
-                  <Camera size={20} />
-                </span>
-              </button>
-            ) : profile.avatar_url ? (
-              <button type="button" onClick={() => setPhotoOpen(true)} className="rounded-full" aria-label={`View ${name} profile photo`}>
                 {avatarContent}
               </button>
             ) : (
               avatarContent
             )}
 
-            <div className="flex gap-2">
-              {own && onEdit ? (
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-2 text-sm font-medium"
-                >
-                  <Pencil size={14} />
-                  Edit profile
-                </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              {own ? (
+                <>
+                  {onOwnCoverClick && (
+                    <button
+                      type="button"
+                      onClick={onOwnCoverClick}
+                      disabled={coverUploading}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-2 text-sm font-medium disabled:opacity-60"
+                    >
+                      <ImageIcon size={14} />
+                      {coverUploading ? "Uploading…" : profile.cover_url ? "Change cover" : "Add cover"}
+                    </button>
+                  )}
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={onEdit}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-2 text-sm font-medium"
+                    >
+                      <Pencil size={14} />
+                      Edit profile
+                    </button>
+                  )}
+                </>
               ) : (
                 <>
                   <MessageButton targetUserId={profile.id} />
@@ -361,29 +353,12 @@ export function Profile() {
   const { username, id } = useParams<{ username?: string; id?: string }>();
   const { userId } = useAuth();
   const { data: ownProfile, isLoading } = useOwnProfile();
-  const avatarUpload = useAvatarUpload();
   const coverUpload = useCoverUpload();
-  const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const [avatarStatus, setAvatarStatus] = useState<string | null>(null);
   const [coverStatus, setCoverStatus] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
   const isOwn = username === "me" || !!(id && id === userId) || !!(ownProfile?.username && username === ownProfile.username);
-
-  async function changeOwnAvatar(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setAvatarStatus(null);
-    try {
-      await avatarUpload.mutateAsync(file);
-      setAvatarStatus("Profile photo updated.");
-    } catch (err) {
-      setAvatarStatus((err as Error).message);
-    } finally {
-      event.target.value = "";
-    }
-  }
 
   async function changeOwnCover(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -410,14 +385,10 @@ export function Profile() {
           profile={ownProfile}
           own
           onEdit={() => setEditing(true)}
-          onOwnAvatarClick={() => avatarInputRef.current?.click()}
           onOwnCoverClick={() => coverInputRef.current?.click()}
-          avatarUploading={avatarUpload.isPending}
           coverUploading={coverUpload.isPending}
         />
-        <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnAvatar} className="hidden" />
         <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden" />
-        {avatarStatus && <p className="text-sm text-ink-light">{avatarStatus}</p>}
         {coverStatus && <p className="text-sm text-ink-light">{coverStatus}</p>}
         <ProfilePosts profileId={ownProfile.id} />
         <Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link>
