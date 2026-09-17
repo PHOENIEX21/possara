@@ -5,6 +5,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
+import { useRepost } from "../hooks/useRepost";
+import { usePostStory } from "../hooks/useStories";
+import { InAppShareDialog } from "./InAppShareDialog";
 import { ReportButton } from "./ReportButton";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import { PostReactionControl } from "./PostReactionControl";
@@ -141,6 +144,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const { userId } = useAuth();
   const deletePost = useDeletePost();
   const editPost = useEditPost();
+  const repost = useRepost();
+  const postStory = usePostStory();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -149,7 +154,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
-  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const name = post.profiles?.full_name ?? "A member of the community";
   const initial = name.charAt(0).toUpperCase();
@@ -158,6 +163,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const headline = post.profiles?.headline || post.profiles?.profession;
   const topicLabel = post.topic ? post.topic.charAt(0).toUpperCase() + post.topic.slice(1) : null;
   const isOwner = userId === post.author_id;
+  const sharePreview = post.content.length > 180 ? `${post.content.slice(0, 177)}…` : post.content;
+  const sharePath = `/post/${post.id}`;
 
   if (deleted) return null;
 
@@ -175,24 +182,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
     setMenuOpen(false);
   }
 
-  async function handleShare() {
-    const shareUrl = `${window.location.origin}/?post=${post.id}`;
-    const shareText = post.content.length > 180 ? `${post.content.slice(0, 177)}…` : post.content;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `${name} on POSSARA`, text: shareText, url: shareUrl });
-        setShareStatus("Shared");
-      } else {
-        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        setShareStatus("Copied");
-      }
-      window.setTimeout(() => setShareStatus(null), 1800);
-    } catch (error) {
-      if ((error as Error).name !== "AbortError") {
-        setShareStatus("Couldn't share");
-        window.setTimeout(() => setShareStatus(null), 1800);
-      }
-    }
+  async function shareToMoment() {
+    const body = `Shared from ${name} on POSSARA\n\n${sharePreview}\n\n${window.location.origin}${sharePath}`.slice(0, 700);
+    await postStory.mutateAsync({ textBody: body, backgroundStyle: "midnight", audience: "public" });
   }
 
   return (
@@ -285,14 +277,23 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             <MessageCircle size={15} />{post.comment_count > 0 ? post.comment_count : ""} Comment
           </button>
 
-          <button type="button" onClick={handleShare} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
-            <Share2 size={15} />{shareStatus ?? "Share"}
+          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
+            <Share2 size={15} />Share
           </button>
         </div>
       </div>
 
       {commentsOpen && <CommentThread postId={post.id} />}
       {photoOpen && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
+      <InAppShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={`${name} on POSSARA`}
+        preview={sharePreview}
+        path={sharePath}
+        onShareToProfile={() => repost.mutateAsync(post.id)}
+        onShareToMoment={shareToMoment}
+      />
     </article>
   );
 }
