@@ -25,8 +25,8 @@ function FollowButton({ targetUserId }: { targetUserId: string }) {
         type="button"
         onClick={() => toggle.mutate(!!isFollowing)}
         disabled={toggle.isPending}
-        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${
-          isFollowing ? "border border-ink-faint/30 text-ink-light" : "bg-ink text-white"
+        className={`inline-flex whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm ${
+          isFollowing ? "border border-ink-faint/30 bg-white text-ink-light" : "bg-ink text-white"
         }`}
       >
         {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
@@ -41,7 +41,7 @@ function MessageButton({ targetUserId }: { targetUserId: string }) {
   const { userId } = useAuth();
   const navigate = useNavigate();
   if (!userId || userId === targetUserId) return null;
-  return <button type="button" onClick={() => navigate(`/messages/${targetUserId}`)} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 px-4 py-1.5 text-sm font-medium"><MessageCircle size={15}/>Message</button>;
+  return <button type="button" onClick={() => navigate(`/messages/${targetUserId}`)} className="inline-flex whitespace-nowrap items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><MessageCircle size={15}/>Message</button>;
 }
 
 type SocialKind = "instagram" | "x" | "tiktok" | "linkedin" | "youtube" | "facebook" | "website";
@@ -195,22 +195,22 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
       <div className="relative z-10 px-5 pb-6">
         <div className="relative -mt-10 flex items-end justify-between gap-3">
           {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-full bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
-          <div className="relative z-20 flex flex-wrap items-center justify-end gap-2">
-            {own?<>
-              {onEdit&&<button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><Pencil size={14}/>Edit profile</button>}
-              {onOwnCoverClick&&<div className="relative">
-                <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-faint/30 bg-white text-ink-light shadow-sm transition hover:bg-paper-dim disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
-                {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-11 z-30 w-52 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Working…":profile.cover_url?"Change cover photo":"Add cover photo"}</button>{profile.cover_url&&onRemoveCover&&<button type="button" role="menuitem" disabled={coverUploading} onClick={()=>{setProfileMenuOpen(false);onRemoveCover();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-flag hover:bg-flag-light disabled:opacity-50">Remove cover photo</button>}</div></>}
-              </div>}
-            </>:<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}
-          </div>
+          {own&&<div className="relative z-20 flex items-center justify-end gap-2">
+            {onEdit&&<button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><Pencil size={14}/>Edit profile</button>}
+            {onOwnCoverClick&&<div className="relative">
+              <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-faint/30 bg-white text-ink-light shadow-sm transition hover:bg-paper-dim disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
+              {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-11 z-30 w-52 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Working…":profile.cover_url?"Change cover photo":"Add cover photo"}</button>{profile.cover_url&&onRemoveCover&&<button type="button" role="menuitem" disabled={coverUploading} onClick={()=>{setProfileMenuOpen(false);onRemoveCover();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-flag hover:bg-flag-light disabled:opacity-50">Remove cover photo</button>}</div></>}
+            </div>}
+          </div>}
         </div>
+
+        {!own&&<div className="mt-3 flex flex-wrap items-start justify-end gap-2"><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></div>}
 
         <h1 className="mt-3 text-2xl">{name}</h1>
         {profile.username&&<p className="text-sm text-ink-faint">@{profile.username}</p>}
         {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}
         <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">{profile.workplace&&<span>{profile.workplace}</span>}{profile.school&&<span>{profile.school}</span>}{profile.location&&<span>{profile.location}</span>}{profile.country&&<span>{profile.country}</span>}</div>
-        {counts&&<p className="mt-2 text-sm text-ink-faint">{counts.followers} followers · {counts.following} following</p>}
+        {counts&&<div className="mt-3 flex items-center gap-5 text-sm"><span className="text-ink"><strong className="font-semibold">{counts.followers}</strong> <span className="text-ink-faint">{counts.followers===1?"Follower":"Followers"}</span></span><span className="text-ink"><strong className="font-semibold">{counts.following}</strong> <span className="text-ink-faint">Following</span></span></div>}
         {profile.bio&&<p className="mt-4 whitespace-pre-line text-[15px] leading-6 text-ink-light">{profile.bio}</p>}
         {socialLinks.length>0&&<div className="mt-4 flex flex-wrap gap-2" aria-label="Social links">{socialLinks.map(item=><SocialIcon key={item.kind} label={item.label} symbol={item.symbol} href={socialHref(item.kind,item.value as string)}/>)}</div>}
         {profile.skills.length>0&&<div className="mt-5"><h2 className="text-sm font-medium">Skills</h2><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><span key={skill} className="rounded-full bg-paper-dim px-2.5 py-1 text-xs text-ink-light">{skill}</span>)}</div></div>}
