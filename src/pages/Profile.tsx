@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Camera, MessageCircle, MoreHorizontal, Pencil, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
@@ -52,23 +52,122 @@ function MessageButton({ targetUserId }: { targetUserId: string }) {
   );
 }
 
+type ProfileMediaItem = {
+  id: string;
+  postId: string;
+  src: string;
+  createdAt: string;
+  caption: string;
+};
+
 function ProfilePosts({ profileId }: { profileId: string }) {
   const { data: posts, isLoading, error } = useFeedPosts({ authorId: profileId });
+  const [tab, setTab] = useState<"posts" | "photos">("posts");
+  const [selectedPhoto, setSelectedPhoto] = useState<ProfileMediaItem | null>(null);
+
+  const photoGroups = useMemo(() => {
+    const media: ProfileMediaItem[] = (posts ?? []).flatMap((post) =>
+      (post.media_urls ?? []).map((src, index) => ({
+        id: `${post.id}-${index}`,
+        postId: post.id,
+        src,
+        createdAt: post.created_at,
+        caption: post.content,
+      }))
+    );
+
+    const grouped = new Map<string, { label: string; timestamp: number; items: ProfileMediaItem[] }>();
+    media.forEach((item) => {
+      const date = new Date(item.createdAt);
+      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          label: date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }),
+          timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime(),
+          items: [],
+        });
+      }
+      grouped.get(key)!.items.push(item);
+    });
+
+    return [...grouped.values()].sort((a, b) => b.timestamp - a.timestamp);
+  }, [posts]);
+
+  const photoCount = photoGroups.reduce((total, group) => total + group.items.length, 0);
 
   return (
     <section className="max-w-2xl">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Posts</h2>
-        <span className="text-xs text-ink-faint">Latest activity</span>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="inline-flex rounded-full border border-paper-dim bg-white p-1 shadow-sm" aria-label="Profile content view">
+          <button
+            type="button"
+            onClick={() => setTab("posts")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab === "posts" ? "bg-ink text-white" : "text-ink-light hover:bg-paper"}`}
+          >
+            Posts
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("photos")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab === "photos" ? "bg-ink text-white" : "text-ink-light hover:bg-paper"}`}
+          >
+            Photos{photoCount > 0 ? ` · ${photoCount}` : ""}
+          </button>
+        </div>
+        <span className="text-xs text-ink-faint">{tab === "posts" ? "Latest activity" : "Newest first"}</span>
       </div>
-      <div className="space-y-3">
-        {isLoading && <div className="feed-skeleton" />}
-        {error && <p className="text-sm text-flag">Couldn&apos;t load posts.</p>}
-        {!isLoading && !error && posts?.length === 0 && (
-          <div className="rounded-2xl border border-paper-dim bg-white p-5 text-sm text-ink-light">No posts yet.</div>
-        )}
-        {posts?.map((post) => <PostCard key={post.id} post={post} />)}
-      </div>
+
+      {isLoading && <div className="feed-skeleton" />}
+      {error && <p className="text-sm text-flag">Couldn&apos;t load profile activity.</p>}
+
+      {!isLoading && !error && tab === "posts" && (
+        <div className="space-y-3">
+          {posts?.length === 0 && (
+            <div className="rounded-2xl border border-paper-dim bg-white p-5 text-sm text-ink-light">No posts yet.</div>
+          )}
+          {posts?.map((post) => <PostCard key={post.id} post={post} />)}
+        </div>
+      )}
+
+      {!isLoading && !error && tab === "photos" && (
+        <div className="space-y-5 rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:p-4">
+          {photoGroups.length === 0 && (
+            <div className="py-8 text-center text-sm text-ink-light">No post photos yet.</div>
+          )}
+          {photoGroups.map((group) => (
+            <section key={group.timestamp}>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink">{group.label}</h3>
+                <span className="text-[11px] text-ink-faint">{group.items.length} {group.items.length === 1 ? "photo" : "photos"}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {group.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedPhoto(item)}
+                    className="group relative aspect-square overflow-hidden rounded-lg bg-paper-dim"
+                    aria-label={`View photo from ${group.label}`}
+                  >
+                    <img src={item.src} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-left text-[10px] text-white opacity-0 transition group-hover:opacity-100">
+                      View photo
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {selectedPhoto && (
+        <ProfilePhotoViewer
+          src={selectedPhoto.src}
+          name={selectedPhoto.caption.trim() ? selectedPhoto.caption.slice(0, 80) : "Post photo"}
+          onClose={() => setSelectedPhoto(null)}
+        />
+      )}
     </section>
   );
 }
