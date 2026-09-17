@@ -6,7 +6,6 @@ import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
-import { ExtraordinaryPeople } from "../components/ExtraordinaryPeople";
 
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
@@ -24,8 +23,6 @@ export function Home(){
 
  return <div className="feed-layout">
   <div className="feed-column">
-   <ExtraordinaryPeople/>
-
    <section className="home-moments-card">
     <div className="home-section-heading"><div><p>Moments</p><span>Quick updates from people around you.</span></div></div>
     <StoriesBar/>
