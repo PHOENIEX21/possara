@@ -1,4 +1,8 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { X } from "lucide-react";
+import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
 
@@ -11,9 +15,32 @@ const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
 
 const HOLD_MS = 480;
 
+type ReactionPerson={user_id:string;type:PostReactionType;profile:{full_name:string|null;username:string|null;avatar_url:string|null;headline:string|null}|null};
+
+function usePostReactionPeople(postId:string,enabled:boolean){
+  return useQuery({
+    queryKey:["post-reaction-people",postId],
+    enabled,
+    queryFn:async():Promise<ReactionPerson[]>=>{
+      const {data:rows,error}=await supabase.from("reactions").select("user_id,type").eq("post_id",postId).in("type",REACTIONS.map(item=>item.type));
+      if(error)throw error;
+      const ids=[...new Set((rows??[]).map(row=>row.user_id).filter(Boolean))];
+      if(!ids.length)return [];
+      const {data:profiles,error:profileError}=await supabase.from("profiles").select("id,full_name,username,avatar_url,headline").in("id",ids);
+      if(profileError)throw profileError;
+      const profileById=new Map((profiles??[]).map(profile=>[profile.id,profile]));
+      return (rows??[]).map(row=>({user_id:row.user_id,type:row.type as PostReactionType,profile:profileById.get(row.user_id)??null}));
+    },
+  });
+}
+
+function profilePath(person:ReactionPerson){return person.profile?.username?`/profile/${person.profile.username}`:`/profile/id/${person.user_id}`;}
+
 export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const toggleReaction = useTogglePostReaction();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [peopleOpen,setPeopleOpen]=useState(false);
+  const {data:people,isLoading,error}=usePostReactionPeople(post.id,peopleOpen);
   const timerRef = useRef<number | null>(null);
   const longPressOpened = useRef(false);
   const selected = REACTIONS.find((reaction) => reaction.type === post.viewer_reaction) ?? null;
@@ -57,58 +84,71 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   }
 
   return (
-    <div className="relative inline-flex">
-      {pickerOpen && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 flex gap-1 rounded-2xl border border-black/[.06] bg-white p-2 shadow-xl" role="menu" aria-label="Choose a reaction">
-          {REACTIONS.map((reaction) => {
-            const active = post.viewer_reaction === reaction.type;
-            return (
-              <button
-                key={reaction.type}
-                type="button"
-                role="menuitem"
-                onClick={() => chooseReaction(reaction.type)}
-                className={`flex min-w-[62px] flex-col items-center rounded-xl px-2 py-2 text-xs font-medium transition hover:bg-paper ${active ? "bg-brand-light text-brand-dark" : "text-ink-light"}`}
-                title={reaction.label}
-              >
-                <span className="text-xl leading-none">{reaction.emoji}</span>
-                <span className="mt-1">{reaction.label}</span>
-              </button>
-            );
-          })}
+    <>
+      <div className="relative inline-flex items-center gap-1">
+        {pickerOpen && (
+          <div className="absolute bottom-full left-0 z-30 mb-2 flex gap-1 rounded-2xl border border-black/[.06] bg-white p-2 shadow-xl" role="menu" aria-label="Choose a reaction">
+            {REACTIONS.map((reaction) => {
+              const active = post.viewer_reaction === reaction.type;
+              return (
+                <button
+                  key={reaction.type}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => chooseReaction(reaction.type)}
+                  className={`flex min-w-[62px] flex-col items-center rounded-xl px-2 py-2 text-xs font-medium transition hover:bg-paper ${active ? "bg-brand-light text-brand-dark" : "text-ink-light"}`}
+                  title={reaction.label}
+                >
+                  <span className="text-xl leading-none">{reaction.emoji}</span>
+                  <span className="mt-1">{reaction.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={pickerOpen}
+          title={selected ? `Your reaction: ${selected.label} · press and hold to change` : "Tap to Spark · press and hold for more reactions"}
+          onPointerDown={startHold}
+          onPointerUp={finishPress}
+          onPointerCancel={clearTimer}
+          onPointerLeave={clearTimer}
+          onContextMenu={(event) => { event.preventDefault(); clearTimer(); setPickerOpen(true); }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleVisibleReaction();
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setPickerOpen(true);
+            }
+            if (event.key === "Escape") setPickerOpen(false);
+          }}
+          disabled={toggleReaction.isPending}
+          className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
+        >
+          <span className="text-base leading-none">{visibleReaction.emoji}</span>
+          <span>{visibleReaction.label}</span>
+        </button>
+
+        {post.reaction_count>0&&<button type="button" onClick={()=>setPeopleOpen(true)} className="rounded-full px-2 py-1 text-xs font-semibold text-ink-faint hover:bg-paper-dim hover:text-ink" aria-label={`See ${post.reaction_count} reactions`}>{post.reaction_count}</button>}
+        {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
+      </div>
+
+      {peopleOpen&&<div className="fixed inset-0 z-[85] flex items-end bg-ink/45 sm:items-center sm:justify-center sm:p-4" onClick={()=>setPeopleOpen(false)}>
+        <div className="max-h-[76vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" onClick={event=>event.stopPropagation()} role="dialog" aria-modal="true" aria-label="People who reacted">
+          <div className="flex items-center justify-between border-b border-paper-dim px-4 py-3"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-brand-dark">Post reactions</p><h2 className="font-semibold">{post.reaction_count} {post.reaction_count===1?"person":"people"} reacted</h2></div><button type="button" onClick={()=>setPeopleOpen(false)} className="rounded-full p-2 text-ink-light hover:bg-paper" aria-label="Close"><X size={18}/></button></div>
+          <div className="max-h-[64vh] overflow-y-auto p-2">
+            {isLoading&&<p className="p-4 text-sm text-ink-light">Loading reactions…</p>}
+            {error&&<p className="p-4 text-sm text-flag">Couldn&apos;t load reactions.</p>}
+            {people?.map(person=>{const reaction=REACTIONS.find(item=>item.type===person.type);const name=person.profile?.full_name??person.profile?.username??"POSSARA member";return <Link key={`${person.user_id}-${person.type}`} to={profilePath(person)} onClick={()=>setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">{person.profile?.avatar_url?<img src={person.profile.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-light text-sm font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>}<div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p>{person.profile?.username&&<p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}{person.profile?.headline&&<p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}</div><div className="flex shrink-0 items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs"><span>{reaction?.emoji}</span><span className="hidden sm:inline">{reaction?.label}</span></div></Link>})}
+          </div>
         </div>
-      )}
-
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={pickerOpen}
-        title={selected ? `Your reaction: ${selected.label} · press and hold to change` : "Tap to Spark · press and hold for more reactions"}
-        onPointerDown={startHold}
-        onPointerUp={finishPress}
-        onPointerCancel={clearTimer}
-        onPointerLeave={clearTimer}
-        onContextMenu={(event) => { event.preventDefault(); clearTimer(); setPickerOpen(true); }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            toggleVisibleReaction();
-          }
-          if (event.key === "ArrowUp") {
-            event.preventDefault();
-            setPickerOpen(true);
-          }
-          if (event.key === "Escape") setPickerOpen(false);
-        }}
-        disabled={toggleReaction.isPending}
-        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
-      >
-        <span className="text-base leading-none">{visibleReaction.emoji}</span>
-        <span>{visibleReaction.label}</span>
-        {post.reaction_count > 0 && <span className="text-xs opacity-75">{post.reaction_count}</span>}
-      </button>
-
-      {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
-    </div>
+      </div>}
+    </>
   );
 }
