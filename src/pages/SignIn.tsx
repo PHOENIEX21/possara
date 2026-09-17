@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
@@ -7,7 +8,8 @@ import { BrandMark } from "../components/BrandMark";
 export function SignIn(){
   const {isBanned,banReason}=useAuth();
   const queryClient=useQueryClient();
-  const [mode,setMode]=useState<"signin"|"signup"|"forgot">("signin");
+  const [searchParams]=useSearchParams();
+  const [mode,setMode]=useState<"signin"|"signup"|"forgot">(searchParams.get("mode")==="signup"?"signup":"signin");
   const [fullName,setFullName]=useState("");
   const [username,setUsername]=useState("");
   const [email,setEmail]=useState("");
@@ -51,6 +53,7 @@ export function SignIn(){
       setMessage(data.session?"Account created.":"Account created. Confirm your email when email delivery is enabled.");
       if(data.session){
         queryClient.clear();
+        sessionStorage.removeItem("possara-signed-in-entry-seen");
         window.location.replace("/profile/me");
       }
       return;
@@ -73,6 +76,7 @@ export function SignIn(){
     }
 
     queryClient.clear();
+    sessionStorage.removeItem("possara-signed-in-entry-seen");
     setLoading(false);
     window.location.replace("/profile/me");
   }
@@ -80,6 +84,7 @@ export function SignIn(){
   async function handleGoogle(){
     setError(null);
     await clearCurrentBrowserSession();
+    sessionStorage.removeItem("possara-signed-in-entry-seen");
     const {error:oAuthError}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});
     if(oAuthError)setError(oAuthError.message);
   }
