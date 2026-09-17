@@ -12,7 +12,12 @@ export function useComments(postId: string, enabled: boolean) {
     queryKey: ["comments", postId],
     enabled,
     queryFn: async (): Promise<CommentWithAuthor[]> => {
-      const { data, error } = await supabase.from("comments").select("*, profiles(full_name, avatar_url, username)").eq("post_id", postId).is("deleted_at", null).order("created_at", { ascending: true });
+      const { data, error } = await supabase
+        .from("comments")
+        .select("*, profiles(full_name, avatar_url, username)")
+        .eq("post_id", postId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data as CommentWithAuthor[]) ?? [];
     },
@@ -28,6 +33,9 @@ export function useCreateComment(postId: string) {
       const { error } = await supabase.from("comments").insert({ post_id: postId, author_id: userId, content });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["comments", postId] }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    },
   });
 }
