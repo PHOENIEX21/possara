@@ -17,6 +17,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const timerRef = useRef<number | null>(null);
   const longPressOpened = useRef(false);
   const selected = REACTIONS.find((reaction) => reaction.type === post.viewer_reaction) ?? null;
+  const visibleReaction = selected ?? REACTIONS[0];
 
   function clearTimer() {
     if (timerRef.current !== null) {
@@ -35,12 +36,18 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
     }, HOLD_MS);
   }
 
+  function toggleVisibleReaction() {
+    toggleReaction.mutate({
+      postId: post.id,
+      reaction: visibleReaction.type,
+      currentReaction: post.viewer_reaction,
+    });
+  }
+
   function finishPress() {
     const wasLongPress = longPressOpened.current;
     clearTimer();
-    if (!wasLongPress && !pickerOpen) {
-      toggleReaction.mutate({ postId: post.id, reaction: "spark", currentReaction: post.viewer_reaction });
-    }
+    if (!wasLongPress && !pickerOpen) toggleVisibleReaction();
     longPressOpened.current = false;
   }
 
@@ -76,7 +83,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={pickerOpen}
-        title="Tap to Spark · press and hold for more reactions"
+        title={selected ? `Your reaction: ${selected.label} · press and hold to change` : "Tap to Spark · press and hold for more reactions"}
         onPointerDown={startHold}
         onPointerUp={finishPress}
         onPointerCancel={clearTimer}
@@ -85,7 +92,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            toggleReaction.mutate({ postId: post.id, reaction: "spark", currentReaction: post.viewer_reaction });
+            toggleVisibleReaction();
           }
           if (event.key === "ArrowUp") {
             event.preventDefault();
@@ -96,10 +103,9 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
         disabled={toggleReaction.isPending}
         className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
       >
-        <span className="text-base leading-none">✨</span>
-        <span>Spark</span>
+        <span className="text-base leading-none">{visibleReaction.emoji}</span>
+        <span>{visibleReaction.label}</span>
         {post.reaction_count > 0 && <span className="text-xs opacity-75">{post.reaction_count}</span>}
-        {selected && selected.type !== "spark" && <span className="ml-0.5 text-sm" aria-label={`Your reaction: ${selected.label}`}>{selected.emoji}</span>}
       </button>
 
       {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
