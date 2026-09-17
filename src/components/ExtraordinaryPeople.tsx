@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 type Person = {
@@ -17,8 +17,8 @@ const PEOPLE: Person[] = [
   { name:"Francis Olusegun", field:"Academic excellence · Mathematics", achievement:"University of Ilorin 2025/2026 overall best graduating student, celebrated for a perfect 5.00/5.00 CGPA in Mathematics.", lesson:"Excellence can be built one course, one decision and one disciplined day at a time.", source:"https://www.linkedin.com/posts/risingafricaorg_academicexcellence-uniloringrad-mathematics-activity-7503055789784326144-f8Fl", badge:"5.00 / 5.00" },
   { name:"Chukwuzubelu Benedict Umeozo", field:"Academic excellence · Business Administration", achievement:"UNILAG's 2025 overall best graduating student, finishing Business Administration with a perfect 5.00 CGPA.", lesson:"Consistency across years can turn ordinary study days into an extraordinary finish.", image:"https://cdn.legit.ng/images/1200x675/efab9dfd918a0c97.jpeg?v=1", source:"https://unilag.edu.ng/unilag-56th-convocation-ceremonies-4-626-bag-first-degrees-at-day-2/", position:"center 30%" },
   { name:"Rev. Sr. Mary Natalia Ene Agbochini", field:"Academic excellence · Computer Science", achievement:"Overall best graduating student at Claretian University's maiden convocation, graduating with a flawless 5.00 CGPA.", lesson:"Purpose, discipline and a strong learning community can reinforce one another.", image:"https://sjgssn.com/home/assets/images/sister.jpg", source:"https://claretianuniversity.edu.ng/news/readnews/28/cun-maiden-convocation-rev-sr-mary-natalia-ene-agbochini-emerges-overall-best-graduating-student", position:"center 25%" },
-  { name:"Hilda Baci", field:"Culinary achievement", achievement:"Her 93 hour 11 minute cooking marathon was recognized by Guinness World Records in 2023.", lesson:"Ambition becomes visible when preparation, consistency and endurance meet.", wikiTitle:"Hilda_Baci" },
-  { name:"Tobi Amusan", field:"Athletics", achievement:"Set the women's 100m hurdles world record of 12.12 seconds at the 2022 World Championships.", lesson:"Breakthroughs are often built quietly, long before the world sees the result.", wikiTitle:"Tobi_Amusan", position:"center 25%" },
+  { name:"Hilda Baci", field:"Culinary achievement", achievement:"Her 93 hour 11 minute cooking marathon was recognized by Guinness World Records in 2023.", lesson:"Ambition becomes visible when preparation, consistency and endurance meet.", wikiTitle:"Hilda_Baci", position:"center 15%" },
+  { name:"Tobi Amusan", field:"Athletics", achievement:"Set the women's 100m hurdles world record of 12.12 seconds at the 2022 World Championships.", lesson:"Breakthroughs are often built quietly, long before the world sees the result.", wikiTitle:"Tobi_Amusan", position:"center 22%" },
   { name:"Wole Soyinka", field:"Literature", achievement:"Awarded the Nobel Prize in Literature in 1986, becoming the first sub-Saharan African laureate in the category.", lesson:"Original thought and deep craft can carry a voice far beyond its origin.", wikiTitle:"Wole_Soyinka" },
   { name:"Chinua Achebe", field:"Literature", achievement:"Things Fall Apart became one of the world's most widely read works of modern African literature.", lesson:"A story rooted in one place can speak powerfully to the entire world.", wikiTitle:"Chinua_Achebe" },
   { name:"Chimamanda Ngozi Adichie", field:"Literature", achievement:"Internationally acclaimed novelist whose work has received major literary honors including the Orange Prize for Fiction.", lesson:"Clear ideas, strong craft and an authentic voice can travel globally.", wikiTitle:"Chimamanda_Ngozi_Adichie" },
@@ -66,64 +66,161 @@ const PEOPLE: Person[] = [
   { name:"Novak Djokovic", field:"Tennis", achievement:"Won a record 24 men's Grand Slam singles titles and completed the career Golden Slam with Olympic gold in 2024.", lesson:"Longevity comes from continuously refining training, recovery and competitive strategy.", wikiTitle:"Novak_Djokovic" },
 ];
 
+const IMAGE_CACHE_KEY = "possara-achiever-images-v2";
+
+function readCachedImages(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(IMAGE_CACHE_KEY) ?? "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeCachedImages(images: Record<string, string>) {
+  try {
+    window.localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(images));
+  } catch {
+    // Browsers may block localStorage in private/restricted contexts. The carousel still works without it.
+  }
+}
+
 async function fetchWikiImage(title: string): Promise<string | null> {
   try {
-    const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+    const query = new URLSearchParams({
+      action: "query",
+      format: "json",
+      origin: "*",
+      prop: "pageimages",
+      pithumbsize: "1200",
+      titles: title.replaceAll("_", " "),
+    });
+    const response = await fetch(`https://en.wikipedia.org/w/api.php?${query.toString()}`);
     if (!response.ok) return null;
-    const data = await response.json() as { originalimage?: { source?: string }; thumbnail?: { source?: string } };
-    return data.originalimage?.source ?? data.thumbnail?.source ?? null;
+    const data = await response.json() as { query?: { pages?: Record<string, { thumbnail?: { source?: string } }> } };
+    const page = Object.values(data.query?.pages ?? {})[0];
+    return page?.thumbnail?.source ?? null;
   } catch {
     return null;
   }
 }
 
+function warmImage(url: string) {
+  const image = new Image();
+  image.decoding = "async";
+  image.src = url;
+}
+
 export function ExtraordinaryPeople() {
   const [active, setActive] = useState(0);
-  const [images, setImages] = useState<Record<string, string>>({});
+  const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const imagesRef = useRef(images);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const person = PEOPLE[active];
-  const nextPerson = PEOPLE[(active + 1) % PEOPLE.length];
 
   useEffect(() => {
-    const timer = window.setInterval(() => setActive((value) => (value + 1) % PEOPLE.length), 6500);
-    return () => window.clearInterval(timer);
-  }, []);
+    imagesRef.current = images;
+  }, [images]);
+
+  function next() {
+    setActive((value) => value >= PEOPLE.length - 1 ? 0 : value + 1);
+  }
+
+  function previous() {
+    setActive((value) => value <= 0 ? PEOPLE.length - 1 : value - 1);
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(next, 6500);
+    return () => window.clearTimeout(timer);
+  }, [active]);
 
   useEffect(() => {
     let cancelled = false;
-    const load = async (item: Person) => {
-      if (item.image || !item.wikiTitle || images[item.name]) return;
-      const image = await fetchWikiImage(item.wikiTitle);
-      if (!cancelled && image) setImages((current) => ({ ...current, [item.name]: image }));
-    };
-    void load(person);
-    void load(nextPerson);
-    return () => { cancelled = true; };
-  }, [active, person, nextPerson, images]);
+    const nearbyIndexes = [-1, 0, 1, 2, 3, 4].map((offset) => (active + offset + PEOPLE.length) % PEOPLE.length);
 
-  function move(direction: 1 | -1) {
-    setActive((value) => (value + direction + PEOPLE.length) % PEOPLE.length);
+    async function prepare(item: Person) {
+      if (item.image) {
+        warmImage(item.image);
+        return;
+      }
+
+      const cached = imagesRef.current[item.name];
+      if (cached) {
+        warmImage(cached);
+        return;
+      }
+      if (!item.wikiTitle) return;
+
+      const image = await fetchWikiImage(item.wikiTitle);
+      if (cancelled || !image) return;
+      warmImage(image);
+      const nextImages = { ...imagesRef.current, [item.name]: image };
+      imagesRef.current = nextImages;
+      setImages(nextImages);
+      writeCachedImages(nextImages);
+    }
+
+    nearbyIndexes.forEach((index) => { void prepare(PEOPLE[index]); });
+    return () => { cancelled = true; };
+  }, [active]);
+
+  function handleImageError() {
+    setFailedImages((current) => ({ ...current, [person.name]: true }));
+    if (!person.image && imagesRef.current[person.name]) {
+      const nextImages = { ...imagesRef.current };
+      delete nextImages[person.name];
+      imagesRef.current = nextImages;
+      setImages(nextImages);
+      writeCachedImages(nextImages);
+    }
   }
 
-  const image = person.image ?? images[person.name] ?? null;
+  function handleTouchStart(event: React.TouchEvent<HTMLElement>) {
+    const touch = event.touches[0];
+    touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLElement>) {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 45 || Math.abs(dx) <= Math.abs(dy) * 1.15) return;
+    if (dx < 0) next();
+    else previous();
+  }
+
+  const image = failedImages[person.name] ? null : person.image ?? images[person.name] ?? null;
   const visibleDots = useMemo(() => {
-    const radius = 3;
-    return Array.from({ length: Math.min(7, PEOPLE.length) }, (_, offset) => {
-      const index = (active - radius + offset + PEOPLE.length) % PEOPLE.length;
-      return index;
-    });
+    const maxStart = Math.max(0, PEOPLE.length - 7);
+    const start = Math.min(Math.max(active - 3, 0), maxStart);
+    return Array.from({ length: Math.min(7, PEOPLE.length) }, (_, offset) => start + offset);
   }, [active]);
 
   return (
-    <section className="achievement-hero" aria-label="Extraordinary achievement spotlight">
+    <section
+      className="achievement-hero"
+      aria-label="Extraordinary achievement spotlight"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: "pan-y" }}
+    >
       {image ? (
         <img
           key={`${person.name}-${image}`}
           src={image}
-          alt=""
+          alt={`${person.name} — ${person.field}`}
           className="achievement-hero-image achievement-hero-image-active"
-          style={{ objectPosition: person.position ?? "center 28%" }}
+          style={{ objectPosition: person.position ?? "center 24%" }}
           loading="eager"
+          decoding="async"
+          fetchPriority="high"
           referrerPolicy="no-referrer"
+          onError={handleImageError}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" aria-hidden="true">
@@ -145,14 +242,14 @@ export function ExtraordinaryPeople() {
       </div>
 
       <div className="achievement-controls">
-        <button type="button" onClick={() => move(-1)} aria-label="Previous achiever"><ChevronLeft size={18} /></button>
+        <button type="button" onClick={previous} aria-label="Previous achiever"><ChevronLeft size={18} /></button>
         <div className="flex items-center gap-3">
           <div className="achievement-dots" aria-label="Achievement position">
-            {visibleDots.map((index) => <button key={`${active}-${index}`} type="button" aria-label={`Show ${PEOPLE[index].name}`} onClick={() => setActive(index)} className={index === active ? "active" : ""} />)}
+            {visibleDots.map((index) => <button key={index} type="button" aria-label={`Show ${PEOPLE[index].name}`} onClick={() => setActive(index)} className={index === active ? "active" : ""} />)}
           </div>
           <span className="min-w-[48px] text-right text-[11px] font-semibold tabular-nums text-white/65">{active + 1} / {PEOPLE.length}</span>
         </div>
-        <button type="button" onClick={() => move(1)} aria-label="Next achiever"><ChevronRight size={18} /></button>
+        <button type="button" onClick={next} aria-label="Next achiever"><ChevronRight size={18} /></button>
       </div>
     </section>
   );
