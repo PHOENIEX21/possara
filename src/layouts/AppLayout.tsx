@@ -4,6 +4,7 @@ import { Search, Bell, User, LogOut, Menu, X, Home as HomeIcon, Users, Bookmark,
 import { useAuth } from "../store/auth";
 import { useUnreadNotificationCount } from "../hooks/useUnreadNotificationCount";
 import { useUnreadMessageCount } from "../hooks/useUnreadMessageCount";
+import { usePresenceHeartbeat } from "../hooks/useSocialPrivacy";
 import { BrandMark } from "../components/BrandMark";
 import { ExtraordinaryPeople } from "../components/ExtraordinaryPeople";
 
@@ -14,6 +15,7 @@ const OPPS = [{to:"/jobs",label:"Jobs",icon:Briefcase},{to:"/scholarships",label
 function LinkRow({to,label,Icon,onClick}:{to:string;label:string;Icon:typeof HomeIcon;onClick?:()=>void}){return <NavLink to={to} end={to==="/"} onClick={onClick} className={({isActive})=>`nav-row ${isActive?"nav-row-active":""}`}><Icon size={19}/><span>{label}</span></NavLink>}
 export function AppLayout(){
  const {userId,signOut}=useAuth(); const {data:unreadCount}=useUnreadNotificationCount(); const {data:unreadMessages}=useUnreadMessageCount(); const navigate=useNavigate(); const location=useLocation(); const [open,setOpen]=useState(false);
+ usePresenceHeartbeat();
  const isHome=location.pathname==="/";
  async function logout(){await signOut();setOpen(false);navigate("/")}
  return <div className="min-h-screen bg-paper">
