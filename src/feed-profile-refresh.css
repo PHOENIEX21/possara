@@ -35,6 +35,40 @@
 .rail-card-premium .eyebrow { color: rgba(255,255,255,.5); }
 .rail-card-premium .rail-link { color: white; }
 
+/* Profile cover stays about the member, not a branded test label. */
+section.max-w-3xl > .relative.h-44.overflow-hidden > .absolute.left-5.top-5 {
+  display: none !important;
+}
+
+/* Feed follow action sits in the post header, beside the options menu. */
+.post-header-follow {
+  position: absolute;
+  top: 1rem;
+  right: 3.45rem;
+  z-index: 12;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 1px 6px rgba(23,17,40,.06);
+  backdrop-filter: blur(8px);
+}
+
+.post-engagement-summary {
+  margin-bottom: .15rem;
+  border-bottom: 1px solid rgba(21,24,33,.055);
+}
+
+.post-reaction-action {
+  min-width: 0;
+}
+
+.post-reaction-action ~ button {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 2.25rem;
+  justify-content: center;
+  border-radius: .75rem;
+  font-weight: 600;
+}
+
 /* Messenger-style online people strip. The exact count stays in the header;
    each visible online member is represented by a compact tappable person. */
 .app-main aside > section.mb-4.rounded-2xl .mt-3.space-y-1 {
@@ -115,5 +149,15 @@
 
   .feed-list-premium > div > article > img {
     border-radius: .9rem;
+  }
+
+  .post-header-follow {
+    top: .85rem;
+    right: 3.15rem;
+  }
+
+  .post-engagement-summary {
+    padding-left: .1rem;
+    padding-right: .1rem;
   }
 }

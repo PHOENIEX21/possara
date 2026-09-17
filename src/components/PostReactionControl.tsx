@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
+import { useFollowStatus, useToggleFollow } from "../hooks/useFollow";
+import { useAuth } from "../store/auth";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
 
 const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
@@ -68,6 +70,44 @@ function formatCompactCount(value: number) {
   return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
+function PostHeaderFollow({ authorId }: { authorId: string | null }) {
+  const { userId } = useAuth();
+  const { data: isFollowing, isLoading } = useFollowStatus(authorId ?? undefined);
+  const toggle = useToggleFollow(authorId ?? "");
+
+  if (!userId || !authorId || userId === authorId || isLoading || isFollowing) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate(false)}
+      disabled={toggle.isPending}
+      className="post-header-follow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-brand-dark transition hover:bg-brand-light disabled:opacity-50"
+      aria-label="Follow this member"
+    >
+      <Plus size={13} strokeWidth={2.4} />
+      {toggle.isPending ? "Following…" : "Follow"}
+    </button>
+  );
+}
+
+function reactionPreviewLabel(post: PostWithAuthor) {
+  if (!post.reaction_count) return "";
+  const names = post.reaction_preview
+    .map((person) => person.full_name ?? person.username)
+    .filter((name): name is string => !!name)
+    .slice(0, 2);
+  const remaining = Math.max(0, post.reaction_count - post.reaction_preview.length);
+
+  if (!names.length) return `${formatCompactCount(post.reaction_count)} ${post.reaction_count === 1 ? "person" : "people"} reacted`;
+  if (names.length === 1) {
+    if (remaining > 0) return `${names[0]} and ${formatCompactCount(remaining)} ${remaining === 1 ? "other" : "others"}`;
+    return names[0];
+  }
+  if (remaining > 0) return `${names[0]}, ${names[1]} and ${formatCompactCount(remaining)} others`;
+  return names.join(" and ");
+}
+
 export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const toggleReaction = useTogglePostReaction();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -79,6 +119,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const visibleReaction = selected ?? REACTIONS[0];
   const onlyLikes = Boolean(people?.length) && people!.every((person) => person.type === "like");
   const remainingPeople = Math.max(0, post.reaction_count - (people?.length ?? 0));
+  const previewLabel = reactionPreviewLabel(post);
 
   function clearTimer() {
     if (timerRef.current !== null) {
@@ -119,7 +160,35 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
 
   return (
     <>
-      <div className="relative inline-flex items-center gap-1">
+      <PostHeaderFollow authorId={post.author_id} />
+
+      {post.reaction_count > 0 && (
+        <button
+          type="button"
+          onClick={() => setPeopleOpen(true)}
+          className="post-engagement-summary flex basis-full items-center justify-between gap-3 rounded-xl px-1 py-1.5 text-left hover:bg-paper/70"
+          aria-label={`See ${post.reaction_count} reactions`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex -space-x-1.5">
+              {post.reaction_preview.map((person) => {
+                const reaction = REACTIONS.find((item) => item.type === person.type);
+                const name = person.full_name ?? person.username ?? "POSSARA member";
+                return person.avatar_url ? (
+                  <img key={person.user_id} src={person.avatar_url} alt="" title={name} className="h-6 w-6 rounded-full border-2 border-white object-cover" />
+                ) : (
+                  <span key={person.user_id} title={name} className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-paper-dim text-[11px]">{reaction?.emoji ?? "✨"}</span>
+                );
+              })}
+              {post.reaction_preview.length === 0 && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light text-[11px]">✨</span>}
+            </span>
+            <span className="truncate text-xs text-ink-light">{previewLabel}</span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-ink-faint">{formatCompactCount(post.reaction_count)}</span>
+        </button>
+      )}
+
+      <div className="post-reaction-action relative inline-flex flex-1 items-center justify-center gap-1">
         {pickerOpen && (
           <div className="absolute bottom-full left-0 z-30 mb-2 flex gap-1 rounded-2xl border border-black/[.06] bg-white p-2 shadow-xl" role="menu" aria-label="Choose a reaction">
             {REACTIONS.map((reaction) => {
@@ -167,22 +236,11 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
             if (event.key === "Escape") setPickerOpen(false);
           }}
           disabled={toggleReaction.isPending}
-          className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
+          className={`inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
         >
           <span className="text-base leading-none">{visibleReaction.emoji}</span>
           <span>{visibleReaction.label}</span>
         </button>
-
-        {post.reaction_count > 0 && (
-          <button
-            type="button"
-            onClick={() => setPeopleOpen(true)}
-            className="rounded-full px-2 py-1 text-xs font-semibold text-ink-faint hover:bg-paper-dim hover:text-ink"
-            aria-label={`See ${post.reaction_count} reactions`}
-          >
-            {formatCompactCount(post.reaction_count)}
-          </button>
-        )}
         {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
       </div>
 

@@ -4,6 +4,13 @@ import { useAuth } from "../store/auth";
 import type { Post, Profile, UserRole } from "../types/database";
 
 export type PostReactionType = "like" | "spark" | "insightful" | "useful";
+export type PostReactionPreview = {
+  user_id: string;
+  type: PostReactionType;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+};
 
 const POST_REACTION_TYPES: PostReactionType[] = ["like", "spark", "insightful", "useful"];
 
@@ -17,6 +24,7 @@ export interface PostWithAuthor extends Post {
   viewer_reacted: boolean;
   reaction_count: number;
   reaction_counts: Record<PostReactionType, number>;
+  reaction_preview: PostReactionPreview[];
   viewer_reaction: PostReactionType | null;
   author_role: UserRole | null;
   comment_count: number;
@@ -60,9 +68,10 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const postIds = posts.map((p) => p.id);
       const { data: reactions } = await supabase
         .from("reactions")
-        .select("post_id, user_id, type")
+        .select("post_id,user_id,type,created_at")
         .in("post_id", postIds)
-        .in("type", POST_REACTION_TYPES);
+        .in("type", POST_REACTION_TYPES)
+        .order("created_at", { ascending: false });
       const authorIds = [...new Set(posts.map((p) => p.author_id).filter((id): id is string => !!id))];
       const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("user_id", authorIds.length ? authorIds : ["00000000-0000-0000-0000-000000000000"]);
       const roleByUser = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
@@ -73,6 +82,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const reactionCountsByPost = new Map<string, Record<PostReactionType, number>>();
       const reactionTotalByPost = new Map<string, number>();
       const viewerReactionByPost = new Map<string, PostReactionType>();
+      const previewRefsByPost = new Map<string, { user_id: string; type: PostReactionType }[]>();
       (reactions ?? []).forEach((r) => {
         if (!r.post_id || !POST_REACTION_TYPES.includes(r.type as PostReactionType)) return;
         const type = r.type as PostReactionType;
@@ -81,17 +91,43 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         reactionCountsByPost.set(r.post_id, current);
         reactionTotalByPost.set(r.post_id, (reactionTotalByPost.get(r.post_id) ?? 0) + 1);
         if (userId && r.user_id === userId) viewerReactionByPost.set(r.post_id, type);
+
+        if (r.user_id) {
+          const preview = previewRefsByPost.get(r.post_id) ?? [];
+          if (preview.length < 2 && !preview.some((item) => item.user_id === r.user_id)) {
+            preview.push({ user_id: r.user_id, type });
+            previewRefsByPost.set(r.post_id, preview);
+          }
+        }
       });
+
+      const previewUserIds = [...new Set([...previewRefsByPost.values()].flat().map((item) => item.user_id))];
+      let previewProfileById = new Map<string, { id: string; full_name: string | null; username: string | null; avatar_url: string | null }>();
+      if (previewUserIds.length) {
+        const { data: previewProfiles } = await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id", previewUserIds);
+        previewProfileById = new Map((previewProfiles ?? []).map((profile) => [profile.id, profile]));
+      }
 
       return posts.map((p) => {
         const counts = reactionCountsByPost.get(p.id) ?? emptyReactionCounts();
         const viewerReaction = viewerReactionByPost.get(p.id) ?? null;
+        const reactionPreview: PostReactionPreview[] = (previewRefsByPost.get(p.id) ?? []).map((item) => {
+          const profile = previewProfileById.get(item.user_id);
+          return {
+            user_id: item.user_id,
+            type: item.type,
+            full_name: profile?.full_name ?? null,
+            username: profile?.username ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+          };
+        });
         return {
           ...p,
           spark_count: counts.spark,
           viewer_reacted: viewerReaction === "spark",
           reaction_count: reactionTotalByPost.get(p.id) ?? 0,
           reaction_counts: counts,
+          reaction_preview: reactionPreview,
           viewer_reaction: viewerReaction,
           author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null,
           comment_count: commentCountByPost.get(p.id) ?? 0,

@@ -30,6 +30,7 @@ import { Saved } from "./pages/Saved";
 import { Impact } from "./pages/Impact";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
+import { OpportunityDiscoveryAdmin } from "./pages/OpportunityDiscoveryAdmin";
 import { Study } from "./pages/Study";
 import { StudyTopic } from "./pages/StudyTopic";
 import { StudyPractice } from "./pages/StudyPractice";
@@ -99,6 +100,7 @@ export default function App() {
 
               <Route element={<RequireAdmin />}>
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/opportunity-discovery" element={<OpportunityDiscoveryAdmin />} />
               </Route>
             </Route>
           </Routes>

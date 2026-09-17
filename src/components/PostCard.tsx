@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, MoreHorizontal, Pencil, Share2, ShieldCheck, Trash2, X } from "lucide-react";
+import { MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { useRepost } from "../hooks/useRepost";
 import { usePostStory } from "../hooks/useStories";
+import { useMemberTrustRank } from "../hooks/useTrustRank";
 import { InAppShareDialog } from "./InAppShareDialog";
 import { ReportButton } from "./ReportButton";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import { PostReactionControl } from "./PostReactionControl";
+import { TrustRankBadge } from "./TrustRankBadge";
 import type { PostWithAuthor } from "../hooks/useFeedPosts";
 
 const COMMENT_EMOJIS = ["😀", "😂", "🔥", "👏", "🎉", "💯", "🤝", "🙌"];
@@ -76,6 +78,11 @@ function profilePath(userId: string | null, username: string | null | undefined,
   return username ? `/profile/${username}` : `/profile/id/${userId}`;
 }
 
+function CommentTrustBadge({ userId }: { userId: string | null }) {
+  const { data: rank } = useMemberTrustRank(userId);
+  return <TrustRankBadge rank={rank} compact />;
+}
+
 function CommentThread({ postId }: { postId: string }) {
   const { userId } = useAuth();
   const { data: comments, isLoading, error: commentsError } = useComments(postId, true);
@@ -126,7 +133,10 @@ function CommentThread({ postId }: { postId: string }) {
               <div className="min-w-0 flex-1 rounded-2xl bg-paper px-3 py-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <Link to={path} className="block truncate font-serif text-[15px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <Link to={path} className="truncate font-serif text-[15px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
+                      <CommentTrustBadge userId={c.author_id} />
+                    </div>
                     <span className="text-[11px] text-ink-faint">{timeAgo(c.created_at)}</span>
                   </div>
                   {userId === c.author_id && (
@@ -172,6 +182,7 @@ function CommentThread({ postId }: { postId: string }) {
 
 export function PostCard({ post }: { post: PostWithAuthor }) {
   const { userId } = useAuth();
+  const { data: trustRank } = useMemberTrustRank(post.author_id);
   const deletePost = useDeletePost();
   const editPost = useEditPost();
   const repost = useRepost();
@@ -220,7 +231,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   return (
     <article className="relative rounded-2xl border border-paper-dim bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3 pr-20 sm:pr-24">
           {post.profiles?.avatar_url ? (
             <button type="button" onClick={() => setPhotoOpen(true)} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}>
               <img src={post.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
@@ -229,11 +240,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             <Link to={path} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{initial}</Link>
           )}
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Link to={path} className="truncate text-[15px] font-medium leading-tight hover:underline">{name}</Link>
-              {(post.author_role === "admin" || post.author_role === "moderator") && (
-                <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-trust-light px-1.5 py-0.5 text-[11px] font-medium text-trust-dark"><ShieldCheck size={10} />Official</span>
-              )}
+              <TrustRankBadge rank={trustRank} compact />
             </div>
             {headline && <Link to={path} className="block truncate text-xs text-ink-light hover:underline">{headline}</Link>}
             <div className="flex items-center gap-2 text-xs text-ink-faint">
@@ -299,16 +308,16 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         </div>
       )}
 
-      <div className="mt-4 border-t border-paper-dim pt-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-4 border-t border-paper-dim pt-2">
+        <div className="flex flex-wrap items-center gap-1">
           <PostReactionControl post={post} />
 
-          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
-            <MessageCircle size={15} />{post.comment_count > 0 ? post.comment_count : ""} {post.comment_count === 1 ? "Comment" : "Comments"}
+          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
+            <MessageCircle size={17} />{post.comment_count > 0 ? post.comment_count : ""} {post.comment_count === 1 ? "Comment" : "Comments"}
           </button>
 
-          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
-            <Share2 size={15} />Share
+          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
+            <Share2 size={17} />Share
           </button>
         </div>
       </div>

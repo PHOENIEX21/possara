@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Clock3, Share2 } from "lucide-react";
 import { useUserPresence } from "../hooks/useSocialPrivacy";
+import { useMemberTrustRank } from "../hooks/useTrustRank";
 import type { Profile } from "../types/database";
 import { InAppShareDialog } from "./InAppShareDialog";
+import { TrustRankBadge } from "./TrustRankBadge";
 
 function presenceLabel(lastSeenAt: string | null, online: boolean) {
   if (online) return "Active now";
@@ -21,6 +23,7 @@ function presenceLabel(lastSeenAt: string | null, online: boolean) {
 export function ProfileSharePresence({ profile }: { profile: Profile }) {
   const [shareOpen, setShareOpen] = useState(false);
   const { data: presence } = useUserPresence(profile.id);
+  const { data: trustRank } = useMemberTrustRank(profile.id);
   const label = useMemo(
     () => presence?.visible ? presenceLabel(presence.lastSeenAt, presence.online) : null,
     [presence],
@@ -31,6 +34,7 @@ export function ProfileSharePresence({ profile }: { profile: Profile }) {
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <TrustRankBadge rank={trustRank} />
         {label && (
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${presence?.online ? "border-trust/25 bg-trust-light text-trust-dark" : "border-paper-dim bg-paper/60 text-ink-light"}`} title={label}>
             <span className={`h-2 w-2 rounded-full ${presence?.online ? "bg-trust" : "bg-ink-faint/50"}`} aria-hidden="true" />

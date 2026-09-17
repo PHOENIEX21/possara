@@ -1,0 +1,4 @@
+project_id = "qetadbstyojabagixrjp"
+
+[functions.opportunity-discovery]
+verify_jwt = false
