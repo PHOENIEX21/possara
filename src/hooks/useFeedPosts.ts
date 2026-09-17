@@ -104,30 +104,37 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, type = "general", categoryId, topic }: { content: string; imageFile: File | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, type = "general", categoryId, topic, feeling }: { content: string; imageFile: File | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; feeling?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
+      const cleanContent = content.trim();
+      if (!cleanContent && !imageFile) throw new Error("Write something or add a photo.");
       let mediaUrls: string[] | null = null;
+      let uploadedPath: string | null = null;
       if (imageFile) {
         if (!imageFile.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use a JPG, PNG, or WebP image.");
         if (imageFile.size > 8 * 1024 * 1024) throw new Error("Image must be 8 MB or smaller.");
         const safe = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        const path = `${userId}/${Date.now()}-${safe}`;
-        const { error: uploadError } = await supabase.storage.from("opportunity-media").upload(path, imageFile);
+        uploadedPath = `${userId}/${Date.now()}-${safe}`;
+        const { error: uploadError } = await supabase.storage.from("opportunity-media").upload(uploadedPath, imageFile);
         if (uploadError) throw uploadError;
-        const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
+        const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(uploadedPath);
         mediaUrls = [publicUrlData.publicUrl];
       }
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
-        content,
+        content: cleanContent,
         media_urls: mediaUrls,
         type,
         category_id: categoryId ?? null,
         topic: topic ?? null,
+        feeling: feeling?.trim().slice(0, 60) || null,
         status: "published",
         visibility: "public",
       });
-      if (error) throw error;
+      if (error) {
+        if (uploadedPath) await supabase.storage.from("opportunity-media").remove([uploadedPath]);
+        throw error;
+      }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
   });
@@ -152,6 +159,9 @@ export function useTogglePostReaction() {
         if (insertError) throw insertError;
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post-reaction-people"] });
+    },
   });
 }
