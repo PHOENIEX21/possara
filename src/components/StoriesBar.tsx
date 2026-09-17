@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Pause, Play, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, Eye, Pause, Play, Plus, Trash2, X } from "lucide-react";
 import { useActiveStories, useDeleteStory, usePostStory } from "../hooks/useStories";
+import { useRecordStoryView, useStoryViewers } from "../hooks/useStoryViews";
 import { useAuth } from "../store/auth";
 import type { AuthorWithStories } from "../hooks/useStories";
 
@@ -9,19 +10,28 @@ const STORY_DURATION = 6000;
 function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: () => void }) {
   const { userId } = useAuth();
   const deleteStory = useDeleteStory();
+  const recordView = useRecordStoryView();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [viewersOpen, setViewersOpen] = useState(false);
   const story = group.stories[index];
   const ownStory = userId === story.author_id;
+  const { data: viewers, isLoading: viewersLoading } = useStoryViewers(story.id, ownStory);
 
-  function next(){ setConfirmDelete(false); setProgress(0); if(index < group.stories.length-1) setIndex(i=>i+1); else onClose(); }
-  function prev(){ setConfirmDelete(false); setProgress(0); if(index>0) setIndex(i=>i-1); }
+  function next(){ setConfirmDelete(false); setViewersOpen(false); setProgress(0); if(index < group.stories.length-1) setIndex(i=>i+1); else onClose(); }
+  function prev(){ setConfirmDelete(false); setViewersOpen(false); setProgress(0); if(index>0) setIndex(i=>i-1); }
 
-  useEffect(()=>{ setProgress(0); setPaused(false); },[index,group.authorId]);
+  useEffect(()=>{ setProgress(0); setPaused(false); setViewersOpen(false); },[index,group.authorId]);
+
   useEffect(()=>{
-    if(paused||confirmDelete)return;
+    if(!userId || ownStory) return;
+    recordView.mutate({storyId:story.id,authorId:story.author_id});
+  },[story.id,story.author_id,userId,ownStory]);
+
+  useEffect(()=>{
+    if(paused||confirmDelete||viewersOpen)return;
     const start=Date.now()-(progress/100)*STORY_DURATION;
     const timer=window.setInterval(()=>{
       const nextProgress=Math.min(100,((Date.now()-start)/STORY_DURATION)*100);
@@ -29,7 +39,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
       if(nextProgress>=100){window.clearInterval(timer);next();}
     },80);
     return()=>window.clearInterval(timer);
-  },[paused,confirmDelete,index]);
+  },[paused,confirmDelete,viewersOpen,index]);
 
   async function removeCurrent(){try{await deleteStory.mutateAsync(story);onClose();}catch{}}
 
@@ -40,6 +50,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
         <div className="flex items-center gap-2 text-white">
           {group.author?.avatar_url?<img src={group.author.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover"/>:<div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs">{(group.author?.full_name??"?").charAt(0).toUpperCase()}</div>}
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{group.author?.full_name??"Member"}</span>
+          {ownStory&&<button onClick={()=>{setPaused(true);setViewersOpen(true);}} className="inline-flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-2 text-xs" aria-label="View Moment viewers"><Eye size={16}/><span>{viewers?.length??0}</span></button>}
           <button onClick={()=>setPaused(v=>!v)} className="rounded-full bg-black/25 p-2" aria-label={paused?"Resume Moment":"Pause Moment"}>{paused?<Play size={17}/>:<Pause size={17}/>}</button>
           {ownStory&&<button onClick={()=>{setPaused(true);setConfirmDelete(true);}} className="rounded-full bg-black/25 p-2" aria-label="Delete Moment"><Trash2 size={16}/></button>}
           <button onClick={onClose} className="rounded-full bg-black/25 p-2" aria-label="Close"><X size={19}/></button>
@@ -49,9 +60,22 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
         {story.media_url?<img src={story.media_url} alt="" className="max-h-screen w-full object-contain sm:max-h-[72vh] sm:rounded-xl"/>:<div className="flex h-[60vh] w-full items-center justify-center bg-white/10 text-sm text-white/70">Moment unavailable</div>}
         <button onClick={prev} disabled={index===0} className="absolute inset-y-0 left-0 w-1/3 disabled:cursor-default" aria-label="Previous Moment"/>
         <button onClick={next} className="absolute inset-y-0 right-0 w-1/3" aria-label="Next Moment"/>
-        {paused&&!confirmDelete&&<button onClick={()=>setPaused(false)} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/45 p-4 text-white"><Play size={28}/></button>}
+        {paused&&!confirmDelete&&!viewersOpen&&<button onClick={()=>setPaused(false)} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/45 p-4 text-white"><Play size={28}/></button>}
       </div>
       {story.caption&&<p className="absolute bottom-5 left-4 right-4 z-10 rounded-xl bg-black/35 px-3 py-2 text-center text-sm text-white sm:static sm:mt-2 sm:bg-transparent sm:p-0">{story.caption}</p>}
+
+      {viewersOpen&&<div className="absolute inset-x-3 bottom-4 z-40 max-h-[55vh] overflow-hidden rounded-2xl bg-white text-ink shadow-2xl">
+        <div className="flex items-center justify-between border-b border-paper-dim px-4 py-3"><div><p className="font-semibold">Moment viewers</p><p className="text-xs text-ink-faint">People who allow story-view visibility.</p></div><button onClick={()=>{setViewersOpen(false);setPaused(false);}} className="rounded-full p-2 hover:bg-paper-dim" aria-label="Close viewers"><X size={17}/></button></div>
+        <div className="max-h-[42vh] overflow-y-auto p-2">
+          {viewersLoading&&<p className="p-3 text-sm text-ink-light">Loading viewers…</p>}
+          {!viewersLoading&&viewers?.length===0&&<p className="p-3 text-sm text-ink-light">No visible viewers yet.</p>}
+          {viewers?.map(viewer=><div key={viewer.viewerId} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-paper">
+            {viewer.avatarUrl?<img src={viewer.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover"/>:<div className="flex h-9 w-9 items-center justify-center rounded-full bg-trust-light text-xs font-semibold text-trust-dark">{(viewer.fullName??"?").charAt(0).toUpperCase()}</div>}
+            <div className="min-w-0"><p className="truncate text-sm font-medium">{viewer.fullName??"POSSARA member"}</p>{viewer.username&&<p className="truncate text-xs text-ink-faint">@{viewer.username}</p>}</div>
+          </div>)}
+        </div>
+      </div>}
+
       {confirmDelete&&<div className="absolute inset-x-4 bottom-5 z-30 rounded-2xl bg-white p-4 text-sm text-ink shadow-xl"><p className="font-medium">Delete this Moment?</p><p className="mt-1 text-xs text-ink-light">This cannot be undone.</p><div className="mt-3 flex gap-3"><button onClick={removeCurrent} disabled={deleteStory.isPending} className="rounded-full bg-flag px-4 py-2 font-medium text-white">{deleteStory.isPending?"Deleting…":"Delete"}</button><button onClick={()=>{setConfirmDelete(false);setPaused(false);}} className="rounded-full bg-paper-dim px-4 py-2">Cancel</button></div></div>}
     </div>
   </div>;
