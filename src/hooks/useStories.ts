@@ -41,6 +41,36 @@ export type PostStoryInput = {
 };
 
 const ALLOWED_MUSIC = new Set(["audio/mpeg", "audio/mp4", "audio/webm", "audio/ogg", "audio/wav"]);
+const MUSIC_EXTENSION_MIME: Record<string, string> = {
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  mp4: "audio/mp4",
+  webm: "audio/webm",
+  ogg: "audio/ogg",
+  oga: "audio/ogg",
+  wav: "audio/wav",
+};
+const SIGNED_URL_SECONDS = 60 * 10;
+const SIGNED_URL_REUSE_MS = 8 * 60 * 1000;
+const signedMomentCache = new Map<string, { url: string; reusableUntil: number }>();
+
+function resolveMusicMime(file: File) {
+  const raw = file.type.toLowerCase().split(";")[0].trim();
+  if (raw === "audio/x-m4a" || raw === "audio/m4a") return "audio/mp4";
+  if (ALLOWED_MUSIC.has(raw)) return raw;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return MUSIC_EXTENSION_MIME[ext] ?? "";
+}
+
+async function stableSignedUrl(bucket: "moments" | "moment-music", path: string) {
+  const key = `${bucket}:${path}`;
+  const cached = signedMomentCache.get(key);
+  if (cached && cached.reusableUntil > Date.now()) return cached.url;
+  const { data } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_SECONDS);
+  if (!data?.signedUrl) return null;
+  signedMomentCache.set(key, { url: data.signedUrl, reusableUntil: Date.now() + SIGNED_URL_REUSE_MS });
+  return data.signedUrl;
+}
 
 async function attachSignedUrls(rows: StoryWithAuthor[]): Promise<StoryWithAuthor[]> {
   return Promise.all(rows.map(async (story) => {
@@ -48,13 +78,12 @@ async function attachSignedUrls(rows: StoryWithAuthor[]): Promise<StoryWithAutho
     let musicUrl: string | null = null;
 
     if (story.storage_path) {
-      const { data } = await supabase.storage.from("moments").createSignedUrl(story.storage_path, 60 * 10);
-      if (data?.signedUrl) mediaUrl = data.signedUrl;
+      const signed = await stableSignedUrl("moments", story.storage_path);
+      if (signed) mediaUrl = signed;
     }
 
     if (story.music_path) {
-      const { data } = await supabase.storage.from("moment-music").createSignedUrl(story.music_path, 60 * 10);
-      if (data?.signedUrl) musicUrl = data.signedUrl;
+      musicUrl = await stableSignedUrl("moment-music", story.music_path);
     }
 
     return { ...story, media_url: mediaUrl, music_url: musicUrl };
@@ -126,8 +155,9 @@ export function usePostStory() {
         if (imageFile.size > 8 * 1024 * 1024) throw new Error("Moment image must be 8 MB or smaller.");
       }
 
+      const musicMime = musicFile ? resolveMusicMime(musicFile) : "";
       if (musicFile) {
-        if (!ALLOWED_MUSIC.has(musicFile.type)) throw new Error("Use MP3, M4A/MP4, WebM, OGG, or WAV audio.");
+        if (!musicMime) throw new Error("Use MP3, M4A/MP4, WebM, OGG, or WAV audio.");
         if (musicFile.size > 3 * 1024 * 1024) throw new Error("Moment music must be 3 MB or smaller.");
       }
 
@@ -150,10 +180,10 @@ export function usePostStory() {
         }
 
         if (musicFile) {
-          const ext = musicFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
+          const ext = musicFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || (musicMime === "audio/mp4" ? "m4a" : "mp3");
           musicPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
           const { error } = await supabase.storage.from("moment-music").upload(musicPath, musicFile, {
-            contentType: musicFile.type,
+            contentType: musicMime,
             cacheControl: "3600",
             upsert: false,
           });
@@ -171,7 +201,7 @@ export function usePostStory() {
             text_body: textBody || null,
             background_style: input.backgroundStyle ?? "midnight",
             music_path: musicPath,
-            music_mime_type: musicFile?.type ?? null,
+            music_mime_type: musicFile ? musicMime : null,
             music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
             audience: input.audience ?? "public",
           })
