@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Camera, MessageCircle, MoreHorizontal, Pencil, Search, UserCheck, UserPlus } from "lucide-react";
+import { CalendarDays, Camera, MessageCircle, MoreHorizontal, Pencil, Search, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useFollowCounts, useFollowStatus, useToggleFollow } from "../hooks/useFollow";
@@ -113,6 +113,7 @@ function ProfilePosts({ profileId }: { profileId: string }) {
 
   const photoCount = photoGroups.reduce((total,group)=>total+group.items.length,0);
   const filtering = !!keyword.trim() || !!dateFilter;
+  const dateLabel = dateFilter ? new Date(`${dateFilter}T00:00:00`).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "Search by date";
 
   return (
     <section className="max-w-2xl">
@@ -125,12 +126,16 @@ function ProfilePosts({ profileId }: { profileId: string }) {
           <span className="text-xs text-ink-faint">{tab==="posts"?"Newest first":"Grouped by date"}</span>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_170px_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
           <label className="flex items-center gap-2 rounded-xl border border-paper-dim bg-white px-3 py-2 shadow-sm">
             <Search size={15} className="shrink-0 text-ink-faint"/>
             <input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Search posts by keyword" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"/>
           </label>
-          <input type="date" value={dateFilter} onChange={e=>setDateFilter(e.target.value)} aria-label="Filter profile posts by date" className="rounded-xl border border-paper-dim bg-white px-3 py-2 text-sm text-ink outline-none shadow-sm focus:border-brand"/>
+          <label className="relative flex min-h-11 cursor-pointer items-center gap-2 overflow-hidden rounded-xl border border-paper-dim bg-white px-3 py-2 shadow-sm focus-within:border-brand">
+            <CalendarDays size={16} className="shrink-0 text-ink-faint"/>
+            <span className={`min-w-0 flex-1 truncate text-sm ${dateFilter?"text-ink":"text-ink-faint"}`}>{dateLabel}</span>
+            <input type="date" value={dateFilter} onChange={e=>setDateFilter(e.target.value)} aria-label="Search profile posts by date" className="absolute inset-0 h-full w-full cursor-pointer opacity-0"/>
+          </label>
           {filtering&&<button type="button" onClick={()=>{setKeyword("");setDateFilter("");}} className="rounded-xl border border-paper-dim bg-white px-3 py-2 text-sm font-medium text-ink-light shadow-sm hover:bg-paper">Clear</button>}
         </div>
       </div>
@@ -165,9 +170,9 @@ function ProfilePosts({ profileId }: { profileId: string }) {
   );
 }
 
-type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onOwnCoverClick?:()=>void; coverUploading?:boolean };
+type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onOwnCoverClick?:()=>void; onRemoveCover?:()=>void; coverUploading?:boolean };
 
-function ProfileView({profile,own=false,onEdit,onOwnCoverClick,coverUploading=false}:ProfileViewProps){
+function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
   const {data:counts}=useFollowCounts(profile.id);
   const [photoOpen,setPhotoOpen]=useState(false);
   const [profileMenuOpen,setProfileMenuOpen]=useState(false);
@@ -195,7 +200,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,coverUploading=fa
               {onEdit&&<button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><Pencil size={14}/>Edit profile</button>}
               {onOwnCoverClick&&<div className="relative">
                 <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-faint/30 bg-white text-ink-light shadow-sm transition hover:bg-paper-dim disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
-                {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Uploading…":profile.cover_url?"Change cover photo":"Add cover photo"}</button></div></>}
+                {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-11 z-30 w-52 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Working…":profile.cover_url?"Change cover photo":"Add cover photo"}</button>{profile.cover_url&&onRemoveCover&&<button type="button" role="menuitem" disabled={coverUploading} onClick={()=>{setProfileMenuOpen(false);onRemoveCover();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-flag hover:bg-flag-light disabled:opacity-50">Remove cover photo</button>}</div></>}
               </div>}
             </>:<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}
           </div>
@@ -285,12 +290,15 @@ export function Profile(){
   const {userId}=useAuth();
   const {data:ownProfile,isLoading}=useOwnProfile();
   const coverUpload=useCoverUpload();
+  const updateOwnProfile=useUpdateOwnProfile();
   const coverInputRef=useRef<HTMLInputElement>(null);
   const [coverStatus,setCoverStatus]=useState<string|null>(null);
   const [editing,setEditing]=useState(false);
   const isOwn=username==="me"||!!(id&&id===userId)||!!(ownProfile?.username&&username===ownProfile.username);
+  const coverBusy=coverUpload.isPending||updateOwnProfile.isPending;
   async function changeOwnCover(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await coverUpload.mutateAsync(file);setCoverStatus("Cover photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}
-  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} coverUploading={coverUpload.isPending}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="text-sm text-ink-light">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link></div>;}
+  async function removeOwnCover(){if(!ownProfile?.cover_url)return;setCoverStatus(null);try{await updateOwnProfile.mutateAsync({cover_url:null});setCoverStatus("Cover photo removed.");}catch(err){setCoverStatus((err as Error).message);}}
+  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="text-sm text-ink-light">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link></div>;}
   if(id)return <PublicProfileById id={id}/>;
   if(username)return <PublicProfile username={username}/>;
   return <p className="text-ink-light">No profile specified.</p>;
