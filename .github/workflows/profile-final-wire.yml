@@ -1,0 +1,52 @@
+name: One-time profile wiring
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/profile-final-wire.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Wire profile share and presence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/pages/Profile.tsx')
+          text = path.read_text()
+          import_old = 'import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";'
+          import_new = import_old + '\nimport { ProfileSharePresence } from "../components/ProfileSharePresence";'
+          if 'ProfileSharePresence' not in text:
+              if import_old not in text:
+                  raise SystemExit('ProfilePhotoViewer import anchor not found')
+              text = text.replace(import_old, import_new, 1)
+
+          anchor = '        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}\n        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">'
+          replacement = '        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}\n        <ProfileSharePresence profile={profile}/>\n        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">'
+          if '<ProfileSharePresence profile={profile}/>' not in text:
+              if anchor not in text:
+                  raise SystemExit('Profile details anchor not found')
+              text = text.replace(anchor, replacement, 1)
+
+          path.write_text(text)
+          PY
+      - name: Commit profile wiring
+        run: |
+          if git diff --quiet; then
+            echo "No profile patch needed"
+            exit 0
+          fi
+          git config user.name "PHOENIEX21"
+          git config user.email "adunoyepaul7@gmail.com"
+          git add src/pages/Profile.tsx
+          git commit -m "Wire profile sharing and active status"
+          git push origin main
