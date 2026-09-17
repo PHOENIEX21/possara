@@ -84,7 +84,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
       await deleteStory.mutateAsync(story);
       onClose();
     } catch {
-      // The mutation exposes its error through React Query; keep the viewer open on failure.
+      // React Query exposes the mutation error and keeps the viewer open.
     }
   }
 
@@ -147,7 +147,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
           {story.music_url && (
             <div className="absolute bottom-4 left-1/2 z-30 w-[88%] -translate-x-1/2 rounded-2xl bg-black/45 px-3 py-2 text-white backdrop-blur-md" onClick={(event) => event.stopPropagation()}>
               <div className="mb-1 flex items-center gap-2 text-[11px] font-medium"><Music2 size={13} /><span className="truncate">{story.music_title || "Moment music"}</span></div>
-              <audio key={story.music_url} src={story.music_url} autoPlay loop controls className="h-8 w-full" />
+              <audio key={story.music_url} src={story.music_url} autoPlay loop controls playsInline className="h-8 w-full" />
             </div>
           )}
 
@@ -184,6 +184,7 @@ export function StoriesBar() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [textBody, setTextBody] = useState("");
   const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicPreview, setMusicPreview] = useState<string | null>(null);
   const [musicTitle, setMusicTitle] = useState("");
   const [audience, setAudience] = useState<"public" | "followers">("public");
   const [backgroundStyle, setBackgroundStyle] = useState<MomentBackground>("midnight");
@@ -192,13 +193,22 @@ export function StoriesBar() {
   const otherGroups = groups?.filter((group) => group.authorId !== userId) ?? [];
   const myGroup = groups?.find((group) => group.authorId === userId);
 
+  function clearMusic() {
+    if (musicPreview) URL.revokeObjectURL(musicPreview);
+    setMusicFile(null);
+    setMusicPreview(null);
+    setMusicTitle("");
+  }
+
   function resetComposer() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
+    if (musicPreview) URL.revokeObjectURL(musicPreview);
     setMode("photo");
     setImageFile(null);
     setImagePreview(null);
     setTextBody("");
     setMusicFile(null);
+    setMusicPreview(null);
     setMusicTitle("");
     setAudience("public");
     setBackgroundStyle("midnight");
@@ -230,7 +240,9 @@ export function StoriesBar() {
   function chooseMusic(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (musicPreview) URL.revokeObjectURL(musicPreview);
     setMusicFile(file);
+    setMusicPreview(URL.createObjectURL(file));
     setMusicTitle(file.name.replace(/\.[^.]+$/, ""));
     setUploadError(null);
     event.target.value = "";
@@ -307,7 +319,7 @@ export function StoriesBar() {
         </div>
 
         <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseImage} className="hidden" />
-        <input ref={musicInputRef} type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav,.mp3,.m4a,.webm,.ogg,.wav" onChange={chooseMusic} className="hidden" />
+        <input ref={musicInputRef} type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav,audio/x-m4a,.mp3,.m4a,.mp4,.webm,.ogg,.oga,.wav" onChange={chooseMusic} className="hidden" />
 
         {mode === "photo" && imagePreview && <button type="button" onClick={() => imageInputRef.current?.click()} className="mt-2 text-xs font-semibold text-brand-dark">Change photo</button>}
 
@@ -316,8 +328,8 @@ export function StoriesBar() {
         <div className="mt-4"><p className="text-sm font-medium text-ink">Background</p><div className="mt-2 flex flex-wrap gap-2">{BACKGROUND_OPTIONS.map((option) => <button key={option.value} type="button" onClick={() => setBackgroundStyle(option.value)} className={`h-9 w-9 rounded-full border-2 ${BACKGROUNDS[option.value]} ${backgroundStyle === option.value ? "border-ink ring-2 ring-brand/25" : "border-white shadow"}`} aria-label={option.label} title={option.label} />)}</div></div>
 
         <div className="mt-4 rounded-2xl border border-paper-dim bg-paper/50 p-3">
-          <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 text-sm font-medium text-ink"><Music2 size={15} />Music <span className="font-normal text-ink-faint">optional</span></p>{musicFile ? <p className="mt-1 truncate text-xs text-ink-light">{musicTitle || musicFile.name}</p> : <p className="mt-1 text-xs text-ink-faint">MP3, M4A, WebM, OGG or WAV · max 3 MB</p>}</div><button type="button" onClick={() => musicInputRef.current?.click()} className="shrink-0 rounded-full border border-ink-faint/25 bg-white px-3 py-2 text-xs font-semibold">{musicFile ? "Change" : "Add music"}</button></div>
-          {musicFile && <div className="mt-2 flex gap-2"><input value={musicTitle} onChange={(event) => setMusicTitle(event.target.value)} maxLength={120} placeholder="Music title" className="min-w-0 flex-1 rounded-xl border border-ink-faint/20 bg-white px-3 py-2 text-xs outline-none focus:border-brand" /><button type="button" onClick={() => { setMusicFile(null); setMusicTitle(""); }} className="rounded-xl px-3 py-2 text-xs font-medium text-flag">Remove</button></div>}
+          <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 text-sm font-medium text-ink"><Music2 size={15} />Music <span className="font-normal text-ink-faint">optional</span></p>{musicFile ? <p className="mt-1 truncate text-xs text-ink-light">{musicTitle || musicFile.name}</p> : <p className="mt-1 text-xs text-ink-faint">MP3, M4A, MP4, WebM, OGG or WAV · max 3 MB</p>}</div><button type="button" onClick={() => musicInputRef.current?.click()} className="shrink-0 rounded-full border border-ink-faint/25 bg-white px-3 py-2 text-xs font-semibold">{musicFile ? "Change" : "Add music"}</button></div>
+          {musicFile && <div className="mt-3 space-y-2 rounded-xl bg-white p-2.5"><div className="flex items-center gap-2"><audio src={musicPreview ?? undefined} controls preload="metadata" className="h-9 min-w-0 flex-1"/><button type="button" onClick={clearMusic} className="rounded-xl px-3 py-2 text-xs font-medium text-flag">Remove</button></div><input value={musicTitle} onChange={(event) => setMusicTitle(event.target.value)} maxLength={120} placeholder="Music title" className="w-full rounded-xl border border-ink-faint/20 bg-white px-3 py-2 text-xs outline-none focus:border-brand" /></div>}
         </div>
 
         <label className="mt-4 block text-sm font-medium text-ink">Who can see it?<select value={audience} onChange={(event) => setAudience(event.target.value as "public" | "followers")} className="mt-1.5 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"><option value="public">Everyone on POSSARA</option><option value="followers">Followers only</option></select></label>
