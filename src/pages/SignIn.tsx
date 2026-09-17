@@ -16,6 +16,11 @@ export function SignIn(){
   const [message,setMessage]=useState<string|null>(null);
   const [loading,setLoading]=useState(false);
 
+  async function clearCurrentBrowserSession(){
+    await supabase.auth.signOut({scope:"local"});
+    queryClient.clear();
+  }
+
   async function handleSubmit(e:React.FormEvent){
     e.preventDefault();
     setError(null);
@@ -23,7 +28,7 @@ export function SignIn(){
     setLoading(true);
 
     if(mode==="forgot"){
-      const {error:resetError}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:`${window.location.origin}/reset-password`});
+      const {error:resetError}=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:`${window.location.origin}/reset-password`});
       setLoading(false);
       if(resetError){setError(resetError.message);return;}
       setMessage("Check your email for a secure reset link.");
@@ -32,9 +37,11 @@ export function SignIn(){
 
     if(mode==="signup"){
       const clean=username.trim().toLowerCase();
+      const cleanEmail=email.trim().toLowerCase();
       if(password.length<8){setLoading(false);setError("Password must be at least 8 characters.");return;}
       if(!/^[a-z0-9_]{3,24}$/.test(clean)){setLoading(false);setError("Username must be 3–24 lowercase letters, numbers or underscores.");return;}
-      const {data,error:authError}=await supabase.auth.signUp({email,password,options:{data:{full_name:fullName.trim()}}});
+      await clearCurrentBrowserSession();
+      const {data,error:authError}=await supabase.auth.signUp({email:cleanEmail,password,options:{data:{full_name:fullName.trim()}}});
       if(authError){setLoading(false);setError(authError.message);return;}
       if(data.user){
         const {error:profileError}=await supabase.from("profiles").update({username:clean,full_name:fullName.trim()}).eq("id",data.user.id);
@@ -49,18 +56,30 @@ export function SignIn(){
       return;
     }
 
-    const {data,error:authError}=await supabase.auth.signInWithPassword({email:email.trim(),password});
-    setLoading(false);
-    if(authError){setError(authError.message);return;}
-    if(!data.session?.user){setError("Sign in did not return a valid session. Please try again.");return;}
+    const cleanEmail=email.trim().toLowerCase();
+    await clearCurrentBrowserSession();
+    const {data,error:authError}=await supabase.auth.signInWithPassword({email:cleanEmail,password});
+    if(authError){setLoading(false);setError(authError.message);return;}
+    if(!data.session?.user||!data.user){setLoading(false);setError("Sign in did not return a valid session. Please try again.");return;}
+
+    const {data:verified,error:verifyError}=await supabase.auth.getUser();
+    const verifiedEmail=verified.user?.email?.trim().toLowerCase()??"";
+    if(verifyError||!verified.user||verified.user.id!==data.user.id||verifiedEmail!==cleanEmail){
+      await supabase.auth.signOut({scope:"local"});
+      queryClient.clear();
+      setLoading(false);
+      setError("POSSARA could not verify the account switch. Please enter the account email and password again.");
+      return;
+    }
 
     queryClient.clear();
-    window.location.replace("/");
+    setLoading(false);
+    window.location.replace("/profile/me");
   }
 
   async function handleGoogle(){
     setError(null);
-    queryClient.clear();
+    await clearCurrentBrowserSession();
     const {error:oAuthError}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});
     if(oAuthError)setError(oAuthError.message);
   }

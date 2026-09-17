@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Search, Bell, User, LogOut, Menu, X, Home as HomeIcon, Users, Bookmark, Compass, MessageCircle, Plus, Briefcase, GraduationCap, School, Settings as SettingsIcon, BookOpen, Sparkles } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useUnreadNotificationCount } from "../hooks/useUnreadNotificationCount";
@@ -14,10 +14,10 @@ const PRIMARY = [
 const OPPS = [{to:"/jobs",label:"Jobs",icon:Briefcase},{to:"/scholarships",label:"Scholarships",icon:GraduationCap},{to:"/admissions",label:"Admissions",icon:School}];
 function LinkRow({to,label,Icon,onClick}:{to:string;label:string;Icon:typeof HomeIcon;onClick?:()=>void}){return <NavLink to={to} end={to==="/"} onClick={onClick} className={({isActive})=>`nav-row ${isActive?"nav-row-active":""}`}><Icon size={19}/><span>{label}</span></NavLink>}
 export function AppLayout(){
- const {userId,signOut}=useAuth(); const {data:unreadCount}=useUnreadNotificationCount(); const {data:unreadMessages}=useUnreadMessageCount(); const navigate=useNavigate(); const location=useLocation(); const [open,setOpen]=useState(false);
+ const {userId,signOut}=useAuth(); const {data:unreadCount}=useUnreadNotificationCount(); const {data:unreadMessages}=useUnreadMessageCount(); const location=useLocation(); const [open,setOpen]=useState(false);
  usePresenceHeartbeat();
  const isHome=location.pathname==="/";
- async function logout(){await signOut();setOpen(false);navigate("/")}
+ async function logout(){setOpen(false);await signOut();window.location.replace("/signin")}
  return <div className="min-h-screen bg-paper">
   <header className="app-header"><div className="app-header-inner"><NavLink to="/" className="brand-lockup"><BrandMark/><span>POSSARA</span></NavLink><NavLink to="/search" className="desktop-search"><Search size={17}/><span>Search POSSARA</span><kbd>/</kbd></NavLink><div className="header-actions"><NavLink to="/search" aria-label="Search"><Search size={20}/></NavLink>{userId&&<><NavLink to="/messages" className="relative" aria-label="Messages"><MessageCircle size={20}/>{!!unreadMessages&&unreadMessages>0&&<i/>}</NavLink><NavLink to="/notifications" className="relative"><Bell size={20}/>{!!unreadCount&&unreadCount>0&&<i/>}</NavLink></>}{!userId&&<NavLink to="/signin" className="signin-pill">Sign in</NavLink>}<button onClick={()=>setOpen(!open)} className="mobile-menu-btn" aria-label="Menu">{open?<X/>:<Menu/>}</button></div></div></header>
   {isHome&&<><section className="possara-welcome" aria-label="Welcome to POSSARA"><div className="possara-welcome-inner"><div className="possara-welcome-mark"><Sparkles size={18}/></div><div><p className="possara-welcome-kicker">Welcome to POSSARA</p><h1>See what is possible. Find what moves you forward.</h1><p className="possara-welcome-copy">Discover inspiring people, real opportunities, useful learning and a community built around growth.</p></div></div></section><ExtraordinaryPeople/></>}

@@ -18,8 +18,11 @@ export const useAuth=create<AuthState>((set)=>({
   userId:null,email:null,role:null,isVerified:false,isBanned:false,banReason:null,loading:true,
   init:()=>{
     let active=true;
+    let authEventSeen=false;
+    let hydrationVersion=0;
 
     async function hydrateUser(user:{id:string;email?:string|null}|null){
+      const version=++hydrationVersion;
       if(!active)return;
       if(!user){
         set({userId:null,email:null,role:null,isVerified:false,isBanned:false,banReason:null,loading:false});
@@ -32,24 +35,30 @@ export const useAuth=create<AuthState>((set)=>({
         .select("role,is_verified,is_banned,ban_reason")
         .eq("user_id",user.id)
         .single() as {data:Pick<UserRoleRow,"role"|"is_verified"|"is_banned"|"ban_reason">|null;error:unknown};
-      if(!active)return;
+      if(!active||version!==hydrationVersion)return;
 
       if(data?.is_banned){
         set({isBanned:true,banReason:data.ban_reason,role:data.role??"user",isVerified:data.is_verified??false,loading:false});
-        await supabase.auth.signOut();
-        if(active)set({userId:null,email:null,loading:false});
+        await supabase.auth.signOut({scope:"local"});
+        if(active&&version===hydrationVersion)set({userId:null,email:null,loading:false});
         return;
       }
 
       set({role:!error&&data?.role?data.role:"user",isVerified:!error&&(data?.is_verified??false),isBanned:false,banReason:null,loading:false});
     }
 
-    void supabase.auth.getSession().then(({data})=>hydrateUser(data.session?.user??null));
-    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{void hydrateUser(session?.user??null);});
-    return()=>{active=false;listener.subscription.unsubscribe();};
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
+      authEventSeen=true;
+      void hydrateUser(session?.user??null);
+    });
+    void supabase.auth.getSession().then(({data})=>{
+      if(!authEventSeen)void hydrateUser(data.session?.user??null);
+    });
+
+    return()=>{active=false;hydrationVersion+=1;listener.subscription.unsubscribe();};
   },
   signOut:async()=>{
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({scope:"local"});
     set({userId:null,email:null,role:null,isVerified:false,isBanned:false,banReason:null,loading:false});
   },
 }));

@@ -24,7 +24,7 @@ export function Home(){
  const {data:ads}=useActiveAdvertisements();
  const visiblePosts=posts??[];
  const activeAds=ads??[];
- const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length>0&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
+ const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
 
  return <div className="feed-layout">
   <div className="feed-column">
@@ -46,7 +46,7 @@ export function Home(){
     {isLoading&&<div className="feed-skeleton"/>}
     {error&&<p className="text-flag">Couldn't load the feed right now.</p>}
     {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"Nothing here yet":`No ${filter} posts yet`}</h2><p>Be the first to share something meaningful.</p></div>}
-    {visiblePosts.map((post,index)=><div key={post.id}>{index>0&&index%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[(Math.floor(index/AD_INTERVAL)-1)%activeAds.length]}/>:null}<PostCard post={post}/></div>)}
+    {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
     {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>} 
    </div>
   </div>
