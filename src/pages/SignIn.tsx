@@ -7,7 +7,7 @@ import { BrandMark } from "../components/BrandMark";
 
 function friendlyAuthError(message:string){
   const value=message.toLowerCase();
-  if(value.includes("error sending confirmation email")||value.includes("smtp")||value.includes("email rate limit"))return "POSSARA couldn't send the confirmation email right now. Your email settings may be temporarily unavailable. Please try again shortly.";
+  if(value.includes("error sending confirmation email")||value.includes("smtp")||value.includes("email rate limit"))return `POSSARA couldn't send the confirmation email right now. Technical detail: ${message}`;
   if(value.includes("user already registered"))return "An account already exists with this email. Sign in instead.";
   return message;
 }
