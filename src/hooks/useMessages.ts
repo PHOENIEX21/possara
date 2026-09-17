@@ -51,6 +51,9 @@ export interface SendMessageInput {
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const AUDIO_TYPES = new Set(["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"]);
+const SIGNED_URL_SECONDS = 60 * 30;
+const SIGNED_URL_REUSE_MS = 25 * 60 * 1000;
+const signedMediaCache = new Map<string, { url: string; reusableUntil: number }>();
 
 function safeFileName(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || "file";
@@ -70,17 +73,21 @@ function previewText(row: { content?: string | null; image_path?: string | null;
   return "Message";
 }
 
+async function stableSignedUrl(bucket: "message-media" | "voice-notes", path: string) {
+  const key = `${bucket}:${path}`;
+  const cached = signedMediaCache.get(key);
+  if (cached && cached.reusableUntil > Date.now()) return cached.url;
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  signedMediaCache.set(key, { url: data.signedUrl, reusableUntil: Date.now() + SIGNED_URL_REUSE_MS });
+  return data.signedUrl;
+}
+
 async function attachPrivateMedia(message: any): Promise<ThreadMessage> {
-  let imageUrl: string | null = null;
-  let audioUrl: string | null = null;
-  if (message.image_path) {
-    const { data } = await supabase.storage.from("message-media").createSignedUrl(message.image_path, 60 * 15);
-    imageUrl = data?.signedUrl ?? null;
-  }
-  if (message.audio_path) {
-    const { data } = await supabase.storage.from("voice-notes").createSignedUrl(message.audio_path, 60 * 15);
-    audioUrl = data?.signedUrl ?? null;
-  }
+  const [imageUrl, audioUrl] = await Promise.all([
+    message.image_path ? stableSignedUrl("message-media", message.image_path) : Promise.resolve(null),
+    message.audio_path ? stableSignedUrl("voice-notes", message.audio_path) : Promise.resolve(null),
+  ]);
   return { ...message, image_url: imageUrl, audio_url: audioUrl } as ThreadMessage;
 }
 
@@ -139,6 +146,7 @@ export function useThread(otherUserId: string | undefined) {
     queryKey: ["message-thread", userId, otherUserId],
     enabled: !!userId && !!otherUserId,
     refetchInterval: 5_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<ThreadMessage[]> => {
       const { data, error } = await supabase
         .from("messages")
