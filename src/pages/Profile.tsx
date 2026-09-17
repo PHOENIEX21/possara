@@ -10,6 +10,7 @@ import { useCoverUpload } from "../hooks/useCoverUpload";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { PostCard } from "../components/PostCard";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
+import { ProfileSharePresence } from "../components/ProfileSharePresence";
 import type { Profile as ProfileType } from "../types/database";
 
 function FollowButton({ targetUserId }: { targetUserId: string }) {
@@ -209,6 +210,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
         <h1 className="mt-3 text-2xl">{name}</h1>
         {profile.username&&<p className="text-sm text-ink-faint">@{profile.username}</p>}
         {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}
+        <ProfileSharePresence profile={profile}/>
         <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">{profile.workplace&&<span>{profile.workplace}</span>}{profile.school&&<span>{profile.school}</span>}{profile.location&&<span>{profile.location}</span>}{profile.country&&<span>{profile.country}</span>}</div>
         {counts&&<div className="mt-3 flex items-center gap-5 text-sm"><span className="text-ink"><strong className="font-semibold">{counts.followers}</strong> <span className="text-ink-faint">{counts.followers===1?"Follower":"Followers"}</span></span><span className="text-ink"><strong className="font-semibold">{counts.following}</strong> <span className="text-ink-faint">Following</span></span></div>}
         {profile.bio&&<p className="mt-4 whitespace-pre-line text-[15px] leading-6 text-ink-light">{profile.bio}</p>}
