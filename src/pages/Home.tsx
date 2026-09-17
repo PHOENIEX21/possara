@@ -14,12 +14,17 @@ const HOME_FILTERS = [
   { key: "talent", label: "Talent" },
 ] as const;
 
+const AD_INTERVAL = 5;
+
 type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 
 export function Home(){
  const [filter,setFilter]=useState<HomeFilter>("for-you");
  const {data:posts,isLoading,error}=useFeedPosts({postType:"general",noCategoryOnly:true,topic:filter==="for-you"?undefined:filter});
  const {data:ads}=useActiveAdvertisements();
+ const visiblePosts=posts??[];
+ const activeAds=ads??[];
+ const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length>0&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
 
  return <div className="feed-layout">
   <div className="feed-column">
@@ -37,7 +42,13 @@ export function Home(){
     <div className="home-filter-row">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
    </section>
 
-   <div className="feed-list">{isLoading&&<div className="feed-skeleton"/>}{error&&<p className="text-flag">Couldn't load the feed right now.</p>}{!isLoading&&!error&&posts?.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"Nothing here yet":`No ${filter} posts yet`}</h2><p>Be the first to share something meaningful.</p></div>}{posts?.map((post,index)=><div key={post.id}>{index>0&&index%5===0&&ads?.length?<AdvertisementCard ad={ads[(index/5-1)%ads.length]}/>:null}<PostCard post={post}/></div>)}</div>
+   <div className="feed-list">
+    {isLoading&&<div className="feed-skeleton"/>}
+    {error&&<p className="text-flag">Couldn't load the feed right now.</p>}
+    {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"Nothing here yet":`No ${filter} posts yet`}</h2><p>Be the first to share something meaningful.</p></div>}
+    {visiblePosts.map((post,index)=><div key={post.id}>{index>0&&index%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[(Math.floor(index/AD_INTERVAL)-1)%activeAds.length]}/>:null}<PostCard post={post}/></div>)}
+    {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>} 
+   </div>
   </div>
 
   <aside className="feed-rail">
