@@ -36,6 +36,10 @@ import { StudyPractice } from "./pages/StudyPractice";
 import { StudyTogether } from "./pages/StudyTogether";
 import { StudyThread } from "./pages/StudyThread";
 import { StudySettings } from "./pages/StudySettings";
+import { PossaraPlus } from "./pages/PossaraPlus";
+import { Applications } from "./pages/Applications";
+import { Passport } from "./pages/Passport";
+import { Insights } from "./pages/Insights";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +82,7 @@ export default function App() {
               <Route path="/organizations/:slug" element={<OrganizationPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/impact" element={<Impact />} />
+              <Route path="/plus" element={<PossaraPlus />} />
 
               <Route element={<RequireAuth />}>
                 <Route path="/notifications" element={<Notifications />} />
@@ -87,6 +92,9 @@ export default function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/study/settings" element={<StudySettings />} />
                 <Route path="/submit-opportunity" element={<SubmitOpportunity />} />
+                <Route path="/applications" element={<Applications />} />
+                <Route path="/passport" element={<Passport />} />
+                <Route path="/insights" element={<Insights />} />
               </Route>
 
               <Route element={<RequireAdmin />}>

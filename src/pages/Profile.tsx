@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Camera, MessageCircle, MoreHorizontal, Pencil, Search, UserCheck, UserPlus } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useFollowCounts, useFollowStatus, useToggleFollow } from "../hooks/useFollow";
@@ -26,8 +26,8 @@ function FollowButton({ targetUserId }: { targetUserId: string }) {
         type="button"
         onClick={() => toggle.mutate(!!isFollowing)}
         disabled={toggle.isPending}
-        className={`inline-flex whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm ${
-          isFollowing ? "border border-ink-faint/30 bg-white text-ink-light" : "bg-ink text-white"
+        className={`inline-flex min-h-10 whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
+          isFollowing ? "border border-ink-faint/25 bg-white text-ink-light hover:bg-paper" : "bg-ink text-white hover:-translate-y-0.5"
         }`}
       >
         {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
@@ -42,7 +42,7 @@ function MessageButton({ targetUserId }: { targetUserId: string }) {
   const { userId } = useAuth();
   const navigate = useNavigate();
   if (!userId || userId === targetUserId) return null;
-  return <button type="button" onClick={() => navigate(`/messages/${targetUserId}`)} className="inline-flex whitespace-nowrap items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><MessageCircle size={15}/>Message</button>;
+  return <button type="button" onClick={() => navigate(`/messages/${targetUserId}`)} className="inline-flex min-h-10 whitespace-nowrap items-center gap-1.5 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-paper"><MessageCircle size={15}/>Message</button>;
 }
 
 type SocialKind = "instagram" | "x" | "tiktok" | "linkedin" | "youtube" | "facebook" | "website";
@@ -69,7 +69,7 @@ function SocialIcon({ label, symbol, href }: { label: string; symbol: string; hr
       rel="noopener noreferrer"
       aria-label={label}
       title={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-paper-dim bg-white text-[13px] font-bold text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand-dark"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/[.06] bg-white text-[13px] font-bold text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand-dark"
     >
       <span aria-hidden="true">{symbol}</span>
     </a>
@@ -90,6 +90,7 @@ function ProfilePosts({ profileId }: { profileId: string }) {
   const [selectedPhoto, setSelectedPhoto] = useState<ProfileMediaItem|null>(null);
   const [keyword, setKeyword] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [filtersOpen,setFiltersOpen]=useState(false);
 
   const filteredPosts = useMemo(() => {
     const needle = keyword.trim().toLowerCase();
@@ -114,52 +115,52 @@ function ProfilePosts({ profileId }: { profileId: string }) {
 
   const photoCount = photoGroups.reduce((total,group)=>total+group.items.length,0);
   const filtering = !!keyword.trim() || !!dateFilter;
-  const dateLabel = dateFilter ? new Date(`${dateFilter}T00:00:00`).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "Search by date";
+  const dateLabel = dateFilter ? new Date(`${dateFilter}T00:00:00`).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "Any date";
 
   return (
-    <section className="max-w-2xl">
-      <div className="mb-3 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-full border border-paper-dim bg-white p-1 shadow-sm" aria-label="Profile content view">
-            <button type="button" onClick={()=>setTab("posts")} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab==="posts"?"bg-ink text-white":"text-ink-light hover:bg-paper"}`}>Posts</button>
-            <button type="button" onClick={()=>setTab("photos")} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab==="photos"?"bg-ink text-white":"text-ink-light hover:bg-paper"}`}>Photos{photoCount>0?` · ${photoCount}`:""}</button>
+    <section className="max-w-3xl">
+      <div className="mb-4 rounded-2xl border border-black/[.05] bg-white p-2 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <div className="inline-flex rounded-xl bg-paper p-1" aria-label="Profile content view">
+            <button type="button" onClick={()=>setTab("posts")} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tab==="posts"?"bg-white text-ink shadow-sm":"text-ink-light hover:text-ink"}`}>Posts</button>
+            <button type="button" onClick={()=>setTab("photos")} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${tab==="photos"?"bg-white text-ink shadow-sm":"text-ink-light hover:text-ink"}`}>Media{photoCount>0?` · ${photoCount}`:""}</button>
           </div>
-          <span className="text-xs text-ink-faint">{tab==="posts"?"Newest first":"Grouped by date"}</span>
+          <button type="button" onClick={()=>setFiltersOpen(value=>!value)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${filtersOpen||filtering?"bg-brand-light text-brand-dark":"text-ink-faint hover:bg-paper"}`}><Search size={14}/>{filtering?"Filtered":"Find activity"}</button>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_190px_auto]">
-          <label className="flex items-center gap-2 rounded-xl border border-paper-dim bg-white px-3 py-2 shadow-sm">
-            <Search size={15} className="shrink-0 text-ink-faint"/>
-            <input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Search posts by keyword" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"/>
+        {filtersOpen&&<div className="mt-2 grid gap-2 border-t border-paper-dim pt-2 sm:grid-cols-[1fr_170px_auto]">
+          <label className="flex items-center gap-2 rounded-xl bg-paper px-3 py-2">
+            <Search size={14} className="shrink-0 text-ink-faint"/>
+            <input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Search posts" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"/>
           </label>
-          <label className="relative flex min-h-11 cursor-pointer items-center gap-2 overflow-hidden rounded-xl border border-paper-dim bg-white px-3 py-2 shadow-sm focus-within:border-brand">
-            <CalendarDays size={16} className="shrink-0 text-ink-faint"/>
+          <label className="relative flex min-h-10 cursor-pointer items-center gap-2 overflow-hidden rounded-xl bg-paper px-3 py-2">
+            <CalendarDays size={15} className="shrink-0 text-ink-faint"/>
             <span className={`min-w-0 flex-1 truncate text-sm ${dateFilter?"text-ink":"text-ink-faint"}`}>{dateLabel}</span>
             <input type="date" value={dateFilter} onChange={e=>setDateFilter(e.target.value)} aria-label="Search profile posts by date" className="absolute inset-0 h-full w-full cursor-pointer opacity-0"/>
           </label>
-          {filtering&&<button type="button" onClick={()=>{setKeyword("");setDateFilter("");}} className="rounded-xl border border-paper-dim bg-white px-3 py-2 text-sm font-medium text-ink-light shadow-sm hover:bg-paper">Clear</button>}
-        </div>
+          {filtering&&<button type="button" onClick={()=>{setKeyword("");setDateFilter("");}} className="rounded-xl px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper">Clear</button>}
+        </div>}
       </div>
 
       {isLoading&&<div className="feed-skeleton"/>}
       {error&&<p className="text-sm text-flag">Couldn&apos;t load profile activity.</p>}
 
       {!isLoading&&!error&&tab==="posts"&&(
-        <div className="space-y-3">
-          {filteredPosts.length===0&&<div className="rounded-2xl border border-paper-dim bg-white p-5 text-sm text-ink-light">{filtering?"No posts match that search.":"No posts yet."}</div>}
+        <div className="space-y-4">
+          {filteredPosts.length===0&&<div className="rounded-3xl border border-paper-dim bg-white p-8 text-center text-sm text-ink-light">{filtering?"No posts match that search.":"No posts yet."}</div>}
           {filteredPosts.map(post=><PostCard key={post.id} post={post}/>)}
         </div>
       )}
 
       {!isLoading&&!error&&tab==="photos"&&(
-        <div className="space-y-5 rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:p-4">
-          {photoGroups.length===0&&<div className="py-8 text-center text-sm text-ink-light">{filtering?"No photos match that search/date.":"No post photos yet."}</div>}
+        <div className="space-y-6 rounded-3xl border border-black/[.05] bg-white p-3 shadow-sm sm:p-5">
+          {photoGroups.length===0&&<div className="py-10 text-center text-sm text-ink-light">{filtering?"No media matches that search/date.":"No post media yet."}</div>}
           {photoGroups.map(group=><section key={group.timestamp}>
-            <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-semibold text-ink">{group.label}</h3><span className="text-[11px] text-ink-faint">{group.items.length} {group.items.length===1?"photo":"photos"}</span></div>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              {group.items.map(item=><button key={item.id} type="button" onClick={()=>setSelectedPhoto(item)} className="group relative aspect-square overflow-hidden rounded-lg bg-paper-dim" aria-label={`View photo from ${group.label}`}>
+            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-ink">{group.label}</h3><span className="text-[11px] text-ink-faint">{group.items.length} {group.items.length===1?"item":"items"}</span></div>
+            <div className="grid grid-cols-3 gap-1 sm:gap-2">
+              {group.items.map(item=><button key={item.id} type="button" onClick={()=>setSelectedPhoto(item)} className="group relative aspect-square overflow-hidden rounded-xl bg-paper-dim" aria-label={`View media from ${group.label}`}>
                 <img src={item.src} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"/>
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-left text-[10px] text-white opacity-0 transition group-hover:opacity-100">View photo</span>
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-2 pt-6 text-left text-[10px] text-white opacity-0 transition group-hover:opacity-100">View</span>
               </button>)}
             </div>
           </section>)}
@@ -187,37 +188,62 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
     {kind:"facebook" as const,label:"Facebook",symbol:"f",value:profile.facebook_url},
     {kind:"website" as const,label:"Website",symbol:"↗",value:profile.website},
   ].filter(item=>!!item.value);
+  const detailItems=[
+    profile.workplace?{icon:BriefcaseBusiness,label:profile.workplace}:null,
+    profile.school?{icon:GraduationCap,label:profile.school}:null,
+    (profile.location||profile.country)?{icon:MapPin,label:[profile.location,profile.country].filter(Boolean).join(", ")}:null,
+  ].filter(Boolean) as {icon:typeof MapPin;label:string}[];
 
-  const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="relative z-20 h-20 w-20 rounded-full border-4 border-white bg-white object-cover shadow-lg"/>:<div className="relative z-20 flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-trust-light text-2xl text-trust-dark shadow-lg">{name.charAt(0).toUpperCase()}</div>;
+  const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="relative z-20 h-24 w-24 rounded-[2rem] border-4 border-white bg-white object-cover shadow-xl sm:h-28 sm:w-28"/>:<div className="relative z-20 flex h-24 w-24 items-center justify-center rounded-[2rem] border-4 border-white bg-trust-light text-3xl font-semibold text-trust-dark shadow-xl sm:h-28 sm:w-28">{name.charAt(0).toUpperCase()}</div>;
 
   return <>
-    <div className="max-w-2xl rounded-3xl border border-black/[.06] bg-white shadow-card">
-      <div className="relative z-0 h-32 overflow-hidden rounded-t-3xl bg-gradient-to-br from-brand-light via-paper-dim to-trust-light sm:h-40">{profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}</div>
-      <div className="relative z-10 px-5 pb-6">
-        <div className="relative -mt-10 flex items-end justify-between gap-3">
-          {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-full bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
-          {own&&<div className="relative z-20 flex items-center justify-end gap-2">
-            {onEdit&&<button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm"><Pencil size={14}/>Edit profile</button>}
-            {onOwnCoverClick&&<div className="relative">
-              <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-faint/30 bg-white text-ink-light shadow-sm transition hover:bg-paper-dim disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
-              {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-11 z-30 w-52 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Working…":profile.cover_url?"Change cover photo":"Add cover photo"}</button>{profile.cover_url&&onRemoveCover&&<button type="button" role="menuitem" disabled={coverUploading} onClick={()=>{setProfileMenuOpen(false);onRemoveCover();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-flag hover:bg-flag-light disabled:opacity-50">Remove cover photo</button>}</div></>}
+    <section className="max-w-3xl overflow-hidden rounded-[2rem] border border-black/[.06] bg-white shadow-card">
+      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#171128] via-brand-dark to-trust-dark sm:h-56">
+        {profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[.06]"/>
+        <div className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.14em] text-white/85 backdrop-blur"><Sparkles size={12}/>POSSARA profile</div>
+      </div>
+
+      <div className="relative px-4 pb-6 sm:px-6">
+        <div className="relative -mt-12 flex items-end justify-between gap-3 sm:-mt-14">
+          {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
+          <div className="relative z-20 mb-1 flex flex-wrap items-center justify-end gap-2">
+            {!own&&<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}
+            {own&&onEdit&&<button type="button" onClick={onEdit} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-paper"><Pencil size={14}/>Edit profile</button>}
+            {own&&onOwnCoverClick&&<div className="relative">
+              <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-faint/25 bg-white text-ink-light shadow-sm transition hover:bg-paper disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
+              {profileMenuOpen&&<><button type="button" className="fixed inset-0 z-20 cursor-default bg-transparent" aria-label="Close profile options" onClick={()=>setProfileMenuOpen(false)}/><div className="absolute right-0 top-12 z-30 w-52 overflow-hidden rounded-2xl border border-paper-dim bg-white py-1 shadow-xl" role="menu"><button type="button" role="menuitem" onClick={()=>{setProfileMenuOpen(false);onOwnCoverClick();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper">{coverUploading?"Working…":profile.cover_url?"Change cover photo":"Add cover photo"}</button>{profile.cover_url&&onRemoveCover&&<button type="button" role="menuitem" disabled={coverUploading} onClick={()=>{setProfileMenuOpen(false);onRemoveCover();}} className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-flag hover:bg-flag-light disabled:opacity-50">Remove cover photo</button>}</div></>}
             </div>}
-          </div>}
+          </div>
         </div>
 
-        {!own&&<div className="mt-3 flex flex-wrap items-start justify-end gap-2"><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></div>}
+        <div className="mt-4 sm:max-w-2xl">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 className="text-3xl font-bold tracking-tight text-ink">{name}</h1>{profile.username&&<span className="text-sm font-medium text-ink-faint">@{profile.username}</span>}</div>
+          {(profile.headline||profile.profession)&&<p className="mt-2 max-w-xl text-[15px] font-medium leading-6 text-ink-light">{profile.headline||profile.profession}</p>}
+          <ProfileSharePresence profile={profile}/>
+        </div>
 
-        <h1 className="mt-3 text-2xl">{name}</h1>
-        {profile.username&&<p className="text-sm text-ink-faint">@{profile.username}</p>}
-        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}
-        <ProfileSharePresence profile={profile}/>
-        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">{profile.workplace&&<span>{profile.workplace}</span>}{profile.school&&<span>{profile.school}</span>}{profile.location&&<span>{profile.location}</span>}{profile.country&&<span>{profile.country}</span>}</div>
-        {counts&&<div className="mt-3 flex items-center gap-5 text-sm"><span className="text-ink"><strong className="font-semibold">{counts.followers}</strong> <span className="text-ink-faint">{counts.followers===1?"Follower":"Followers"}</span></span><span className="text-ink"><strong className="font-semibold">{counts.following}</strong> <span className="text-ink-faint">Following</span></span></div>}
-        {profile.bio&&<p className="mt-4 whitespace-pre-line text-[15px] leading-6 text-ink-light">{profile.bio}</p>}
-        {socialLinks.length>0&&<div className="mt-4 flex flex-wrap gap-2" aria-label="Social links">{socialLinks.map(item=><SocialIcon key={item.kind} label={item.label} symbol={item.symbol} href={socialHref(item.kind,item.value as string)}/>)}</div>}
-        {profile.skills.length>0&&<div className="mt-5"><h2 className="text-sm font-medium">Skills</h2><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><span key={skill} className="rounded-full bg-paper-dim px-2.5 py-1 text-xs text-ink-light">{skill}</span>)}</div></div>}
+        {counts&&<div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-paper p-2">
+          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{counts.followers}</p><p className="text-[11px] font-medium text-ink-faint">{counts.followers===1?"Follower":"Followers"}</p></div>
+          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{counts.following}</p><p className="text-[11px] font-medium text-ink-faint">Following</p></div>
+          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{profile.skills.length}</p><p className="text-[11px] font-medium text-ink-faint">Skills</p></div>
+        </div>}
+
+        {detailItems.length>0&&<div className="mt-5 grid gap-2 sm:grid-cols-2">{detailItems.map(({icon:Icon,label})=><div key={label} className="flex items-center gap-2.5 rounded-xl border border-black/[.05] bg-white px-3 py-2.5 text-sm text-ink-light"><Icon size={16} className="shrink-0 text-brand-dark"/><span className="truncate">{label}</span></div>)}</div>}
+
+        {(profile.bio||profile.skills.length>0||profile.goal_categories.length>0||socialLinks.length>0)&&<div className="mt-6 grid gap-5 border-t border-paper-dim pt-5 sm:grid-cols-[1.3fr_.9fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">About</p>
+            {profile.bio?<p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-ink-light">{profile.bio}</p>:<p className="mt-2 text-sm text-ink-faint">No introduction added yet.</p>}
+            {profile.skills.length>0&&<div className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Skills</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><span key={skill} className="rounded-full bg-paper px-3 py-1.5 text-xs font-medium text-ink-light">{skill}</span>)}</div></div>}
+          </div>
+          <div className="space-y-4">
+            {profile.goal_categories.length>0&&<div><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Interested in</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.goal_categories.map(goal=><span key={goal} className="rounded-full border border-brand/15 bg-brand-light px-3 py-1.5 text-xs font-medium text-brand-dark">{goal.replace(/-/g," ")}</span>)}</div></div>}
+            {socialLinks.length>0&&<div><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Elsewhere</p><div className="mt-2 flex flex-wrap gap-2" aria-label="Social links">{socialLinks.map(item=><SocialIcon key={item.kind} label={item.label} symbol={item.symbol} href={socialHref(item.kind,item.value as string)}/>)}</div></div>}
+          </div>
+        </div>}
       </div>
-    </div>
+    </section>
     {photoOpen&&profile.avatar_url&&<ProfilePhotoViewer src={profile.avatar_url} name={`${name} profile photo`} onClose={()=>setPhotoOpen(false)}/>} 
   </>;
 }
@@ -264,26 +290,26 @@ function EditOwnProfile({onDone}:{onDone:()=>void}){
     {label:"Facebook",value:facebook,set:setFacebook,placeholder:"profile/page or full link"},
   ];
 
-  return <form onSubmit={submit} className="max-w-2xl space-y-4 rounded-3xl bg-white p-5 shadow-card">
-    <div className="flex items-center justify-between"><h1 className="text-xl">Edit profile</h1><button type="button" onClick={onDone} className="text-sm text-ink-light">Cancel</button></div>
-    <div className="flex items-center gap-4 rounded-2xl bg-paper-dim p-3">{profile?.avatar_url?<img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover"/>:<div className="flex h-16 w-16 items-center justify-center rounded-full bg-trust-light text-xl text-trust-dark">{(profile?.full_name??"?").charAt(0).toUpperCase()}</div>}<div><button type="button" onClick={()=>fileRef.current?.click()} disabled={avatarUpload.isPending} className="inline-flex items-center gap-2 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"><Camera size={15}/>{avatarUpload.isPending?"Uploading…":"Change profile photo"}</button><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} className="hidden"/><p className="mt-1 text-xs text-ink-faint">JPG, PNG or WebP · max 8 MB</p></div></div>
+  return <form onSubmit={submit} className="max-w-3xl space-y-4 rounded-[2rem] bg-white p-5 shadow-card sm:p-6">
+    <div className="flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-brand-dark">Your identity</p><h1 className="mt-1 text-2xl font-bold">Edit profile</h1></div><button type="button" onClick={onDone} className="rounded-full px-3 py-2 text-sm text-ink-light hover:bg-paper">Cancel</button></div>
+    <div className="flex items-center gap-4 rounded-2xl bg-paper p-3">{profile?.avatar_url?<img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-2xl object-cover"/>:<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-trust-light text-xl text-trust-dark">{(profile?.full_name??"?").charAt(0).toUpperCase()}</div>}<div><button type="button" onClick={()=>fileRef.current?.click()} disabled={avatarUpload.isPending} className="inline-flex items-center gap-2 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"><Camera size={15}/>{avatarUpload.isPending?"Uploading…":"Change profile photo"}</button><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} className="hidden"/><p className="mt-1 text-xs text-ink-faint">JPG, PNG or WebP · max 8 MB</p></div></div>
     {photoSuccess&&<p className="text-sm text-trust-dark">Profile photo updated.</p>}
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="text-sm text-ink-light">Full name<input value={fullName} onChange={e=>setFullName(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Username<input value={username} onChange={e=>setUsername(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Headline<input value={headline} onChange={e=>setHeadline(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Profession / field<input value={profession} onChange={e=>setProfession(e.target.value)} placeholder="e.g. Mathematics Tutor" className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Workplace<input value={workplace} onChange={e=>setWorkplace(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">School<input value={school} onChange={e=>setSchool(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Location<input value={location} onChange={e=>setLocation(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-      <label className="text-sm text-ink-light">Country<input value={country} onChange={e=>setCountry(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Full name<input value={fullName} onChange={e=>setFullName(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Username<input value={username} onChange={e=>setUsername(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Headline<input value={headline} onChange={e=>setHeadline(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Profession / field<input value={profession} onChange={e=>setProfession(e.target.value)} placeholder="e.g. Mathematics Tutor" className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Workplace<input value={workplace} onChange={e=>setWorkplace(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">School<input value={school} onChange={e=>setSchool(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Location<input value={location} onChange={e=>setLocation(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+      <label className="text-sm text-ink-light">Country<input value={country} onChange={e=>setCountry(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
     </div>
-    <label className="block text-sm text-ink-light">About<textarea rows={4} value={bio} onChange={e=>setBio(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/></label>
-    <div className="rounded-2xl border border-paper-dim bg-paper/50 p-4"><div className="mb-3"><p className="text-sm font-semibold text-ink">Social links</p><p className="text-xs text-ink-faint">Only platform symbols are shown on your public profile.</p></div><div className="grid gap-3 sm:grid-cols-2">{socialFields.map(field=><label key={field.label} className="text-sm text-ink-light">{field.label}<input value={field.value} onChange={e=>field.set(e.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded-lg border border-ink-faint/30 bg-white px-3 py-2 text-ink outline-none focus:border-brand"/></label>)}<label className="text-sm text-ink-light sm:col-span-2">Website / portfolio<input value={website} onChange={e=>setWebsite(e.target.value)} placeholder="yourwebsite.com" className="mt-1 w-full rounded-lg border border-ink-faint/30 bg-white px-3 py-2 text-ink outline-none focus:border-brand"/></label></div></div>
-    <label className="block text-sm text-ink-light">Skills — separated by commas<input value={skillsInput} onChange={e=>setSkillsInput(e.target.value)} placeholder="e.g. Mathematics tutoring, Graphic design, React" className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"/><span className="mt-1 block text-xs text-ink-faint">POSSARA uses profession and skills to improve people and tutor recommendations.</span></label>
+    <label className="block text-sm text-ink-light">About<textarea rows={4} value={bio} onChange={e=>setBio(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+    <div className="rounded-2xl border border-paper-dim bg-paper/50 p-4"><div className="mb-3"><p className="text-sm font-semibold text-ink">Social links</p><p className="text-xs text-ink-faint">Only platform symbols are shown on your public profile.</p></div><div className="grid gap-3 sm:grid-cols-2">{socialFields.map(field=><label key={field.label} className="text-sm text-ink-light">{field.label}<input value={field.value} onChange={e=>field.set(e.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>)}<label className="text-sm text-ink-light sm:col-span-2">Website / portfolio<input value={website} onChange={e=>setWebsite(e.target.value)} placeholder="yourwebsite.com" className="mt-1 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-ink outline-none focus:border-brand"/></label></div></div>
+    <label className="block text-sm text-ink-light">Skills — separated by commas<input value={skillsInput} onChange={e=>setSkillsInput(e.target.value)} placeholder="e.g. Mathematics tutoring, Graphic design, React" className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/><span className="mt-1 block text-xs text-ink-faint">POSSARA uses profession and skills to improve people and tutor recommendations.</span></label>
     <div><p className="text-sm text-ink-light">Opportunity interests</p><div className="mt-2 flex flex-wrap gap-2">{categories?.map(category=><button key={category.id} type="button" onClick={()=>setGoals(current=>current.includes(category.slug)?current.filter(value=>value!==category.slug):[...current,category.slug])} className={`rounded-full border px-3 py-1.5 text-sm ${goals.includes(category.slug)?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/30 text-ink-light"}`}>{category.name}</button>)}</div></div>
     {error&&<p className="text-sm text-flag">{error}</p>}
-    <button disabled={update.isPending||avatarUpload.isPending} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{update.isPending?"Saving…":"Save profile"}</button>
+    <button disabled={update.isPending||avatarUpload.isPending} className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{update.isPending?"Saving…":"Save profile"}</button>
   </form>;
 }
 
@@ -300,7 +326,7 @@ export function Profile(){
   const coverBusy=coverUpload.isPending||updateOwnProfile.isPending;
   async function changeOwnCover(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await coverUpload.mutateAsync(file);setCoverStatus("Cover photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}
   async function removeOwnCover(){if(!ownProfile?.cover_url)return;setCoverStatus(null);try{await updateOwnProfile.mutateAsync({cover_url:null});setCoverStatus("Cover photo removed.");}catch(err){setCoverStatus((err as Error).message);}}
-  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="text-sm text-ink-light">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-block text-sm text-brand-dark underline">Privacy, notifications & account settings</Link></div>;}
+  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="max-w-3xl rounded-xl bg-white px-3 py-2 text-sm text-ink-light shadow-sm">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-flex rounded-full border border-paper-dim bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-sm">Privacy, notifications & account settings</Link></div>;}
   if(id)return <PublicProfileById id={id}/>;
   if(username)return <PublicProfile username={username}/>;
   return <p className="text-ink-light">No profile specified.</p>;

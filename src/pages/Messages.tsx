@@ -14,6 +14,8 @@ import {
   useToggleMessageReaction,
 } from "../hooks/useMessages";
 import type { ConversationPreview, MessageReactionType, ThreadMessage } from "../hooks/useMessages";
+import { useMessageDirectory, useOnlineMemberCount } from "../hooks/useMessageDirectory";
+import type { MessageDirectoryMember } from "../hooks/useMessageDirectory";
 import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useProfileById } from "../hooks/useProfile";
@@ -44,28 +46,55 @@ function MessageText({ content }: { content: string }) {
   return <>{pieces.map((piece,index)=>piece.startsWith("@")?<span key={`${piece}-${index}`} className="font-semibold underline decoration-current/30">{piece}</span>:piece)}</>;
 }
 
+function DirectoryMemberRow({ member, activeUserId, onPhoto }: { member: MessageDirectoryMember; activeUserId?: string; onPhoto: (src: string, name: string) => void }) {
+  const name=member.full_name??member.username??"POSSARA member";
+  const profilePath=member.username?`/profile/${member.username}`:`/profile/id/${member.id}`;
+  return <div className={`flex items-center gap-2.5 rounded-xl px-2 py-2.5 transition hover:bg-paper-dim ${activeUserId===member.id?"bg-brand-light":""}`}>
+    <div className="relative shrink-0">
+      {member.avatar_url?<button type="button" onClick={()=>onPhoto(member.avatar_url!,name)} className="h-10 w-10 rounded-full" aria-label={`View ${name} profile photo`}><img src={member.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/></button>:<Link to={profilePath} className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light text-xs font-medium text-trust-dark">{name.charAt(0).toUpperCase()}</Link>}
+      {member.online&&<span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" aria-label="Online"/>}
+    </div>
+    <Link to={`/messages/${member.id}`} className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-ink">{name}</p>{member.username&&<p className="truncate text-xs text-ink-faint">@{member.username}</p>}{member.headline&&<p className="truncate text-xs text-ink-light">{member.headline}</p>}</Link>
+    <Link to={`/messages/${member.id}`} className="rounded-full border border-paper-dim bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-dark">Message</Link>
+  </div>;
+}
+
 function ConversationList({ conversations, isLoading, activeUserId }: { conversations: ConversationPreview[] | undefined; isLoading: boolean; activeUserId?: string }) {
   const [photo,setPhoto]=useState<{src:string;name:string}|null>(null);
   const [search,setSearch]=useState("");
-  const filtered=(conversations??[]).filter(c=>{
-    const haystack=`${c.otherUser?.full_name??""} ${c.otherUser?.username??""} ${c.lastMessage}`.toLowerCase();
-    return haystack.includes(search.trim().toLowerCase());
-  });
+  const searching=!!search.trim();
+  const {data:directory,isLoading:directoryLoading,error:directoryError}=useMessageDirectory(search);
+  const {data:onlineCount}=useOnlineMemberCount();
+  const onlineMembers=(directory??[]).filter(member=>member.online).slice(0,8);
 
-  return <aside className={`${activeUserId?"hidden sm:block":"block"} w-full shrink-0 sm:w-[290px] sm:border-r sm:border-paper-dim sm:pr-4`}>
-    <div className="mb-3 flex items-center gap-2 rounded-xl bg-paper px-3 py-2 text-ink-faint"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search conversations" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"/></div>
-    {isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
-    {!isLoading&&conversations?.length===0&&<p className="rounded-xl bg-paper p-4 text-sm leading-5 text-ink-light">No conversations yet — visit someone&apos;s profile on Connect and message them.</p>}
-    {!isLoading&&!!conversations?.length&&filtered.length===0&&<p className="px-2 py-4 text-sm text-ink-faint">No conversation matches that search.</p>}
-    <div className="space-y-1">{filtered.map((c)=>{
-      const name=c.otherUser?.full_name??"Member";
-      const profilePath=c.otherUser?.username?`/profile/${c.otherUser.username}`:`/profile/id/${c.otherUserId}`;
-      return <div key={c.otherUserId} className={`flex items-center gap-2.5 rounded-xl px-2 py-2.5 transition hover:bg-paper-dim ${activeUserId===c.otherUserId?"bg-brand-light":""}`}>
-        {c.otherUser?.avatar_url?<button type="button" onClick={()=>setPhoto({src:c.otherUser!.avatar_url!,name})} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}><img src={c.otherUser.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/></button>:<Link to={profilePath} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-trust-light text-xs font-medium text-trust-dark">{name.charAt(0).toUpperCase()}</Link>}
-        <Link to={`/messages/${c.otherUserId}`} className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className={`truncate text-sm ${c.unread?"font-bold":"font-semibold"}`}>{name}</p><span className="shrink-0 text-[10px] text-ink-faint">{new Date(c.lastMessageAt).toLocaleDateString([], {month:"short",day:"numeric"})}</span></div><p className={`truncate text-xs ${c.unread?"font-medium text-ink":"text-ink-faint"}`}>{c.lastMessage}</p></Link>
-        {c.unread&&<span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand"/>}
-      </div>;
-    })}</div>
+  return <aside className={`${activeUserId?"hidden sm:block":"block"} w-full shrink-0 sm:w-[310px] sm:border-r sm:border-paper-dim sm:pr-4`}>
+    <div className="mb-3 flex items-center gap-2 rounded-xl bg-paper px-3 py-2 text-ink-faint"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search people by name" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"/>{search&&<button type="button" onClick={()=>setSearch("")} className="rounded-full p-1 hover:bg-white" aria-label="Clear search"><X size={13}/></button>}</div>
+
+    {searching?<>
+      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">People</p><span className="text-[11px] text-ink-faint">Search all POSSARA</span></div>
+      {directoryLoading&&<p className="px-2 py-4 text-sm text-ink-light">Searching…</p>}
+      {directoryError&&<p className="px-2 py-4 text-sm text-flag">Couldn&apos;t search members right now.</p>}
+      {!directoryLoading&&!directoryError&&directory?.length===0&&<p className="rounded-xl bg-paper p-4 text-sm leading-5 text-ink-light">No member matches that name or username.</p>}
+      <div className="max-h-[58vh] space-y-1 overflow-y-auto">{directory?.map(member=><DirectoryMemberRow key={member.id} member={member} activeUserId={activeUserId} onPhoto={(src,name)=>setPhoto({src,name})}/>)}</div>
+    </>:<>
+      <section className="mb-4 rounded-2xl border border-paper-dim bg-paper/60 p-3">
+        <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-trust-dark">Online now</p><p className="mt-0.5 text-xs text-ink-faint">Members who choose to show activity.</p></div><div className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-ink shadow-sm">{onlineCount??0}</div></div>
+        {directoryLoading?<p className="mt-3 text-xs text-ink-light">Checking who&apos;s online…</p>:onlineMembers.length>0?<div className="mt-3 space-y-1">{onlineMembers.map(member=><DirectoryMemberRow key={member.id} member={member} activeUserId={activeUserId} onPhoto={(src,name)=>setPhoto({src,name})}/>)}</div>:<p className="mt-3 text-xs text-ink-faint">No one is showing as online right now.</p>}
+      </section>
+
+      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Recent chats</p><span className="text-[11px] text-ink-faint">{conversations?.length??0}</span></div>
+      {isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
+      {!isLoading&&conversations?.length===0&&<p className="rounded-xl bg-paper p-4 text-sm leading-5 text-ink-light">No conversations yet. Search for any POSSARA member above and start one.</p>}
+      <div className="space-y-1">{(conversations??[]).map((c)=>{
+        const name=c.otherUser?.full_name??"Member";
+        const profilePath=c.otherUser?.username?`/profile/${c.otherUser.username}`:`/profile/id/${c.otherUserId}`;
+        return <div key={c.otherUserId} className={`flex items-center gap-2.5 rounded-xl px-2 py-2.5 transition hover:bg-paper-dim ${activeUserId===c.otherUserId?"bg-brand-light":""}`}>
+          {c.otherUser?.avatar_url?<button type="button" onClick={()=>setPhoto({src:c.otherUser!.avatar_url!,name})} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}><img src={c.otherUser.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/></button>:<Link to={profilePath} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-trust-light text-xs font-medium text-trust-dark">{name.charAt(0).toUpperCase()}</Link>}
+          <Link to={`/messages/${c.otherUserId}`} className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className={`truncate text-sm ${c.unread?"font-bold":"font-semibold"}`}>{name}</p><span className="shrink-0 text-[10px] text-ink-faint">{new Date(c.lastMessageAt).toLocaleDateString([], {month:"short",day:"numeric"})}</span></div><p className={`truncate text-xs ${c.unread?"font-medium text-ink":"text-ink-faint"}`}>{c.lastMessage}</p></Link>
+          {c.unread&&<span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand"/>}
+        </div>;
+      })}</div>
+    </>}
     {photo&&<ProfilePhotoViewer src={photo.src} name={photo.name} onClose={()=>setPhoto(null)}/>} 
   </aside>;
 }
@@ -270,7 +299,7 @@ export function Messages(){
   const {data:conversations,isLoading}=useConversations();
   if(otherUserId===userId)return <Navigate to="/messages" replace/>;
   return <div className={otherUserId?"overflow-hidden sm:pb-4":"pb-4"}>
-    <div className={`mb-4 items-end justify-between ${otherUserId?"hidden sm:flex":"flex"}`}><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-dark">POSSARA</p><h1 className="text-2xl">Messages</h1></div><p className="hidden text-xs text-ink-faint sm:block">Private conversations with your community.</p></div>
-    <div className={`relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:flex-row sm:p-4 ${otherUserId?"h-[calc(100dvh-164px)] min-h-[430px] sm:h-[70vh] sm:min-h-[600px]":"min-h-[64vh]"}`}><ConversationList conversations={conversations} isLoading={isLoading} activeUserId={otherUserId}/>{otherUserId?<Thread otherUserId={otherUserId} conversations={conversations??[]}/>:<div className="hidden flex-1 flex-col items-center justify-center py-16 text-center sm:flex"><MessageCircle size={30} className="text-ink-faint"/><p className="mt-3 font-medium text-ink-light">Choose a conversation.</p><p className="mt-1 max-w-xs text-sm text-ink-faint">Or start one from a member&apos;s profile on Connect.</p></div>}</div>
+    <div className={`mb-4 items-end justify-between ${otherUserId?"hidden sm:flex":"flex"}`}><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-dark">POSSARA</p><h1 className="text-2xl">Messages</h1></div><p className="hidden text-xs text-ink-faint sm:block">Find anyone by name, see who is online and continue recent chats.</p></div>
+    <div className={`relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:flex-row sm:p-4 ${otherUserId?"h-[calc(100dvh-164px)] min-h-[430px] sm:h-[70vh] sm:min-h-[600px]":"min-h-[64vh]"}`}><ConversationList conversations={conversations} isLoading={isLoading} activeUserId={otherUserId}/>{otherUserId?<Thread otherUserId={otherUserId} conversations={conversations??[]}/>:<div className="hidden flex-1 flex-col items-center justify-center py-16 text-center sm:flex"><MessageCircle size={30} className="text-ink-faint"/><p className="mt-3 font-medium text-ink-light">Choose a recent chat or find someone new.</p><p className="mt-1 max-w-xs text-sm text-ink-faint">Search any POSSARA member by name or username and start a private conversation.</p></div>}</div>
   </div>;
 }
