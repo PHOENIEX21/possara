@@ -1,4 +1,4 @@
-name: One-time profile wiring
+name: One-time social wiring
 
 on:
   push:
@@ -17,36 +17,97 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Wire profile share and presence
+      - name: Add repost attribution data and UI
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('src/pages/Profile.tsx')
-          text = path.read_text()
-          import_old = 'import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";'
-          import_new = import_old + '\nimport { ProfileSharePresence } from "../components/ProfileSharePresence";'
-          if 'ProfileSharePresence' not in text:
+
+          feed = Path('src/hooks/useFeedPosts.ts')
+          text = feed.read_text()
+
+          interface_anchor = '  author_role: UserRole | null;\n  comment_count: number;\n}'
+          interface_replacement = '  author_role: UserRole | null;\n  comment_count: number;\n  shared_origin: { author_id: string | null; full_name: string | null; username: string | null } | null;\n}'
+          if 'shared_origin:' not in text:
+              if interface_anchor not in text:
+                  raise SystemExit('PostWithAuthor interface anchor not found')
+              text = text.replace(interface_anchor, interface_replacement, 1)
+
+          query_anchor = '      const postIds = posts.map((p) => p.id);\n      const { data: reactions } = await supabase'
+          query_replacement = '''      const postIds = posts.map((p) => p.id);
+      const sharedIds = [...new Set(posts.map((p) => p.shared_from_post_id).filter((id): id is string => !!id))];
+      const sharedOriginByPostId = new Map<string, { author_id: string | null; full_name: string | null; username: string | null }>();
+      if (sharedIds.length) {
+        const { data: originals, error: originalsError } = await supabase
+          .from("posts")
+          .select("id,author_id,profiles(full_name,username)")
+          .in("id", sharedIds);
+        if (originalsError) throw originalsError;
+        (originals ?? []).forEach((original) => {
+          const profile = Array.isArray(original.profiles) ? original.profiles[0] : original.profiles;
+          sharedOriginByPostId.set(original.id, {
+            author_id: original.author_id ?? null,
+            full_name: profile?.full_name ?? null,
+            username: profile?.username ?? null,
+          });
+        });
+      }
+      const { data: reactions } = await supabase'''
+          if 'sharedOriginByPostId' not in text:
+              if query_anchor not in text:
+                  raise SystemExit('Feed postIds anchor not found')
+              text = text.replace(query_anchor, query_replacement, 1)
+
+          return_anchor = '          author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null,\n          comment_count: commentCountByPost.get(p.id) ?? 0,'
+          return_replacement = '          author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null,\n          comment_count: commentCountByPost.get(p.id) ?? 0,\n          shared_origin: p.shared_from_post_id ? sharedOriginByPostId.get(p.shared_from_post_id) ?? null : null,'
+          if 'shared_origin: p.shared_from_post_id' not in text:
+              if return_anchor not in text:
+                  raise SystemExit('Feed return anchor not found')
+              text = text.replace(return_anchor, return_replacement, 1)
+
+          feed.write_text(text)
+
+          card = Path('src/components/PostCard.tsx')
+          text = card.read_text()
+          import_old = 'import { MessageCircle, MoreHorizontal, Pencil, Share2, ShieldCheck, Trash2, X } from "lucide-react";'
+          import_new = 'import { MessageCircle, MoreHorizontal, Pencil, Repeat2, Share2, ShieldCheck, Trash2, X } from "lucide-react";'
+          if 'Repeat2, Share2' not in text:
               if import_old not in text:
-                  raise SystemExit('ProfilePhotoViewer import anchor not found')
+                  raise SystemExit('PostCard lucide import anchor not found')
               text = text.replace(import_old, import_new, 1)
 
-          anchor = '        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}\n        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">'
-          replacement = '        {(profile.headline||profile.profession)&&<p className="mt-2 font-medium text-ink-light">{profile.headline||profile.profession}</p>}\n        <ProfileSharePresence profile={profile}/>\n        <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-ink-faint">'
-          if '<ProfileSharePresence profile={profile}/>' not in text:
-              if anchor not in text:
-                  raise SystemExit('Profile details anchor not found')
-              text = text.replace(anchor, replacement, 1)
+          vars_anchor = '  const isOwner = userId === post.author_id;\n  const sharePreview = post.content.length > 180 ? `${post.content.slice(0, 177)}…` : post.content;'
+          vars_replacement = '  const isOwner = userId === post.author_id;\n  const sharedOrigin = post.shared_origin;\n  const sharedOriginPath = sharedOrigin ? profilePath(sharedOrigin.author_id, sharedOrigin.username, userId) : null;\n  const sharePreview = post.content.length > 180 ? `${post.content.slice(0, 177)}…` : post.content;'
+          if 'const sharedOrigin = post.shared_origin;' not in text:
+              if vars_anchor not in text:
+                  raise SystemExit('PostCard variable anchor not found')
+              text = text.replace(vars_anchor, vars_replacement, 1)
 
-          path.write_text(text)
+          ui_anchor = '      </div>\n\n      {editing ? ('
+          ui_replacement = '''      </div>
+
+      {sharedOrigin && sharedOriginPath && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-paper-dim bg-paper/60 px-3 py-2 text-xs text-ink-light">
+          <Repeat2 size={14} className="shrink-0 text-brand-dark" />
+          <span>Reposted from <Link to={sharedOriginPath} className="font-semibold text-ink hover:underline">{sharedOrigin.full_name || (sharedOrigin.username ? `@${sharedOrigin.username}` : "the original author")}</Link></span>
+        </div>
+      )}
+
+      {editing ? ('''
+          if 'Reposted from <Link' not in text:
+              if ui_anchor not in text:
+                  raise SystemExit('PostCard UI anchor not found')
+              text = text.replace(ui_anchor, ui_replacement, 1)
+
+          card.write_text(text)
           PY
-      - name: Commit profile wiring
+      - name: Commit social wiring
         run: |
           if git diff --quiet; then
-            echo "No profile patch needed"
+            echo "No social patch needed"
             exit 0
           fi
           git config user.name "PHOENIEX21"
           git config user.email "adunoyepaul7@gmail.com"
-          git add src/pages/Profile.tsx
-          git commit -m "Wire profile sharing and active status"
+          git add src/hooks/useFeedPosts.ts src/components/PostCard.tsx
+          git commit -m "Credit original authors on reposts"
           git push origin main
