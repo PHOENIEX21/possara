@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Camera, Image as ImageIcon, MessageCircle, Pencil, UserCheck, UserPlus } from "lucide-react";
+import { Camera, MessageCircle, MoreHorizontal, Pencil, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useFollowCounts, useFollowStatus, useToggleFollow } from "../hooks/useFollow";
@@ -90,6 +90,7 @@ function ProfileView({
 }: ProfileViewProps) {
   const { data: counts } = useFollowCounts(profile.id);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const name = profile.full_name ?? "Member";
 
   const avatarContent = profile.avatar_url ? (
@@ -123,20 +124,9 @@ function ProfileView({
               avatarContent
             )}
 
-            <div className="relative z-20 flex flex-wrap justify-end gap-2">
+            <div className="relative z-20 flex flex-wrap items-center justify-end gap-2">
               {own ? (
                 <>
-                  {onOwnCoverClick && (
-                    <button
-                      type="button"
-                      onClick={onOwnCoverClick}
-                      disabled={coverUploading}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/30 bg-white px-4 py-2 text-sm font-medium shadow-sm disabled:opacity-60"
-                    >
-                      <ImageIcon size={14} />
-                      {coverUploading ? "Uploading…" : profile.cover_url ? "Change cover" : "Add cover"}
-                    </button>
-                  )}
                   {onEdit && (
                     <button
                       type="button"
@@ -146,6 +136,45 @@ function ProfileView({
                       <Pencil size={14} />
                       Edit profile
                     </button>
+                  )}
+                  {onOwnCoverClick && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setProfileMenuOpen((open) => !open)}
+                        disabled={coverUploading}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-faint/30 bg-white text-ink-light shadow-sm transition hover:bg-paper-dim disabled:opacity-60"
+                        aria-label="Profile options"
+                        aria-haspopup="menu"
+                        aria-expanded={profileMenuOpen}
+                        title="Profile options"
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
+                      {profileMenuOpen && (
+                        <>
+                          <button
+                            type="button"
+                            className="fixed inset-0 z-20 cursor-default bg-transparent"
+                            aria-label="Close profile options"
+                            onClick={() => setProfileMenuOpen(false)}
+                          />
+                          <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-xl" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setProfileMenuOpen(false);
+                                onOwnCoverClick();
+                              }}
+                              className="flex w-full items-center px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-paper"
+                            >
+                              {coverUploading ? "Uploading…" : profile.cover_url ? "Change cover photo" : "Add cover photo"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </>
               ) : (
