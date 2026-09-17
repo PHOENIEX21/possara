@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
@@ -16,7 +15,6 @@ export function SignIn(){
   const [error,setError]=useState<string|null>(null);
   const [message,setMessage]=useState<string|null>(null);
   const [loading,setLoading]=useState(false);
-  const navigate=useNavigate();
 
   async function handleSubmit(e:React.FormEvent){
     e.preventDefault();
@@ -56,15 +54,13 @@ export function SignIn(){
     if(authError){setError(authError.message);return;}
     if(!data.session?.user){setError("Sign in did not return a valid session. Please try again.");return;}
 
-    // A different POSSARA account may be signed in on this browser already.
-    // Clear all user-scoped cached data, then reload from the newly persisted
-    // Supabase session so no profile/feed/messages from the previous account linger.
     queryClient.clear();
     window.location.replace("/");
   }
 
   async function handleGoogle(){
     setError(null);
+    queryClient.clear();
     const {error:oAuthError}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});
     if(oAuthError)setError(oAuthError.message);
   }
