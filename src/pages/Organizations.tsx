@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Briefcase, Building2, Church, ExternalLink, GraduationCap, HandHeart, HardHat, HeartPulse, Landmark, Laptop, MapPin, Palette, Search, ShoppingBag, Trees } from "lucide-react";
@@ -54,6 +54,7 @@ export function Organizations(){
   const [industry,setIndustry]=useState("");
   const [country,setCountry]=useState("");
   const [state,setState]=useState("");
+  const directoryStartRef=useRef<HTMLElement>(null);
 
   const countries=useMemo(()=>{
     const values=new Set<string>();
@@ -79,20 +80,37 @@ export function Organizations(){
 
   const selectedIndustry=INDUSTRIES.find(item=>item.value===industry)?.label??"All organizations";
 
+  function moveToDirectory(){
+    window.requestAnimationFrame(()=>directoryStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));
+  }
+
+  function chooseIndustry(value:string){
+    setIndustry(value);
+    setState("");
+    moveToDirectory();
+  }
+
+  function chooseLocation(nextCountry:string,nextState="",nextQuery=""){
+    setCountry(nextCountry);
+    setState(nextState);
+    setQuery(nextQuery);
+    moveToDirectory();
+  }
+
   return <div className="page-stack">
     <section className="page-hero"><div><p className="eyebrow">Organization directory</p><h1>Explore organizations by type and location.</h1><p>You do not need to know a name first. Start with Hotels, Schools, Health, Technology, Religious organizations, Recreation and more, then narrow by country and state. POSSARA can also show active opportunities linked to each organization.</p></div></section>
 
     <section>
-      <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-lg font-semibold">Choose a category</h2><p className="text-sm text-ink-faint">Start broad, then narrow down.</p></div><button type="button" onClick={()=>{setIndustry("");setCountry("");setState("");setQuery("");}} className="text-xs font-medium text-brand-dark">Reset directory</button></div>
+      <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-lg font-semibold">Choose a category</h2><p className="text-sm text-ink-faint">Tap a category and POSSARA will take you straight to its directory view.</p></div><button type="button" onClick={()=>{setIndustry("");setCountry("");setState("");setQuery("");moveToDirectory();}} className="text-xs font-medium text-brand-dark">Reset directory</button></div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {INDUSTRIES.map(item=>{const Icon=item.icon;const active=industry===item.value;return <button key={item.label} type="button" onClick={()=>{setIndustry(item.value);setState("");}} className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${active?"border-brand bg-brand-light/60":"border-paper-dim bg-white"}`}>
+        {INDUSTRIES.map(item=>{const Icon=item.icon;const active=industry===item.value;return <button key={item.label} type="button" onClick={()=>chooseIndustry(item.value)} className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${active?"border-brand bg-brand-light/60":"border-paper-dim bg-white"}`}>
           <div className="flex items-start gap-3"><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${active?"bg-brand text-white":"bg-paper-dim text-ink-light"}`}><Icon size={20}/></div><div><h3 className="font-semibold">{item.label}</h3><p className="mt-1 text-sm leading-5 text-ink-light">{item.description}</p></div></div>
         </button>})}
       </div>
     </section>
 
-    <section className="rounded-3xl border border-paper-dim bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4"><h2 className="text-lg font-semibold">{selectedIndustry}</h2><p className="text-sm text-ink-faint">Now choose where to look, or search directly.</p></div>
+    <section ref={directoryStartRef} className="scroll-mt-24 rounded-3xl border border-paper-dim bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4"><p className="eyebrow">Directory view</p><h2 className="text-lg font-semibold">{selectedIndustry}</h2><p className="text-sm text-ink-faint">Choose where to look, or search directly.</p></div>
       <label className="relative block w-full"><Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search organization, hotel, school, city, state or country…" className="w-full rounded-full border border-ink-faint/30 py-3 pl-10 pr-4 text-sm outline-none focus:border-brand"/></label>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -101,9 +119,9 @@ export function Organizations(){
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={()=>{setCountry("Nigeria");setState("");setQuery("");}} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Nigeria</button>
-        <button type="button" onClick={()=>{setCountry("Nigeria");setState("Kwara");setQuery("");}} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Kwara</button>
-        <button type="button" onClick={()=>{setCountry("Nigeria");setState("Kwara");setQuery("Ilorin");}} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Ilorin</button>
+        <button type="button" onClick={()=>chooseLocation("Nigeria")} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Nigeria</button>
+        <button type="button" onClick={()=>chooseLocation("Nigeria","Kwara")} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Kwara</button>
+        <button type="button" onClick={()=>chooseLocation("Nigeria","Kwara","Ilorin")} className="rounded-full border border-ink-faint/25 px-3 py-2 text-sm font-medium text-ink-light hover:bg-paper-dim">Ilorin</button>
       </div>
     </section>
 
