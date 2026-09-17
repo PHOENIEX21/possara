@@ -78,7 +78,7 @@ function profilePath(userId: string | null, username: string | null | undefined,
 
 function CommentThread({ postId }: { postId: string }) {
   const { userId } = useAuth();
-  const { data: comments, isLoading } = useComments(postId, true);
+  const { data: comments, isLoading, error: commentsError } = useComments(postId, true);
   const createComment = useCreateComment(postId);
   const deleteComment = useDeleteComment(postId);
   const [text, setText] = useState("");
@@ -92,49 +92,79 @@ function CommentThread({ postId }: { postId: string }) {
   }
 
   return (
-    <div className="mt-3 space-y-3 border-t border-paper-dim pt-3">
-      {isLoading && <p className="text-sm text-ink-faint">Loading comments…</p>}
-      {comments?.map((c) => {
-        const name = c.profiles?.full_name ?? "A member of the community";
-        const path = profilePath(c.author_id, c.profiles?.username, userId);
-        return (
-          <div key={c.id} className="flex gap-2.5">
-            {c.profiles?.avatar_url ? (
-              <button type="button" onClick={() => setPhoto({ src: c.profiles!.avatar_url!, name })} className="h-7 w-7 shrink-0 rounded-full">
-                <img src={c.profiles.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
-              </button>
-            ) : (
-              <Link to={path} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-paper-dim text-xs font-medium text-ink-light">
-                {name.charAt(0).toUpperCase()}
-              </Link>
-            )}
-            <div className="flex-1 rounded-lg bg-paper px-3 py-2">
-              <div className="flex items-start justify-between gap-2">
-                <Link to={path} className="text-xs font-medium hover:underline">{name}</Link>
-                {userId === c.author_id && (
-                  <button onClick={() => deleteComment.mutate(c.id)} className="text-ink-faint hover:text-flag"><Trash2 size={12} /></button>
-                )}
+    <div className="mt-3 border-t border-paper-dim pt-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="font-serif text-lg font-semibold text-ink">Comments</h3>
+        {!isLoading && comments && comments.length > 0 && <span className="text-xs text-ink-faint">{comments.length}</span>}
+      </div>
+
+      <div className="max-h-80 space-y-3 overflow-y-auto overscroll-contain pr-1">
+        {isLoading && <p className="py-3 text-sm text-ink-faint">Loading comments…</p>}
+        {commentsError && <p className="py-3 text-sm text-flag">Couldn&apos;t load comments.</p>}
+        {!isLoading && !commentsError && comments?.length === 0 && (
+          <div className="rounded-2xl bg-paper px-4 py-6 text-center">
+            <MessageCircle className="mx-auto mb-2 text-ink-faint" size={22} />
+            <p className="font-medium text-ink">No comments yet</p>
+            <p className="mt-1 text-xs text-ink-faint">Be the first to add to the conversation.</p>
+          </div>
+        )}
+
+        {comments?.map((c) => {
+          const name = c.profiles?.full_name ?? "A member of the community";
+          const path = profilePath(c.author_id, c.profiles?.username, userId);
+          return (
+            <div key={c.id} className="flex gap-2.5">
+              {c.profiles?.avatar_url ? (
+                <button type="button" onClick={() => setPhoto({ src: c.profiles!.avatar_url!, name })} className="h-8 w-8 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}>
+                  <img src={c.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                </button>
+              ) : (
+                <Link to={path} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper-dim font-serif text-xs font-semibold text-ink-light">
+                  {name.charAt(0).toUpperCase()}
+                </Link>
+              )}
+              <div className="min-w-0 flex-1 rounded-2xl bg-paper px-3 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link to={path} className="block truncate font-serif text-[15px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
+                    <span className="text-[11px] text-ink-faint">{timeAgo(c.created_at)}</span>
+                  </div>
+                  {userId === c.author_id && (
+                    <button type="button" onClick={() => deleteComment.mutate(c.id)} disabled={deleteComment.isPending} className="rounded-full p-1 text-ink-faint hover:bg-white hover:text-flag" aria-label="Delete comment"><Trash2 size={12} /></button>
+                  )}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink">{c.content}</p>
               </div>
-              <p className="text-sm text-ink">{c.content}</p>
             </div>
-          </div>
-        );
-      })}
-      {userId ? (
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <div className="flex gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a comment…" className="flex-1 rounded-full border border-ink-faint/30 px-3 py-1.5 text-sm outline-none focus:border-trust" />
-            <button disabled={!text.trim() || createComment.isPending} className="rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-paper disabled:opacity-40">Send</button>
-          </div>
-          <div className="flex flex-wrap gap-1" aria-label="Add emoji to comment">
-            {COMMENT_EMOJIS.map((emoji) => (
-              <button key={emoji} type="button" onClick={() => setText((value) => `${value}${value && !value.endsWith(" ") ? " " : ""}${emoji}`)} className="rounded-full px-2 py-1 text-base hover:bg-paper-dim" aria-label={`Add ${emoji}`}>{emoji}</button>
-            ))}
-          </div>
-        </form>
-      ) : (
-        <p className="text-sm text-ink-faint">Sign in to comment.</p>
-      )}
+          );
+        })}
+      </div>
+
+      <div className="sticky bottom-0 mt-3 bg-white pt-1">
+        {userId ? (
+          <form onSubmit={handleSubmit} className="space-y-2 border-t border-paper-dim pt-3">
+            <div className="flex gap-2">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Write a reply…"
+                aria-label="Write a comment"
+                className="min-w-0 flex-1 rounded-full border border-ink-faint/30 bg-white px-3 py-2 text-sm outline-none focus:border-trust"
+              />
+              <button disabled={!text.trim() || createComment.isPending} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-40">{createComment.isPending ? "Sending…" : "Send"}</button>
+            </div>
+            <div className="flex gap-1 overflow-x-auto pb-1" aria-label="Add emoji to comment">
+              {COMMENT_EMOJIS.map((emoji) => (
+                <button key={emoji} type="button" onClick={() => setText((value) => `${value}${value && !value.endsWith(" ") ? " " : ""}${emoji}`)} className="shrink-0 rounded-full px-2 py-1 text-base hover:bg-paper-dim" aria-label={`Add ${emoji}`}>{emoji}</button>
+              ))}
+            </div>
+            {createComment.isError && <p className="text-xs text-flag">Couldn&apos;t post that comment. Please try again.</p>}
+          </form>
+        ) : (
+          <p className="border-t border-paper-dim pt-3 text-sm text-ink-faint">Sign in to comment.</p>
+        )}
+      </div>
+
       {photo && <ProfilePhotoViewer src={photo.src} name={photo.name} onClose={() => setPhoto(null)} />}
     </div>
   );
@@ -273,8 +303,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         <div className="flex flex-wrap items-center gap-2">
           <PostReactionControl post={post} />
 
-          <button onClick={() => setCommentsOpen((value) => !value)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
-            <MessageCircle size={15} />{post.comment_count > 0 ? post.comment_count : ""} Comment
+          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
+            <MessageCircle size={15} />{post.comment_count > 0 ? post.comment_count : ""} {post.comment_count === 1 ? "Comment" : "Comments"}
           </button>
 
           <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
