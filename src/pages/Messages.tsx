@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { AtSign, Check, CheckCheck, ChevronLeft, Copy, Forward, MessageCircle, MoreHorizontal, Pencil, Reply, Search, Send, Trash2, X } from "lucide-react";
+import { AtSign, Check, CheckCheck, ChevronLeft, Copy, Forward, Image as ImageIcon, MessageCircle, Mic, MoreHorizontal, Pencil, Reply, Search, Send, Share2, Square, Trash2, X } from "lucide-react";
 import {
   useConversations,
   useDeleteMessageForMe,
@@ -8,6 +8,8 @@ import {
   useForwardMessage,
   useMarkThreadRead,
   useSendMessage,
+  useSendPhotoMessage,
+  useSendVoiceMessage,
   useThread,
   useToggleMessageReaction,
 } from "../hooks/useMessages";
@@ -72,12 +74,11 @@ function ForwardSheet({ message, conversations, onClose }: { message: ThreadMess
   const forwardMessage=useForwardMessage();
   const [search,setSearch]=useState("");
   const filtered=conversations.filter(c=>`${c.otherUser?.full_name??""} ${c.otherUser?.username??""}`.toLowerCase().includes(search.toLowerCase()));
-
   async function sendTo(targetUserId:string){await forwardMessage.mutateAsync({message,targetUserId});onClose();}
 
   return <div className="absolute inset-0 z-40 flex items-end bg-ink/25 sm:items-center sm:justify-center">
     <div className="w-full rounded-t-3xl bg-white p-4 shadow-2xl sm:max-w-sm sm:rounded-3xl">
-      <div className="flex items-center justify-between"><div><h3 className="font-semibold">Forward message</h3><p className="mt-0.5 text-xs text-ink-faint">Choose a conversation.</p></div><button onClick={onClose} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={18}/></button></div>
+      <div className="flex items-center justify-between"><div><h3 className="font-semibold">Forward message</h3><p className="mt-0.5 text-xs text-ink-faint">Choose a POSSARA conversation.</p></div><button onClick={onClose} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={18}/></button></div>
       <div className="mt-3 flex items-center gap-2 rounded-xl bg-paper px-3 py-2"><Search size={14} className="text-ink-faint"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Find someone" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/></div>
       <div className="mt-2 max-h-64 overflow-y-auto">{filtered.length===0?<p className="p-3 text-sm text-ink-faint">No conversation found.</p>:filtered.map(c=><button key={c.otherUserId} onClick={()=>sendTo(c.otherUserId)} disabled={forwardMessage.isPending} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-paper disabled:opacity-50">{c.otherUser?.avatar_url?<img src={c.otherUser.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover"/>:<div className="flex h-9 w-9 items-center justify-center rounded-full bg-trust-light text-xs font-semibold text-trust-dark">{(c.otherUser?.full_name??"?").charAt(0).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate text-sm font-semibold">{c.otherUser?.full_name??"Member"}</p>{c.otherUser?.username&&<p className="truncate text-xs text-ink-faint">@{c.otherUser.username}</p>}</div></button>)}</div>
       {forwardMessage.error&&<p className="mt-2 text-sm text-flag">{(forwardMessage.error as Error).message}</p>}
@@ -85,12 +86,16 @@ function ForwardSheet({ message, conversations, onClose }: { message: ThreadMess
   </div>;
 }
 
+type VoiceDraft={blob:Blob;url:string;duration:number;mimeType:string};
+
 function Thread({ otherUserId, conversations }: { otherUserId: string; conversations: ConversationPreview[] }) {
   const { userId }=useAuth();
   const {data:profile}=useProfileById(otherUserId);
   const {data:presence}=useUserPresence(otherUserId);
   const {data:messages,isLoading}=useThread(otherUserId);
   const sendMessage=useSendMessage(otherUserId);
+  const sendPhoto=useSendPhotoMessage(otherUserId);
+  const sendVoice=useSendVoiceMessage(otherUserId);
   const markRead=useMarkThreadRead(otherUserId);
   const toggleReaction=useToggleMessageReaction(otherUserId);
   const editMessage=useEditMessage(otherUserId);
@@ -102,7 +107,19 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const [actionsFor,setActionsFor]=useState<string|null>(null);
   const [searchOpen,setSearchOpen]=useState(false);
   const [messageSearch,setMessageSearch]=useState("");
-  const bottomRef=useRef<HTMLDivElement>(null);
+  const [photoFile,setPhotoFile]=useState<File|null>(null);
+  const [photoPreview,setPhotoPreview]=useState<string|null>(null);
+  const [viewPhoto,setViewPhoto]=useState<{src:string;name:string}|null>(null);
+  const [recording,setRecording]=useState(false);
+  const [recordingSeconds,setRecordingSeconds]=useState(0);
+  const [voiceDraft,setVoiceDraft]=useState<VoiceDraft|null>(null);
+  const [notice,setNotice]=useState<string|null>(null);
+  const messageListRef=useRef<HTMLDivElement>(null);
+  const photoInputRef=useRef<HTMLInputElement>(null);
+  const recorderRef=useRef<MediaRecorder|null>(null);
+  const recorderStreamRef=useRef<MediaStream|null>(null);
+  const recorderChunksRef=useRef<BlobPart[]>([]);
+  const recorderStartedAtRef=useRef(0);
 
   const messageById=useMemo(()=>new Map((messages??[]).map(message=>[message.id,message])),[messages]);
   const shownMessages=useMemo(()=>{
@@ -113,37 +130,83 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
 
   const unreadIncoming=(messages??[]).some(message=>message.sender_id===otherUserId&&!message.read);
   useEffect(()=>{if(unreadIncoming)markRead.mutate();},[otherUserId,unreadIncoming,messages?.length]);
-  useEffect(()=>{if(!messageSearch)bottomRef.current?.scrollIntoView({behavior:"smooth"});},[messages?.length,messageSearch]);
+  useEffect(()=>{if(messageSearch)return;const el=messageListRef.current;if(!el)return;window.requestAnimationFrame(()=>el.scrollTo({top:el.scrollHeight,behavior:"smooth"}));},[messages?.length,messageSearch]);
+  useEffect(()=>()=>{if(photoPreview)URL.revokeObjectURL(photoPreview);if(voiceDraft)URL.revokeObjectURL(voiceDraft.url);recorderStreamRef.current?.getTracks().forEach(track=>track.stop());},[photoPreview,voiceDraft]);
+  useEffect(()=>{if(!recording)return;const timer=window.setInterval(()=>{const seconds=Math.min(90,Math.max(0,Math.round((Date.now()-recorderStartedAtRef.current)/1000)));setRecordingSeconds(seconds);if(seconds>=90&&recorderRef.current?.state==="recording")recorderRef.current.stop();},500);return()=>window.clearInterval(timer);},[recording]);
 
   const mentionCandidate=profile?.username&&/@[a-zA-Z0-9_]*$/.test(text)?profile.username:null;
   const profilePath=profile?.username?`/profile/${profile.username}`:`/profile/id/${otherUserId}`;
   const presenceText=presence?.visible?(presence.online?"Online":formatLastSeen(presence.lastSeenAt)):"Activity hidden";
 
+  function clearPhoto(){if(photoPreview)URL.revokeObjectURL(photoPreview);setPhotoPreview(null);setPhotoFile(null);}
+  function choosePhoto(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];event.target.value="";if(!file)return;clearPhoto();setPhotoFile(file);setPhotoPreview(URL.createObjectURL(file));setEditingMessage(null);setNotice(null);}
+  function clearVoice(){if(voiceDraft)URL.revokeObjectURL(voiceDraft.url);setVoiceDraft(null);}
+
   async function handleSend(e:React.FormEvent){
     e.preventDefault();
     const clean=text.trim();
+    if(editingMessage){if(!clean)return;await editMessage.mutateAsync({messageId:editingMessage.id,content:clean});setEditingMessage(null);setText("");return;}
+    if(photoFile){await sendPhoto.mutateAsync({file:photoFile,caption:clean,replyToId:replyingTo?.id??null});clearPhoto();setText("");setReplyingTo(null);return;}
     if(!clean)return;
-    if(editingMessage){await editMessage.mutateAsync({messageId:editingMessage.id,content:clean});setEditingMessage(null);setText("");return;}
     await sendMessage.mutateAsync({content:clean,replyToId:replyingTo?.id??null});
     setText("");setReplyingTo(null);
   }
 
-  function startEdit(message:ThreadMessage){setEditingMessage(message);setReplyingTo(null);setText(message.content);setActionsFor(null);}
+  async function startRecording(){
+    if(recording)return;
+    clearVoice();setNotice(null);
+    try{
+      if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined")throw new Error("Voice recording is not supported by this browser.");
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      recorderStreamRef.current=stream;
+      const preferred=["audio/webm;codecs=opus","audio/mp4","audio/webm","audio/ogg"];
+      const mimeType=preferred.find(type=>MediaRecorder.isTypeSupported(type));
+      const recorder=new MediaRecorder(stream,mimeType?{mimeType}:undefined);
+      recorderRef.current=recorder;recorderChunksRef.current=[];recorderStartedAtRef.current=Date.now();setRecordingSeconds(0);
+      recorder.ondataavailable=event=>{if(event.data.size)recorderChunksRef.current.push(event.data)};
+      recorder.onstop=()=>{
+        const duration=Math.max(1,Math.min(90,Math.round((Date.now()-recorderStartedAtRef.current)/1000)));
+        const type=(recorder.mimeType||mimeType||"audio/webm").split(";")[0];
+        const blob=new Blob(recorderChunksRef.current,{type});
+        recorderStreamRef.current?.getTracks().forEach(track=>track.stop());recorderStreamRef.current=null;setRecording(false);
+        if(!blob.size){setNotice("No voice audio was captured.");return;}
+        setVoiceDraft({blob,url:URL.createObjectURL(blob),duration,mimeType:type});
+      };
+      recorder.onerror=()=>{stream.getTracks().forEach(track=>track.stop());setRecording(false);setNotice("Voice recording failed. Please try again.");};
+      recorder.start(250);setRecording(true);
+    }catch(error){setNotice((error as Error).message);setRecording(false);}
+  }
+  function stopRecording(){if(recorderRef.current?.state==="recording")recorderRef.current.stop();}
+  async function sendVoiceDraft(){if(!voiceDraft)return;await sendVoice.mutateAsync({blob:voiceDraft.blob,durationSeconds:voiceDraft.duration,mimeType:voiceDraft.mimeType});clearVoice();}
+
+  function startEdit(message:ThreadMessage){setEditingMessage(message);setReplyingTo(null);clearPhoto();clearVoice();setText(message.content);setActionsFor(null);}
   function startReply(message:ThreadMessage){setReplyingTo(message);setEditingMessage(null);setActionsFor(null);}
   function insertMention(){if(!profile?.username)return;setText(value=>value.replace(/@[a-zA-Z0-9_]*$/,`@${profile.username} `));}
-  async function copyMessage(content:string){await navigator.clipboard.writeText(content);setActionsFor(null);}
+  async function copyMessage(content:string){if(!content.trim())return;await navigator.clipboard.writeText(content);setActionsFor(null);setNotice("Message copied.");window.setTimeout(()=>setNotice(null),1800);}
   async function removeForMe(message:ThreadMessage){await deleteMessage.mutateAsync({messageId:message.id,sentByMe:message.sender_id===userId});setActionsFor(null);}
+  async function shareOutside(message:ThreadMessage){
+    setActionsFor(null);setNotice(null);
+    try{
+      const files:File[]=[];
+      if(message.image_url){const response=await fetch(message.image_url);const blob=await response.blob();files.push(new File([blob],message.image_name||"possara-photo.jpg",{type:message.image_mime_type||blob.type||"image/jpeg"}));}
+      if(message.audio_url){const response=await fetch(message.audio_url);const blob=await response.blob();const ext=(message.audio_mime_type||blob.type).includes("mp4")?"m4a":(message.audio_mime_type||blob.type).includes("ogg")?"ogg":"webm";files.push(new File([blob],`possara-voice-note.${ext}`,{type:message.audio_mime_type||blob.type||"audio/webm"}));}
+      const nav=navigator as Navigator&{canShare?:(data:{files?:File[]})=>boolean};
+      if(navigator.share&&(!files.length||!nav.canShare||nav.canShare({files}))){await navigator.share({title:"POSSARA message",text:message.content||undefined,files:files.length?files:undefined});return;}
+      if(message.content){await navigator.clipboard.writeText(message.content);setNotice("Sharing is unavailable here, so the message text was copied.");}
+      else setNotice("Your browser cannot share this media outside POSSARA. Open the photo to save it instead.");
+    }catch(error){if((error as Error).name!=="AbortError")setNotice("Could not share this message outside POSSARA.");}
+  }
 
-  return <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden sm:pl-1">
-    <header className="flex items-center gap-3 border-b border-paper-dim pb-3">
+  return <section className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:pl-1">
+    <header className="flex shrink-0 items-center gap-3 border-b border-paper-dim pb-3">
       <Link to="/messages" className="rounded-full p-2 hover:bg-paper sm:hidden" aria-label="Back to conversations"><ChevronLeft size={20}/></Link>
       <Link to={profilePath} className="flex min-w-0 flex-1 items-center gap-3">{profile?.avatar_url?<img src={profile.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>:<div className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light text-sm font-semibold text-trust-dark">{(profile?.full_name??"?").charAt(0).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate text-sm font-bold">{profile?.full_name??"POSSARA member"}</p><div className="flex items-center gap-1.5 text-xs text-ink-faint">{presence?.online&&presence.visible&&<span className="h-2 w-2 rounded-full bg-green-500"/>}<span>{presenceText}</span></div></div></Link>
       <button onClick={()=>setSearchOpen(value=>!value)} className={`rounded-full p-2 ${searchOpen?"bg-brand-light text-brand-dark":"text-ink-light hover:bg-paper"}`} aria-label="Search this conversation"><Search size={18}/></button>
     </header>
 
-    {searchOpen&&<div className="mt-2 flex items-center gap-2 rounded-xl border border-paper-dim bg-paper px-3 py-2"><Search size={14} className="text-ink-faint"/><input autoFocus value={messageSearch} onChange={e=>setMessageSearch(e.target.value)} placeholder="Search messages in this conversation" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/><button onClick={()=>{setSearchOpen(false);setMessageSearch("");}} className="text-ink-faint"><X size={15}/></button></div>}
+    {searchOpen&&<div className="mt-2 flex shrink-0 items-center gap-2 rounded-xl border border-paper-dim bg-paper px-3 py-2"><Search size={14} className="text-ink-faint"/><input autoFocus value={messageSearch} onChange={e=>setMessageSearch(e.target.value)} placeholder="Search messages in this conversation" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/><button onClick={()=>{setSearchOpen(false);setMessageSearch("");}} className="text-ink-faint"><X size={15}/></button></div>}
 
-    <div className="mt-3 flex-1 space-y-3 overflow-y-auto px-1 pb-3" style={{maxHeight:"calc(100vh - 300px)",minHeight:"280px"}}>
+    <div ref={messageListRef} className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-1 pb-4 pt-1">
       {isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
       {!isLoading&&shownMessages.length===0&&<div className="flex h-full min-h-56 flex-col items-center justify-center text-center"><MessageCircle size={28} className="text-ink-faint"/><p className="mt-2 text-sm text-ink-light">{messageSearch?"No messages match your search.":"Start the conversation."}</p></div>}
       {shownMessages.map(message=>{
@@ -151,15 +214,20 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
         const replied=message.reply_to_id?messageById.get(message.reply_to_id):undefined;
         const currentReaction=message.reactions.find(reaction=>reaction.user_id===userId)?.reaction??null;
         const reactionCounts=MESSAGE_REACTIONS.map(option=>({ ...option,count:message.reactions.filter(reaction=>reaction.reaction===option.type).length })).filter(item=>item.count>0);
+        const hasText=!!message.content.trim();
         return <div key={message.id} className={`group flex ${mine?"justify-end":"justify-start"}`}>
           <div className={`relative max-w-[88%] sm:max-w-[72%] ${mine?"items-end":"items-start"}`}>
             <div className="flex items-end gap-1.5">
               {!mine&&<button onClick={()=>setActionsFor(actionsFor===message.id?null:message.id)} className="mb-1 rounded-full p-1.5 text-ink-faint opacity-70 hover:bg-paper hover:text-ink" aria-label="Message actions"><MoreHorizontal size={15}/></button>}
-              <div className={`rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ${mine?"rounded-br-md bg-brand text-white":"rounded-bl-md bg-paper-dim text-ink"}`}>
-                {message.forwarded_from_id&&<p className={`mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${mine?"text-white/65":"text-ink-faint"}`}><Forward size={10}/>Forwarded</p>}
-                {replied&&<div className={`mb-2 rounded-lg border-l-2 px-2 py-1.5 text-xs ${mine?"border-white/50 bg-white/10 text-white/80":"border-brand/40 bg-white/70 text-ink-light"}`}><p className="mb-0.5 font-semibold">{replied.sender_id===userId?"You":profile?.full_name??"Reply"}</p><p className="line-clamp-2">{replied.content}</p></div>}
-                <p className="whitespace-pre-wrap break-words"><MessageText content={message.content}/></p>
-                <div className={`mt-1.5 flex items-center justify-end gap-1.5 text-[10px] ${mine?"text-white/65":"text-ink-faint"}`}><span>{formatMessageTime(message.created_at)}</span>{message.edited_at&&<span>edited</span>}{mine&&(message.read&&presence?.sendReadReceipts?<><CheckCheck size={12}/><span>Seen</span></>:<Check size={12}/>)}</div>
+              <div className={`overflow-hidden rounded-2xl text-sm shadow-sm ${mine?"rounded-br-md bg-brand text-white":"rounded-bl-md bg-paper-dim text-ink"}`}>
+                <div className={(message.image_url||message.audio_url)?"p-2.5":"px-3.5 py-2.5"}>
+                  {message.forwarded_from_id&&<p className={`mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${mine?"text-white/65":"text-ink-faint"}`}><Forward size={10}/>Forwarded</p>}
+                  {replied&&<div className={`mb-2 rounded-lg border-l-2 px-2 py-1.5 text-xs ${mine?"border-white/50 bg-white/10 text-white/80":"border-brand/40 bg-white/70 text-ink-light"}`}><p className="mb-0.5 font-semibold">{replied.sender_id===userId?"You":profile?.full_name??"Reply"}</p><p className="line-clamp-2">{replied.image_path?"📷 Photo":replied.audio_path?"🎤 Voice note":replied.content}</p></div>}
+                  {message.image_url&&<button type="button" onClick={()=>setViewPhoto({src:message.image_url!,name:message.image_name||"POSSARA message photo"})} className="block w-full overflow-hidden rounded-xl bg-black/10"><img src={message.image_url} alt="Message attachment" className="max-h-72 w-full object-cover"/></button>}
+                  {message.audio_url&&<div className={`rounded-xl p-2 ${mine?"bg-white/10":"bg-white/70"}`}><p className={`mb-1 text-[10px] font-semibold ${mine?"text-white/65":"text-ink-faint"}`}>Voice note{message.audio_duration_seconds?` · ${message.audio_duration_seconds}s`:""}</p><audio src={message.audio_url} controls preload="metadata" className="h-9 w-full max-w-[260px]"/></div>}
+                  {hasText&&<p className={`whitespace-pre-wrap break-words ${(message.image_url||message.audio_url)?"mt-2 px-1":""}`}><MessageText content={message.content}/></p>}
+                  <div className={`mt-1.5 flex items-center justify-end gap-1.5 px-1 text-[10px] ${mine?"text-white/65":"text-ink-faint"}`}><span>{formatMessageTime(message.created_at)}</span>{message.edited_at&&<span>edited</span>}{mine&&(message.read&&presence?.sendReadReceipts?<><CheckCheck size={12}/><span>Seen</span></>:<Check size={12}/>)}</div>
+                </div>
               </div>
               {mine&&<button onClick={()=>setActionsFor(actionsFor===message.id?null:message.id)} className="mb-1 rounded-full p-1.5 text-ink-faint opacity-70 hover:bg-paper hover:text-ink" aria-label="Message actions"><MoreHorizontal size={15}/></button>}
             </div>
@@ -168,22 +236,31 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
 
             {actionsFor===message.id&&<div className={`absolute ${mine?"right-7":"left-7"} top-full z-30 mt-1 w-72 rounded-2xl border border-black/[.06] bg-white p-2 text-ink shadow-xl`}>
               <div className="mb-1 flex items-center justify-between gap-1 rounded-xl bg-paper p-1">{MESSAGE_REACTIONS.map(reaction=><button key={reaction.type} onClick={()=>{toggleReaction.mutate({messageId:message.id,reaction:reaction.type,currentReaction});setActionsFor(null);}} className={`flex flex-1 flex-col items-center rounded-lg px-1 py-1.5 text-[10px] ${currentReaction===reaction.type?"bg-white text-brand-dark shadow-sm":"text-ink-light hover:bg-white"}`} title={reaction.label}><span className="text-lg">{reaction.emoji}</span><span>{reaction.label}</span></button>)}</div>
-              <div className="grid grid-cols-2 gap-1 text-sm"><button onClick={()=>startReply(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Reply size={14}/>Reply</button><button onClick={()=>{setForwardingMessage(message);setActionsFor(null);}} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Forward size={14}/>Forward</button><button onClick={()=>copyMessage(message.content)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Copy size={14}/>Copy</button>{mine&&<button onClick={()=>startEdit(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Pencil size={14}/>Edit</button>}<button onClick={()=>removeForMe(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 text-flag hover:bg-red-50"><Trash2 size={14}/>Delete for me</button></div>
+              <div className="grid grid-cols-2 gap-1 text-sm"><button onClick={()=>startReply(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Reply size={14}/>Reply</button><button onClick={()=>{setForwardingMessage(message);setActionsFor(null);}} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Forward size={14}/>Forward</button><button onClick={()=>shareOutside(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Share2 size={14}/>Share outside</button>{hasText&&<button onClick={()=>copyMessage(message.content)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Copy size={14}/>Copy</button>}{mine&&hasText&&<button onClick={()=>startEdit(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-paper"><Pencil size={14}/>Edit</button>}<button onClick={()=>removeForMe(message)} className="flex items-center gap-2 rounded-lg px-2 py-2 text-flag hover:bg-red-50"><Trash2 size={14}/>Delete for me</button></div>
             </div>}
           </div>
         </div>;
       })}
-      <div ref={bottomRef}/>
     </div>
 
-    <div className="sticky bottom-[72px] z-20 bg-white pt-2 md:bottom-0">
-      {(replyingTo||editingMessage)&&<div className="mb-2 flex items-start gap-2 rounded-xl border border-paper-dim bg-paper px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-brand-dark">{editingMessage?"Editing message":"Replying to message"}</p><p className="truncate text-xs text-ink-light">{editingMessage?.content??replyingTo?.content}</p></div><button onClick={()=>{setReplyingTo(null);setEditingMessage(null);if(editingMessage)setText("");}} className="rounded-full p-1 text-ink-faint"><X size={14}/></button></div>}
+    <div className="shrink-0 border-t border-paper-dim bg-white pt-2">
+      {(replyingTo||editingMessage)&&<div className="mb-2 flex items-start gap-2 rounded-xl border border-paper-dim bg-paper px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-brand-dark">{editingMessage?"Editing message":"Replying to message"}</p><p className="truncate text-xs text-ink-light">{editingMessage?.content??(replyingTo?.image_path?"Photo":replyingTo?.audio_path?"Voice note":replyingTo?.content)}</p></div><button onClick={()=>{setReplyingTo(null);setEditingMessage(null);if(editingMessage)setText("");}} className="rounded-full p-1 text-ink-faint"><X size={14}/></button></div>}
       {mentionCandidate&&<button type="button" onClick={insertMention} className="mb-2 flex w-full items-center gap-2 rounded-xl border border-brand/15 bg-brand-light px-3 py-2 text-left text-sm text-brand-dark"><AtSign size={14}/><span>Tag @{mentionCandidate}</span></button>}
-      <form onSubmit={handleSend} className="flex items-end gap-2 border-t border-paper-dim bg-white pt-3"><textarea rows={1} maxLength={4000} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":"Write a message…"} className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-4 py-2.5 text-sm outline-none focus:border-brand"/><button type="submit" disabled={!text.trim()||sendMessage.isPending||editMessage.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={editingMessage?"Save edit":"Send"}>{editingMessage?<Check size={16}/>:<Send size={16}/>}</button></form>
-      {(sendMessage.error||editMessage.error||deleteMessage.error)&&<p className="mt-2 text-sm text-flag">{((sendMessage.error||editMessage.error||deleteMessage.error) as Error).message}</p>}
+      {photoPreview&&<div className="mb-2 flex items-center gap-3 rounded-xl bg-paper p-2"><img src={photoPreview} alt="Selected" className="h-14 w-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Photo ready to send</p><p className="truncate text-[11px] text-ink-faint">{photoFile?.name}</p></div><button type="button" onClick={clearPhoto} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div>}
+      {recording&&<div className="mb-2 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2"><div className="flex items-center gap-2 text-sm font-medium text-flag"><span className="h-2 w-2 animate-pulse rounded-full bg-flag"/>Recording · {recordingSeconds}s / 90s</div><button type="button" onClick={stopRecording} className="inline-flex items-center gap-1.5 rounded-full bg-flag px-3 py-1.5 text-xs font-semibold text-white"><Square size={12} fill="currentColor"/>Stop</button></div>}
+      {voiceDraft&&!recording&&<div className="mb-2 rounded-xl bg-paper p-2"><div className="flex items-center gap-2"><audio src={voiceDraft.url} controls className="h-9 min-w-0 flex-1"/><button type="button" onClick={clearVoice} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div><div className="mt-2 flex justify-end"><button type="button" onClick={sendVoiceDraft} disabled={sendVoice.isPending} className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{sendVoice.isPending?"Sending…":`Send voice · ${voiceDraft.duration}s`}</button></div></div>}
+      <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
+        <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="hidden"/>
+        {!editingMessage&&<button type="button" onClick={()=>photoInputRef.current?.click()} disabled={recording||sendPhoto.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-light hover:bg-paper-dim disabled:opacity-40" aria-label="Send a photo"><ImageIcon size={19}/></button>}
+        {!editingMessage&&<button type="button" onClick={recording?stopRecording:startRecording} disabled={sendVoice.isPending||!!voiceDraft} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-40 ${recording?"bg-red-50 text-flag":"text-ink-light hover:bg-paper-dim"}`} aria-label={recording?"Stop voice recording":"Record voice note"}><Mic size={19}/></button>}
+        <textarea rows={1} maxLength={4000} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":photoFile?"Add a caption…":"Write a message…"} className="max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-3 py-2.5 text-sm outline-none focus:border-brand"/>
+        <button type="submit" disabled={recording||!!voiceDraft||(!text.trim()&&!photoFile)||sendMessage.isPending||sendPhoto.isPending||editMessage.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={editingMessage?"Save edit":"Send"}>{editingMessage?<Check size={16}/>:<Send size={16}/>}</button>
+      </form>
+      {(notice||sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error)&&<p className={`pb-1 text-xs ${notice?"text-ink-faint":"text-flag"}`}>{notice??((sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error) as Error).message}</p>}
     </div>
 
     {forwardingMessage&&<ForwardSheet message={forwardingMessage} conversations={conversations} onClose={()=>setForwardingMessage(null)}/>} 
+    {viewPhoto&&<ProfilePhotoViewer src={viewPhoto.src} name={viewPhoto.name} onClose={()=>setViewPhoto(null)} downloadable/>}
   </section>;
 }
 
@@ -192,5 +269,8 @@ export function Messages(){
   const {userId}=useAuth();
   const {data:conversations,isLoading}=useConversations();
   if(otherUserId===userId)return <Navigate to="/messages" replace/>;
-  return <div className="pb-4"><div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-dark">POSSARA</p><h1 className="text-2xl">Messages</h1></div><p className="hidden text-xs text-ink-faint sm:block">Private conversations with your community.</p></div><div className="relative flex min-h-[64vh] flex-col gap-4 overflow-hidden rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:flex-row sm:p-4"><ConversationList conversations={conversations} isLoading={isLoading} activeUserId={otherUserId}/>{otherUserId?<Thread otherUserId={otherUserId} conversations={conversations??[]}/>:<div className="hidden flex-1 flex-col items-center justify-center py-16 text-center sm:flex"><MessageCircle size={30} className="text-ink-faint"/><p className="mt-3 font-medium text-ink-light">Choose a conversation.</p><p className="mt-1 max-w-xs text-sm text-ink-faint">Or start one from a member&apos;s profile on Connect.</p></div>}</div></div>;
+  return <div className={otherUserId?"overflow-hidden sm:pb-4":"pb-4"}>
+    <div className={`mb-4 items-end justify-between ${otherUserId?"hidden sm:flex":"flex"}`}><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-dark">POSSARA</p><h1 className="text-2xl">Messages</h1></div><p className="hidden text-xs text-ink-faint sm:block">Private conversations with your community.</p></div>
+    <div className={`relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-paper-dim bg-white p-3 shadow-sm sm:flex-row sm:p-4 ${otherUserId?"h-[calc(100dvh-164px)] min-h-[430px] sm:h-[70vh] sm:min-h-[600px]":"min-h-[64vh]"}`}><ConversationList conversations={conversations} isLoading={isLoading} activeUserId={otherUserId}/>{otherUserId?<Thread otherUserId={otherUserId} conversations={conversations??[]}/>:<div className="hidden flex-1 flex-col items-center justify-center py-16 text-center sm:flex"><MessageCircle size={30} className="text-ink-faint"/><p className="mt-3 font-medium text-ink-light">Choose a conversation.</p><p className="mt-1 max-w-xs text-sm text-ink-faint">Or start one from a member&apos;s profile on Connect.</p></div>}</div>
+  </div>;
 }
