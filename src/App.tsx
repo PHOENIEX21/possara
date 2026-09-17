@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
 import { AppLayout } from "./layouts/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { AdminMemberSummary } from "./components/AdminMemberSummary";
+import { ProfileTopActions } from "./components/ProfileTopActions";
 import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
@@ -19,6 +21,7 @@ import { Admissions } from "./pages/Admissions";
 import { Advertise } from "./pages/Advertise";
 import { SubmitOpportunity } from "./pages/SubmitOpportunity";
 import { OpportunityDetail } from "./pages/OpportunityDetail";
+import { PostDetail } from "./pages/PostDetail";
 import { Profile } from "./pages/Profile";
 import { Organizations } from "./pages/Organizations";
 import { OrganizationPage } from "./pages/OrganizationPage";
@@ -37,6 +40,14 @@ import { StudyThread } from "./pages/StudyThread";
 import { StudySettings } from "./pages/StudySettings";
 
 const queryClient = new QueryClient();
+
+function ProfileRoute() {
+  return <><ProfileTopActions/><Profile/></>;
+}
+
+function AdminRoute() {
+  return <><AdminMemberSummary/><Admin/></>;
+}
 
 export default function App() {
   useEffect(() => {
@@ -70,8 +81,9 @@ export default function App() {
               <Route path="/admissions" element={<Admissions />} />
               <Route path="/advertise" element={<Advertise />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
-              <Route path="/profile/:username" element={<Profile />} />
-              <Route path="/profile/id/:id" element={<Profile />} />
+              <Route path="/post/:id" element={<PostDetail />} />
+              <Route path="/profile/:username" element={<ProfileRoute />} />
+              <Route path="/profile/id/:id" element={<ProfileRoute />} />
               <Route path="/organizations" element={<Organizations />} />
               <Route path="/organizations/:slug" element={<OrganizationPage />} />
               <Route path="/search" element={<SearchPage />} />
@@ -88,7 +100,7 @@ export default function App() {
               </Route>
 
               <Route element={<RequireAdmin />}>
-                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin" element={<AdminRoute />} />
               </Route>
             </Route>
           </Routes>
