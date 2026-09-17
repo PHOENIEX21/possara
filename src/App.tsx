@@ -14,6 +14,7 @@ import { Contribute } from "./pages/Contribute";
 import { Opportunities } from "./pages/Opportunities";
 import { Jobs } from "./pages/Jobs";
 import { Scholarships } from "./pages/Scholarships";
+import { Competitions } from "./pages/Competitions";
 import { Admissions } from "./pages/Admissions";
 import { Advertise } from "./pages/Advertise";
 import { SubmitOpportunity } from "./pages/SubmitOpportunity";
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="/opportunities" element={<Opportunities />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/scholarships" element={<Scholarships />} />
+              <Route path="/competitions" element={<Competitions />} />
               <Route path="/admissions" element={<Admissions />} />
               <Route path="/advertise" element={<Advertise />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
