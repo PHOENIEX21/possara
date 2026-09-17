@@ -4,8 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
 import { AppLayout } from "./layouts/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AdminMemberSummary } from "./components/AdminMemberSummary";
-import { ProfileTopActions } from "./components/ProfileTopActions";
 import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
@@ -41,14 +39,6 @@ import { StudySettings } from "./pages/StudySettings";
 
 const queryClient = new QueryClient();
 
-function ProfileRoute() {
-  return <><ProfileTopActions/><Profile/></>;
-}
-
-function AdminRoute() {
-  return <><AdminMemberSummary/><Admin/></>;
-}
-
 export default function App() {
   useEffect(() => {
     const unsubscribe = useAuth.getState().init();
@@ -82,8 +72,8 @@ export default function App() {
               <Route path="/advertise" element={<Advertise />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
               <Route path="/post/:id" element={<PostDetail />} />
-              <Route path="/profile/:username" element={<ProfileRoute />} />
-              <Route path="/profile/id/:id" element={<ProfileRoute />} />
+              <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/profile/id/:id" element={<Profile />} />
               <Route path="/organizations" element={<Organizations />} />
               <Route path="/organizations/:slug" element={<OrganizationPage />} />
               <Route path="/search" element={<SearchPage />} />
@@ -100,7 +90,7 @@ export default function App() {
               </Route>
 
               <Route element={<RequireAdmin />}>
-                <Route path="/admin" element={<AdminRoute />} />
+                <Route path="/admin" element={<Admin />} />
               </Route>
             </Route>
           </Routes>
