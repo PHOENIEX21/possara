@@ -80,18 +80,16 @@ export function useUserPresence(otherUserId: string | undefined) {
   return useQuery({
     queryKey: ["user-presence", otherUserId],
     enabled: !!otherUserId,
-    refetchInterval: 30_000,
+    refetchInterval: 20_000,
     queryFn: async () => {
-      const [{ data: profile, error: profileError }, { data: preferences, error: prefError }] = await Promise.all([
-        supabase.from("profiles").select("last_seen_at").eq("id", otherUserId as string).maybeSingle(),
-        supabase.from("user_preferences").select("show_online_status").eq("user_id", otherUserId as string).maybeSingle(),
-      ]);
-      if (profileError) throw profileError;
-      if (prefError) throw prefError;
-      const visible = preferences?.show_online_status ?? true;
-      const lastSeenAt = visible ? profile?.last_seen_at ?? null : null;
+      const { data, error } = await supabase.rpc("get_social_status", { target_user_id: otherUserId as string });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      const visible = row?.show_online_status ?? true;
+      const sendReadReceipts = row?.send_read_receipts ?? true;
+      const lastSeenAt = visible ? row?.last_seen_at ?? null : null;
       const online = !!lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < 120_000;
-      return { visible, online, lastSeenAt };
+      return { visible, online, lastSeenAt, sendReadReceipts };
     },
   });
 }
