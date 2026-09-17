@@ -21,6 +21,8 @@ import {
   useAdminSetPostStatus,
   useAdminStudyOverview,
 } from "../hooks/useAdminContent";
+import { AdminFollowerOverview } from "../components/AdminFollowerOverview";
+import { AdminSignupSummary } from "../components/AdminSignupSummary";
 import { useAuth } from "../store/auth";
 import type { UserRole } from "../types/database";
 
@@ -136,6 +138,8 @@ export function Admin() {
     <div className="flex items-start gap-3"><div className="rounded-xl bg-trust-light p-2 text-trust-dark"><ShieldCheck size={22}/></div><div><h1 className="text-2xl">Admin</h1><p className="text-sm text-ink-light">Moderation, Study oversight, organizations, verification and member-role controls.</p></div></div>
     <div className="rounded-2xl bg-trust-light px-4 py-3 text-sm text-trust-dark">Signed in as <b>{email ?? "admin"}</b> · role <b>{role ?? "loading"}</b> · {isVerified ? "verified" : "not verified"}</div>
 
+    <AdminSignupSummary/>
+    <AdminFollowerOverview/>
     <ContentAdmin/>
     <OrganizationDirectoryAdmin/>
 
@@ -172,7 +176,8 @@ export function Admin() {
       <div className="space-y-2">{members.data?.map((profile) => {
         const rel = Array.isArray(profile.user_roles) ? profile.user_roles[0] : profile.user_roles;
         const currentRole = (rel?.role ?? "user") as UserRole;
-        return <div key={profile.id} className="flex items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{profile.full_name ?? "Member"}</p><p className="truncate text-xs text-ink-faint">{profile.username ? `@${profile.username}` : profile.id.slice(0,8)}</p></div><select value={currentRole} onChange={e=>setRole.mutate({userId:profile.id,role:e.target.value as UserRole})} className="rounded-lg border border-ink-faint/30 px-2 py-1.5 text-sm"><option value="user">user</option><option value="creator">creator</option><option value="moderator">moderator</option><option value="admin">admin</option></select></div>;
+        const isAdminAccount = currentRole === "admin";
+        return <div key={profile.id} className="flex items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{profile.full_name ?? "Member"}</p><p className="truncate text-xs text-ink-faint">{profile.username ? `@${profile.username}` : profile.id.slice(0,8)}</p></div>{isAdminAccount?<span className="rounded-full bg-trust-light px-3 py-1.5 text-xs font-semibold text-trust-dark">admin · locked</span>:<select value={currentRole} onChange={e=>setRole.mutate({userId:profile.id,role:e.target.value as UserRole})} className="rounded-lg border border-ink-faint/30 px-2 py-1.5 text-sm"><option value="user">user</option><option value="creator">creator</option><option value="moderator">moderator</option></select>}</div>;
       })}</div>
       <ErrorText error={setRole.error}/>
     </Section>
