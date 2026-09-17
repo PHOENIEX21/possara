@@ -1,16 +1,22 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
-import { useOwnProfile } from "../hooks/useProfile";
+import { useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 
 export function Settings(){
   const {email}=useAuth();
   const {data:profile}=useOwnProfile();
+  const updateProfile=useUpdateOwnProfile();
   const avatarUpload=useAvatarUpload();
   const avatarInput=useRef<HTMLInputElement>(null);
   const [photoSuccess,setPhotoSuccess]=useState(false);
+  const [birthdayMonth,setBirthdayMonth]=useState("");
+  const [birthdayDay,setBirthdayDay]=useState("");
+  const [birthdayVisibility,setBirthdayVisibility]=useState<"everyone"|"followers"|"private">("followers");
+  const [birthdaySuccess,setBirthdaySuccess]=useState(false);
+  const [birthdayError,setBirthdayError]=useState<string|null>(null);
   const [currentPassword,setCurrentPassword]=useState("");
   const [newPassword,setNewPassword]=useState("");
   const [confirmPassword,setConfirmPassword]=useState("");
@@ -18,11 +24,32 @@ export function Settings(){
   const [success,setSuccess]=useState(false);
   const [loading,setLoading]=useState(false);
 
+  useEffect(()=>{
+    if(!profile)return;
+    setBirthdayMonth(profile.birthday_month?String(profile.birthday_month):"");
+    setBirthdayDay(profile.birthday_day?String(profile.birthday_day):"");
+    setBirthdayVisibility(profile.birthday_visibility??"followers");
+  },[profile]);
+
   async function handlePhoto(e:React.ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0];
     if(!file)return;
     setPhotoSuccess(false);
     try{await avatarUpload.mutateAsync(file);setPhotoSuccess(true);}finally{e.target.value="";}
+  }
+
+  async function saveBirthday(e:React.FormEvent){
+    e.preventDefault();
+    setBirthdayError(null);setBirthdaySuccess(false);
+    const month=birthdayMonth?Number(birthdayMonth):null;
+    const day=birthdayDay?Number(birthdayDay):null;
+    if((month===null)!==(day===null)){setBirthdayError("Choose both month and day, or leave both empty.");return;}
+    if(month!==null&&(month<1||month>12)){setBirthdayError("Choose a valid month.");return;}
+    if(day!==null&&(day<1||day>31)){setBirthdayError("Choose a valid day.");return;}
+    try{
+      await updateProfile.mutateAsync({birthday_month:month,birthday_day:day,birthday_visibility:birthdayVisibility});
+      setBirthdaySuccess(true);
+    }catch(err){setBirthdayError((err as Error).message);}
   }
 
   async function handleChangePassword(e:React.FormEvent){
@@ -51,6 +78,21 @@ export function Settings(){
       </div>
       {avatarUpload.error&&<p className="mt-3 text-sm text-flag">{(avatarUpload.error as Error).message}</p>}
       {photoSuccess&&<p className="mt-3 text-sm text-trust-dark">Profile photo updated.</p>}
+    </section>
+
+    <section className="mt-8 border-t border-paper-dim pt-6">
+      <h2 className="text-lg">Birthday</h2>
+      <p className="mt-1 text-sm text-ink-light">Add your birthday without exposing your birth year. You control who can see it.</p>
+      <form onSubmit={saveBirthday} className="mt-4 max-w-md space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm text-ink-light">Month<select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"><option value="">Month</option>{["January","February","March","April","May","June","July","August","September","October","November","December"].map((name,index)=><option key={name} value={index+1}>{name}</option>)}</select></label>
+          <label className="text-sm text-ink-light">Day<select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"><option value="">Day</option>{Array.from({length:31},(_,i)=>i+1).map(day=><option key={day} value={day}>{day}</option>)}</select></label>
+        </div>
+        <label className="block text-sm text-ink-light">Who can see it?<select value={birthdayVisibility} onChange={e=>setBirthdayVisibility(e.target.value as "everyone"|"followers"|"private")} className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"><option value="everyone">Everyone</option><option value="followers">Followers</option><option value="private">Only me</option></select></label>
+        {birthdayError&&<p className="text-sm text-flag">{birthdayError}</p>}
+        {birthdaySuccess&&<p className="text-sm text-trust-dark">Birthday settings saved.</p>}
+        <button type="submit" disabled={updateProfile.isPending} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{updateProfile.isPending?"Saving…":"Save birthday"}</button>
+      </form>
     </section>
 
     <section className="mt-8 border-t border-paper-dim pt-6"><h2 className="text-lg">Account</h2><p className="mt-1 text-sm text-ink-light">Signed in as {email}</p></section>
