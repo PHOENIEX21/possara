@@ -19,7 +19,7 @@ export function TrustBadge({ verified, lastVerifiedAt, sponsored }: TrustBadgePr
         </span>
       ) : lastVerifiedAt ? (
         <span className="inline-flex items-center gap-1.5 text-trust-dark">
-          <ShieldCheck size={16} strokeWidth={2} />Official source checked
+          <ShieldCheck size={16} strokeWidth={2} />Source checked
         </span>
       ) : (
         <span className="inline-flex items-center gap-1.5 text-ink-light">
