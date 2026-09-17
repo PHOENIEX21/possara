@@ -2,21 +2,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle, MoreHorizontal, Pencil, Share2, ShieldCheck, Trash2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import { useComments, useCreateComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { ReportButton } from "./ReportButton";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
-import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
+import { PostReactionControl } from "./PostReactionControl";
+import type { PostWithAuthor } from "../hooks/useFeedPosts";
 
 const COMMENT_EMOJIS = ["😀", "😂", "🔥", "👏", "🎉", "💯", "🤝", "🙌"];
-const POST_REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
-  { type: "like", emoji: "❤️", label: "Like" },
-  { type: "spark", emoji: "✨", label: "Spark" },
-  { type: "insightful", emoji: "💡", label: "Insightful" },
-  { type: "useful", emoji: "👍", label: "Useful" },
-];
 
 function useDeletePost() {
   const qc = useQueryClient();
@@ -145,7 +139,6 @@ function CommentThread({ postId }: { postId: string }) {
 
 export function PostCard({ post }: { post: PostWithAuthor }) {
   const { userId } = useAuth();
-  const toggleReaction = useTogglePostReaction();
   const deletePost = useDeletePost();
   const editPost = useEditPost();
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -286,26 +279,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
       <div className="mt-4 border-t border-paper-dim pt-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1 rounded-full bg-paper/80 p-1" aria-label="React to this post">
-            {POST_REACTIONS.map((reaction) => {
-              const selected = post.viewer_reaction === reaction.type;
-              const count = post.reaction_counts[reaction.type] ?? 0;
-              return (
-                <button
-                  key={reaction.type}
-                  type="button"
-                  title={reaction.label}
-                  aria-label={`${reaction.label}${count ? `, ${count}` : ""}`}
-                  onClick={() => toggleReaction.mutate({ postId: post.id, reaction: reaction.type, currentReaction: post.viewer_reaction })}
-                  disabled={toggleReaction.isPending}
-                  className={`inline-flex min-h-9 items-center gap-1 rounded-full px-2.5 text-sm transition ${selected ? "bg-white shadow-sm ring-1 ring-brand/15" : "hover:bg-white"}`}
-                >
-                  <span className="text-base leading-none">{reaction.emoji}</span>
-                  {count > 0 && <span className="text-xs font-medium text-ink-light">{count}</span>}
-                </button>
-              );
-            })}
-          </div>
+          <PostReactionControl post={post} />
 
           <button onClick={() => setCommentsOpen((value) => !value)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-light hover:bg-paper-dim">
             <MessageCircle size={15} />{post.comment_count > 0 ? post.comment_count : ""} Comment
@@ -315,7 +289,6 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             <Share2 size={15} />{shareStatus ?? "Share"}
           </button>
         </div>
-        {post.reaction_count > 0 && <p className="mt-2 text-xs text-ink-faint">{post.reaction_count} {post.reaction_count === 1 ? "reaction" : "reactions"}</p>}
       </div>
 
       {commentsOpen && <CommentThread postId={post.id} />}
