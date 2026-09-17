@@ -32,6 +32,14 @@ export interface ThreadMessage {
   edited_at: string | null;
   sender_deleted_at: string | null;
   recipient_deleted_at: string | null;
+  image_path: string | null;
+  image_mime_type: string | null;
+  image_name: string | null;
+  image_url?: string | null;
+  audio_path: string | null;
+  audio_duration_seconds: number | null;
+  audio_mime_type: string | null;
+  audio_url?: string | null;
   reactions: ThreadReaction[];
 }
 
@@ -41,9 +49,39 @@ export interface SendMessageInput {
   forwardedFromId?: string | null;
 }
 
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const AUDIO_TYPES = new Set(["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"]);
+
+function safeFileName(value: string) {
+  return value.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || "file";
+}
+
 function invalidateMessaging(queryClient: ReturnType<typeof useQueryClient>, userId?: string | null, otherUserId?: string) {
   queryClient.invalidateQueries({ queryKey: ["message-thread", userId, otherUserId] });
   queryClient.invalidateQueries({ queryKey: ["conversations"] });
+  queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
+}
+
+function previewText(row: { content?: string | null; image_path?: string | null; audio_path?: string | null }) {
+  const text = row.content?.trim();
+  if (text) return text;
+  if (row.image_path) return "📷 Photo";
+  if (row.audio_path) return "🎤 Voice note";
+  return "Message";
+}
+
+async function attachPrivateMedia(message: any): Promise<ThreadMessage> {
+  let imageUrl: string | null = null;
+  let audioUrl: string | null = null;
+  if (message.image_path) {
+    const { data } = await supabase.storage.from("message-media").createSignedUrl(message.image_path, 60 * 15);
+    imageUrl = data?.signedUrl ?? null;
+  }
+  if (message.audio_path) {
+    const { data } = await supabase.storage.from("voice-notes").createSignedUrl(message.audio_path, 60 * 15);
+    audioUrl = data?.signedUrl ?? null;
+  }
+  return { ...message, image_url: imageUrl, audio_url: audioUrl } as ThreadMessage;
 }
 
 export function useConversations() {
@@ -54,7 +92,7 @@ export function useConversations() {
     queryFn: async (): Promise<ConversationPreview[]> => {
       const { data, error } = await supabase
         .from("messages")
-        .select("sender_id, recipient_id, content, read, created_at, sender_deleted_at, recipient_deleted_at")
+        .select("sender_id, recipient_id, content, image_path, audio_path, read, created_at, sender_deleted_at, recipient_deleted_at")
         .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(300);
@@ -67,7 +105,7 @@ export function useConversations() {
         const otherId = mine ? m.recipient_id : m.sender_id;
         if (!byOther.has(otherId)) {
           byOther.set(otherId, {
-            content: m.content,
+            content: previewText(m),
             created_at: m.created_at,
             unread: m.recipient_id === userId && !m.read,
           });
@@ -125,10 +163,11 @@ export function useThread(otherUserId: string | undefined) {
         reactions = (reactionRows ?? []) as ThreadReaction[];
       }
 
-      return visible.map((m: any) => ({
+      const enriched = await Promise.all(visible.map((m: any) => attachPrivateMedia({
         ...m,
         reactions: reactions.filter((r) => r.message_id === m.id),
-      })) as ThreadMessage[];
+      })));
+      return enriched;
     },
   });
 }
@@ -156,6 +195,68 @@ export function useSendMessage(otherUserId: string) {
   });
 }
 
+export function useSendPhotoMessage(otherUserId: string) {
+  const { userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, caption = "", replyToId = null }: { file: File; caption?: string; replyToId?: string | null }) => {
+      if (!userId) throw new Error("Sign in to send photos.");
+      if (!IMAGE_TYPES.has(file.type)) throw new Error("Use a JPG, PNG or WebP photo.");
+      if (file.size > 8 * 1024 * 1024) throw new Error("Message photos must be 8 MB or smaller.");
+      const cleanCaption = caption.trim();
+      if (cleanCaption.length > 4000) throw new Error("Captions can be up to 4000 characters.");
+      const name = safeFileName(file.name);
+      const path = `${userId}/${otherUserId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`;
+      const { error: uploadError } = await supabase.storage.from("message-media").upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+      if (uploadError) throw new Error(`Photo upload failed: ${uploadError.message}`);
+      const { error: messageError } = await supabase.from("messages").insert({
+        sender_id: userId,
+        recipient_id: otherUserId,
+        content: cleanCaption,
+        reply_to_id: replyToId,
+        image_path: path,
+        image_mime_type: file.type,
+        image_name: name,
+      });
+      if (messageError) {
+        await supabase.storage.from("message-media").remove([path]);
+        throw messageError;
+      }
+    },
+    onSuccess: () => invalidateMessaging(queryClient, userId, otherUserId),
+  });
+}
+
+export function useSendVoiceMessage(otherUserId: string) {
+  const { userId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ blob, durationSeconds, mimeType }: { blob: Blob; durationSeconds: number; mimeType: string }) => {
+      if (!userId) throw new Error("Sign in to send voice notes.");
+      const normalizedType = mimeType.split(";")[0];
+      if (!AUDIO_TYPES.has(normalizedType)) throw new Error("This browser produced an unsupported voice-note format.");
+      if (blob.size > 2 * 1024 * 1024) throw new Error("Voice note is too large. Keep it under 90 seconds.");
+      const ext = normalizedType.includes("mp4") ? "m4a" : normalizedType.includes("ogg") ? "ogg" : normalizedType.includes("mpeg") ? "mp3" : normalizedType.includes("wav") ? "wav" : "webm";
+      const path = `${userId}/${otherUserId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("voice-notes").upload(path, blob, { contentType: normalizedType, cacheControl: "3600", upsert: false });
+      if (uploadError) throw new Error(`Voice-note upload failed: ${uploadError.message}`);
+      const { error: messageError } = await supabase.from("messages").insert({
+        sender_id: userId,
+        recipient_id: otherUserId,
+        content: "",
+        audio_path: path,
+        audio_duration_seconds: Math.max(1, Math.min(90, Math.round(durationSeconds))),
+        audio_mime_type: normalizedType,
+      });
+      if (messageError) {
+        await supabase.storage.from("voice-notes").remove([path]);
+        throw messageError;
+      }
+    },
+    onSuccess: () => invalidateMessaging(queryClient, userId, otherUserId),
+  });
+}
+
 export function useForwardMessage() {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
@@ -163,14 +264,44 @@ export function useForwardMessage() {
     mutationFn: async ({ message, targetUserId }: { message: ThreadMessage; targetUserId: string }) => {
       if (!userId) throw new Error("Sign in to forward messages.");
       if (!targetUserId || targetUserId === userId) throw new Error("Choose another POSSARA member.");
-      const { error } = await supabase.from("messages").insert({
-        sender_id: userId,
-        recipient_id: targetUserId,
-        content: message.content,
-        forwarded_from_id: message.forwarded_from_id ?? message.id,
-      });
-      if (error) throw error;
-      return targetUserId;
+      let imagePath: string | null = null;
+      let audioPath: string | null = null;
+      try {
+        if (message.image_path) {
+          const { data: imageBlob, error: downloadError } = await supabase.storage.from("message-media").download(message.image_path);
+          if (downloadError || !imageBlob) throw new Error("Could not copy this photo for forwarding.");
+          const name = safeFileName(message.image_name || "photo.jpg");
+          imagePath = `${userId}/${targetUserId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`;
+          const { error: uploadError } = await supabase.storage.from("message-media").upload(imagePath, imageBlob, { contentType: message.image_mime_type || imageBlob.type || "image/jpeg", upsert: false });
+          if (uploadError) throw uploadError;
+        }
+        if (message.audio_path) {
+          const { data: audioBlob, error: downloadError } = await supabase.storage.from("voice-notes").download(message.audio_path);
+          if (downloadError || !audioBlob) throw new Error("Could not copy this voice note for forwarding.");
+          const ext = message.audio_mime_type?.includes("mp4") ? "m4a" : message.audio_mime_type?.includes("ogg") ? "ogg" : message.audio_mime_type?.includes("mpeg") ? "mp3" : "webm";
+          audioPath = `${userId}/${targetUserId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from("voice-notes").upload(audioPath, audioBlob, { contentType: message.audio_mime_type || audioBlob.type || "audio/webm", upsert: false });
+          if (uploadError) throw uploadError;
+        }
+        const { error } = await supabase.from("messages").insert({
+          sender_id: userId,
+          recipient_id: targetUserId,
+          content: message.content,
+          forwarded_from_id: message.forwarded_from_id ?? message.id,
+          image_path: imagePath,
+          image_mime_type: imagePath ? message.image_mime_type : null,
+          image_name: imagePath ? message.image_name : null,
+          audio_path: audioPath,
+          audio_duration_seconds: audioPath ? message.audio_duration_seconds : null,
+          audio_mime_type: audioPath ? message.audio_mime_type : null,
+        });
+        if (error) throw error;
+        return targetUserId;
+      } catch (error) {
+        if (imagePath) await supabase.storage.from("message-media").remove([imagePath]);
+        if (audioPath) await supabase.storage.from("voice-notes").remove([audioPath]);
+        throw error;
+      }
     },
     onSuccess: (targetUserId) => invalidateMessaging(queryClient, userId, targetUserId),
   });
