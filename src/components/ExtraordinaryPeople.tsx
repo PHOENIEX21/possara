@@ -14,7 +14,7 @@ type Person = {
 };
 
 const PEOPLE: Person[] = [
-  { name:"Francis Olusegun", field:"Academic excellence · Mathematics", achievement:"University of Ilorin 2025/2026 overall best graduating student, celebrated for a perfect 5.00/5.00 CGPA in Mathematics.", lesson:"Excellence can be built one course, one decision and one disciplined day at a time.", source:"https://www.linkedin.com/posts/risingafricaorg_academicexcellence-uniloringrad-mathematics-activity-7503055789784326144-f8Fl", badge:"5.00 / 5.00" },
+  { name:"Francis Olusegun", field:"Academic excellence · Mathematics", achievement:"University of Ilorin 2025/2026 overall best graduating student, celebrated for a perfect 5.00/5.00 CGPA in Mathematics.", lesson:"Excellence can be built one course, one decision and one disciplined day at a time.", image:"https://unavatar.io/twitter/francis_themath", source:"https://www.linkedin.com/posts/risingafricaorg_academicexcellence-uniloringrad-mathematics-activity-7503055789784326144-f8Fl", position:"center 22%", badge:"5.00 / 5.00" },
   { name:"Chukwuzubelu Benedict Umeozo", field:"Academic excellence · Business Administration", achievement:"UNILAG's 2025 overall best graduating student, finishing Business Administration with a perfect 5.00 CGPA.", lesson:"Consistency across years can turn ordinary study days into an extraordinary finish.", image:"https://cdn.legit.ng/images/1200x675/efab9dfd918a0c97.jpeg?v=1", source:"https://unilag.edu.ng/unilag-56th-convocation-ceremonies-4-626-bag-first-degrees-at-day-2/", position:"center 30%" },
   { name:"Rev. Sr. Mary Natalia Ene Agbochini", field:"Academic excellence · Computer Science", achievement:"Overall best graduating student at Claretian University's maiden convocation, graduating with a flawless 5.00 CGPA.", lesson:"Purpose, discipline and a strong learning community can reinforce one another.", image:"https://sjgssn.com/home/assets/images/sister.jpg", source:"https://claretianuniversity.edu.ng/news/readnews/28/cun-maiden-convocation-rev-sr-mary-natalia-ene-agbochini-emerges-overall-best-graduating-student", position:"center 25%" },
   { name:"Hilda Baci", field:"Culinary achievement", achievement:"Her 93 hour 11 minute cooking marathon was recognized by Guinness World Records in 2023.", lesson:"Ambition becomes visible when preparation, consistency and endurance meet.", wikiTitle:"Hilda_Baci", position:"center 15%" },
@@ -66,7 +66,7 @@ const PEOPLE: Person[] = [
   { name:"Novak Djokovic", field:"Tennis", achievement:"Won a record 24 men's Grand Slam singles titles and completed the career Golden Slam with Olympic gold in 2024.", lesson:"Longevity comes from continuously refining training, recovery and competitive strategy.", wikiTitle:"Novak_Djokovic" },
 ];
 
-const IMAGE_CACHE_KEY = "possara-achiever-images-v2";
+const IMAGE_CACHE_KEY = "possara-achiever-images-v3";
 
 function readCachedImages(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -81,31 +81,50 @@ function writeCachedImages(images: Record<string, string>) {
   try {
     window.localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(images));
   } catch {
-    // Browsers may block localStorage in private/restricted contexts. The carousel still works without it.
+    // Restricted browsers can still use the in-memory image catalogue.
   }
 }
 
-async function fetchWikiImage(title: string): Promise<string | null> {
+async function fetchWikiImageCatalogue(items: Person[]): Promise<Record<string, string>> {
+  const wikiPeople = items.filter((item) => item.wikiTitle);
+  if (!wikiPeople.length) return {};
   try {
+    const titles = wikiPeople.map((item) => item.wikiTitle!.replaceAll("_", " "));
     const query = new URLSearchParams({
       action: "query",
       format: "json",
+      formatversion: "2",
       origin: "*",
+      redirects: "1",
       prop: "pageimages",
-      pithumbsize: "1200",
-      titles: title.replaceAll("_", " "),
+      pithumbsize: "1000",
+      titles: titles.join("|"),
     });
     const response = await fetch(`https://en.wikipedia.org/w/api.php?${query.toString()}`);
-    if (!response.ok) return null;
-    const data = await response.json() as { query?: { pages?: Record<string, { thumbnail?: { source?: string } }> } };
-    const page = Object.values(data.query?.pages ?? {})[0];
-    return page?.thumbnail?.source ?? null;
+    if (!response.ok) return {};
+    const data = await response.json() as {
+      query?: {
+        redirects?: Array<{ from: string; to: string }>;
+        pages?: Array<{ title: string; thumbnail?: { source?: string } }>;
+      };
+    };
+    const redirects = new Map((data.query?.redirects ?? []).map((item) => [item.from.toLowerCase(), item.to.toLowerCase()]));
+    const pages = data.query?.pages ?? [];
+    const catalogue: Record<string, string> = {};
+    for (const person of wikiPeople) {
+      const requested = person.wikiTitle!.replaceAll("_", " ");
+      const target = redirects.get(requested.toLowerCase()) ?? requested.toLowerCase();
+      const page = pages.find((item) => item.title.toLowerCase() === target);
+      const source = page?.thumbnail?.source;
+      if (source) catalogue[person.name] = source;
+    }
+    return catalogue;
   } catch {
-    return null;
+    return {};
   }
 }
 
-function warmImage(url: string) {
+function preloadImage(url: string) {
   const image = new Image();
   image.decoding = "async";
   image.src = url;
@@ -115,66 +134,71 @@ export function ExtraordinaryPeople() {
   const [active, setActive] = useState(0);
   const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const imagesRef = useRef(images);
+  const [catalogueReady, setCatalogueReady] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const person = PEOPLE[active];
-
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
-
-  function next() {
-    setActive((value) => value >= PEOPLE.length - 1 ? 0 : value + 1);
-  }
-
-  function previous() {
-    setActive((value) => value <= 0 ? PEOPLE.length - 1 : value - 1);
-  }
-
-  useEffect(() => {
-    const timer = window.setTimeout(next, 6500);
-    return () => window.clearTimeout(timer);
-  }, [active]);
 
   useEffect(() => {
     let cancelled = false;
-    const nearbyIndexes = [-1, 0, 1, 2, 3, 4].map((offset) => (active + offset + PEOPLE.length) % PEOPLE.length);
-
-    async function prepare(item: Person) {
-      if (item.image) {
-        warmImage(item.image);
-        return;
-      }
-
-      const cached = imagesRef.current[item.name];
-      if (cached) {
-        warmImage(cached);
-        return;
-      }
-      if (!item.wikiTitle) return;
-
-      const image = await fetchWikiImage(item.wikiTitle);
-      if (cancelled || !image) return;
-      warmImage(image);
-      const nextImages = { ...imagesRef.current, [item.name]: image };
-      imagesRef.current = nextImages;
-      setImages(nextImages);
-      writeCachedImages(nextImages);
+    async function loadCatalogue() {
+      const fetched = await fetchWikiImageCatalogue(PEOPLE);
+      if (cancelled) return;
+      const merged = { ...readCachedImages(), ...fetched };
+      setImages(merged);
+      writeCachedImages(merged);
+      setCatalogueReady(true);
     }
-
-    nearbyIndexes.forEach((index) => { void prepare(PEOPLE[index]); });
+    void loadCatalogue();
     return () => { cancelled = true; };
-  }, [active]);
+  }, []);
+
+  const availableIndexes = useMemo(() => PEOPLE.map((person, index) => {
+    const source = person.image ?? images[person.name];
+    return source && !failedImages[person.name] ? index : -1;
+  }).filter((index) => index >= 0), [images, failedImages]);
+
+  useEffect(() => {
+    if (!catalogueReady || !availableIndexes.length || availableIndexes.includes(active)) return;
+    const forward = availableIndexes.find((index) => index > active);
+    setActive(forward ?? availableIndexes[0]);
+  }, [catalogueReady, availableIndexes, active]);
+
+  const currentPosition = Math.max(0, availableIndexes.indexOf(active));
+  const person = PEOPLE[active];
+  const image = failedImages[person.name] ? null : person.image ?? images[person.name] ?? null;
+
+  function next() {
+    if (!availableIndexes.length) return;
+    const position = availableIndexes.indexOf(active);
+    const nextPosition = position < 0 ? 0 : (position + 1) % availableIndexes.length;
+    setActive(availableIndexes[nextPosition]);
+  }
+
+  function previous() {
+    if (!availableIndexes.length) return;
+    const position = availableIndexes.indexOf(active);
+    const previousPosition = position <= 0 ? availableIndexes.length - 1 : position - 1;
+    setActive(availableIndexes[previousPosition]);
+  }
+
+  useEffect(() => {
+    if (!catalogueReady || availableIndexes.length < 2 || !availableIndexes.includes(active)) return;
+    const timer = window.setTimeout(next, 6500);
+    return () => window.clearTimeout(timer);
+  }, [active, catalogueReady, availableIndexes]);
+
+  useEffect(() => {
+    if (!catalogueReady || !availableIndexes.length) return;
+    const position = Math.max(0, availableIndexes.indexOf(active));
+    [0, 1, 2].forEach((offset) => {
+      const index = availableIndexes[(position + offset) % availableIndexes.length];
+      const item = PEOPLE[index];
+      const source = item.image ?? images[item.name];
+      if (source) preloadImage(source);
+    });
+  }, [active, catalogueReady, availableIndexes, images]);
 
   function handleImageError() {
     setFailedImages((current) => ({ ...current, [person.name]: true }));
-    if (!person.image && imagesRef.current[person.name]) {
-      const nextImages = { ...imagesRef.current };
-      delete nextImages[person.name];
-      imagesRef.current = nextImages;
-      setImages(nextImages);
-      writeCachedImages(nextImages);
-    }
   }
 
   function handleTouchStart(event: React.TouchEvent<HTMLElement>) {
@@ -194,41 +218,23 @@ export function ExtraordinaryPeople() {
     else previous();
   }
 
-  const image = failedImages[person.name] ? null : person.image ?? images[person.name] ?? null;
-  const visibleDots = useMemo(() => {
-    const maxStart = Math.max(0, PEOPLE.length - 7);
-    const start = Math.min(Math.max(active - 3, 0), maxStart);
-    return Array.from({ length: Math.min(7, PEOPLE.length) }, (_, offset) => start + offset);
-  }, [active]);
+  const visibleDotPositions = useMemo(() => {
+    const maxStart = Math.max(0, availableIndexes.length - 7);
+    const start = Math.min(Math.max(currentPosition - 3, 0), maxStart);
+    return Array.from({ length: Math.min(7, availableIndexes.length) }, (_, offset) => start + offset);
+  }, [currentPosition, availableIndexes.length]);
+
+  if (!catalogueReady) {
+    return <section className="achievement-hero" aria-label="Loading extraordinary achievement spotlights"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>Loading inspiring stories…</h1><p className="achievement-lesson">Preparing the photo spotlight.</p></div></section>;
+  }
+
+  if (!availableIndexes.length || !image) {
+    return <section className="achievement-hero" aria-label="Extraordinary achievement spotlights"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>Inspiring people</h1><p className="achievement-lesson">Photos are temporarily unavailable. The spotlight will return automatically when they can be loaded.</p></div></section>;
+  }
 
   return (
-    <section
-      className="achievement-hero"
-      aria-label="Extraordinary achievement spotlight"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      style={{ touchAction: "pan-y" }}
-    >
-      {image ? (
-        <img
-          key={`${person.name}-${image}`}
-          src={image}
-          alt={`${person.name} — ${person.field}`}
-          className="achievement-hero-image achievement-hero-image-active"
-          style={{ objectPosition: person.position ?? "center 24%" }}
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          referrerPolicy="no-referrer"
-          onError={handleImageError}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" aria-hidden="true">
-          <div className="select-none text-center text-white/10">
-            <div className="text-[12vw] font-black leading-none sm:text-[9vw]">{person.badge ?? person.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</div>
-          </div>
-        </div>
-      )}
+    <section className="achievement-hero" aria-label="Extraordinary achievement spotlight" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ touchAction: "pan-y" }}>
+      <img key={`${person.name}-${image}`} src={image} alt={`${person.name} — ${person.field}`} className="achievement-hero-image achievement-hero-image-active" style={{ objectPosition: person.position ?? "center 24%" }} loading="eager" decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onError={handleImageError} />
       <div className="achievement-hero-shade" />
       <div className="achievement-hero-glow" />
 
@@ -245,9 +251,12 @@ export function ExtraordinaryPeople() {
         <button type="button" onClick={previous} aria-label="Previous achiever"><ChevronLeft size={18} /></button>
         <div className="flex items-center gap-3">
           <div className="achievement-dots" aria-label="Achievement position">
-            {visibleDots.map((index) => <button key={index} type="button" aria-label={`Show ${PEOPLE[index].name}`} onClick={() => setActive(index)} className={index === active ? "active" : ""} />)}
+            {visibleDotPositions.map((position) => {
+              const personIndex = availableIndexes[position];
+              return <button key={personIndex} type="button" aria-label={`Show ${PEOPLE[personIndex].name}`} onClick={() => setActive(personIndex)} className={personIndex === active ? "active" : ""} />;
+            })}
           </div>
-          <span className="min-w-[48px] text-right text-[11px] font-semibold tabular-nums text-white/65">{active + 1} / {PEOPLE.length}</span>
+          <span className="min-w-[48px] text-right text-[11px] font-semibold tabular-nums text-white/65">{currentPosition + 1} / {availableIndexes.length}</span>
         </div>
         <button type="button" onClick={next} aria-label="Next achiever"><ChevronRight size={18} /></button>
       </div>
