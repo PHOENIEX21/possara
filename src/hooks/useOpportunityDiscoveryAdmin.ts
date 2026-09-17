@@ -90,7 +90,7 @@ export function useDiscoveryCandidates() {
         .order("last_seen_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as DiscoveryCandidate[];
+      return (data ?? []) as unknown as DiscoveryCandidate[];
     },
   });
 }
@@ -106,7 +106,7 @@ export function useDiscoveryRuns() {
         .order("started_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data ?? []) as DiscoveryRun[];
+      return (data ?? []) as unknown as DiscoveryRun[];
     },
   });
 }
