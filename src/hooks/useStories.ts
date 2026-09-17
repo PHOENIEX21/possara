@@ -3,6 +3,8 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import type { Profile } from "../types/database";
 
+export type MomentBackground = "midnight" | "plum" | "sunset" | "ocean" | "emerald" | "gold";
+
 export interface StoryWithAuthor {
   id: string;
   author_id: string;
@@ -10,6 +12,13 @@ export interface StoryWithAuthor {
   storage_path: string | null;
   audience: "public" | "followers";
   caption: string | null;
+  story_type: "image" | "text";
+  text_body: string | null;
+  background_style: MomentBackground;
+  music_path: string | null;
+  music_mime_type: string | null;
+  music_title: string | null;
+  music_url?: string | null;
   created_at: string;
   expires_at: string;
   profiles: Pick<Profile, "full_name" | "avatar_url"> | null;
@@ -21,21 +30,43 @@ export interface AuthorWithStories {
   stories: StoryWithAuthor[];
 }
 
+export type PostStoryInput = {
+  imageFile?: File | null;
+  textBody?: string;
+  caption?: string;
+  musicFile?: File | null;
+  musicTitle?: string;
+  audience?: "public" | "followers";
+  backgroundStyle?: MomentBackground;
+};
+
+const ALLOWED_MUSIC = new Set(["audio/mpeg", "audio/mp4", "audio/webm", "audio/ogg", "audio/wav"]);
+
 async function attachSignedUrls(rows: StoryWithAuthor[]): Promise<StoryWithAuthor[]> {
-  return Promise.all(
-    rows.map(async (story) => {
-      if (!story.storage_path) return story;
-      const { data, error } = await supabase.storage.from("moments").createSignedUrl(story.storage_path, 60 * 10);
-      if (error) return { ...story, media_url: null };
-      return { ...story, media_url: data.signedUrl };
-    })
-  );
+  return Promise.all(rows.map(async (story) => {
+    let mediaUrl = story.media_url;
+    let musicUrl: string | null = null;
+
+    if (story.storage_path) {
+      const { data } = await supabase.storage.from("moments").createSignedUrl(story.storage_path, 60 * 10);
+      if (data?.signedUrl) mediaUrl = data.signedUrl;
+    }
+
+    if (story.music_path) {
+      const { data } = await supabase.storage.from("moment-music").createSignedUrl(story.music_path, 60 * 10);
+      if (data?.signedUrl) musicUrl = data.signedUrl;
+    }
+
+    return { ...story, media_url: mediaUrl, music_url: musicUrl };
+  }));
 }
 
 export function useActiveStories() {
+  const { userId } = useAuth();
   return useQuery({
-    queryKey: ["active-stories"],
-    refetchInterval: 60_000,
+    queryKey: ["active-stories", userId ?? "guest"],
+    refetchInterval: 45_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<AuthorWithStories[]> => {
       const { data, error } = await supabase
         .from("stories")
@@ -43,6 +74,7 @@ export function useActiveStories() {
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: true });
       if (error) throw error;
+
       const rows = await attachSignedUrls((data as StoryWithAuthor[] | null) ?? []);
       const byAuthor = new Map<string, AuthorWithStories>();
       rows.forEach((story) => {
@@ -61,6 +93,7 @@ export function useMyStories() {
   return useQuery({
     queryKey: ["my-stories", userId],
     enabled: !!userId,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<StoryWithAuthor[]> => {
       const { data, error } = await supabase
         .from("stories")
@@ -79,33 +112,79 @@ export function usePostStory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ imageFile, caption, audience = "public" }: { imageFile: File; caption: string; audience?: "public" | "followers" }) => {
+    mutationFn: async (input: PostStoryInput) => {
       if (!userId) throw new Error("Sign in to post a Moment.");
-      if (!imageFile.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use a JPG, PNG, or WebP image.");
-      if (imageFile.size > 8 * 1024 * 1024) throw new Error("Image must be 8 MB or smaller.");
+
+      const imageFile = input.imageFile ?? null;
+      const musicFile = input.musicFile ?? null;
+      const textBody = (input.textBody ?? input.caption ?? "").trim();
+      if (!imageFile && !textBody) throw new Error("Add a photo or write something for your Moment.");
+      if (textBody.length > 700) throw new Error("Moment text can be up to 700 characters.");
+
+      if (imageFile) {
+        if (!imageFile.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use a JPG, PNG, or WebP image.");
+        if (imageFile.size > 8 * 1024 * 1024) throw new Error("Moment image must be 8 MB or smaller.");
+      }
+
+      if (musicFile) {
+        if (!ALLOWED_MUSIC.has(musicFile.type)) throw new Error("Use MP3, M4A/MP4, WebM, OGG, or WAV audio.");
+        if (musicFile.size > 3 * 1024 * 1024) throw new Error("Moment music must be 3 MB or smaller.");
+      }
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) throw new Error("Your session expired. Sign in again before posting a Moment.");
 
-      const ext = imageFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("moments").upload(path, imageFile, {
-        contentType: imageFile.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (uploadError) throw new Error(`Moment upload failed: ${uploadError.message}`);
+      let imagePath: string | null = null;
+      let musicPath: string | null = null;
 
-      const { data, error } = await supabase
-        .from("stories")
-        .insert({ author_id: userId, storage_path: path, media_url: null, caption: caption || null, audience })
-        .select("id")
-        .single();
-      if (error) {
-        await supabase.storage.from("moments").remove([path]);
-        throw new Error(`Moment could not be published: ${error.message}`);
+      try {
+        if (imageFile) {
+          const ext = imageFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          imagePath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { error } = await supabase.storage.from("moments").upload(imagePath, imageFile, {
+            contentType: imageFile.type,
+            cacheControl: "3600",
+            upsert: false,
+          });
+          if (error) throw new Error(`Moment image upload failed: ${error.message}`);
+        }
+
+        if (musicFile) {
+          const ext = musicFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
+          musicPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { error } = await supabase.storage.from("moment-music").upload(musicPath, musicFile, {
+            contentType: musicFile.type,
+            cacheControl: "3600",
+            upsert: false,
+          });
+          if (error) throw new Error(`Moment music upload failed: ${error.message}`);
+        }
+
+        const { data, error } = await supabase
+          .from("stories")
+          .insert({
+            author_id: userId,
+            storage_path: imagePath,
+            media_url: null,
+            caption: null,
+            story_type: imageFile ? "image" : "text",
+            text_body: textBody || null,
+            background_style: input.backgroundStyle ?? "midnight",
+            music_path: musicPath,
+            music_mime_type: musicFile?.type ?? null,
+            music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
+            audience: input.audience ?? "public",
+          })
+          .select("id")
+          .single();
+
+        if (error) throw new Error(`Moment could not be published: ${error.message}`);
+        return data.id as string;
+      } catch (error) {
+        if (imagePath) await supabase.storage.from("moments").remove([imagePath]);
+        if (musicPath) await supabase.storage.from("moment-music").remove([musicPath]);
+        throw error;
       }
-      return data.id as string;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-stories"] });
@@ -125,10 +204,10 @@ export function useDeleteStory() {
       const { error: deleteRowError } = await supabase.from("stories").delete().eq("id", story.id).eq("author_id", userId);
       if (deleteRowError) throw new Error(`Moment could not be deleted: ${deleteRowError.message}`);
 
-      if (story.storage_path) {
-        const { error: storageError } = await supabase.storage.from("moments").remove([story.storage_path]);
-        if (storageError) throw new Error(`Moment was removed, but its image cleanup failed: ${storageError.message}`);
-      }
+      const cleanup: Promise<unknown>[] = [];
+      if (story.storage_path) cleanup.push(supabase.storage.from("moments").remove([story.storage_path]));
+      if (story.music_path) cleanup.push(supabase.storage.from("moment-music").remove([story.music_path]));
+      if (cleanup.length) await Promise.allSettled(cleanup);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-stories"] });
