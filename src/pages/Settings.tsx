@@ -4,6 +4,18 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
+import { DEFAULT_SOCIAL_PRIVACY, useSocialPrivacy, useUpdateSocialPrivacy } from "../hooks/useSocialPrivacy";
+import type { SocialPrivacy } from "../hooks/useSocialPrivacy";
+
+function PrivacyToggle({label,description,checked,onChange,disabled}:{label:string;description:string;checked:boolean;onChange:(value:boolean)=>void;disabled?:boolean}){
+  return <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-paper-dim bg-white p-4">
+    <span><span className="block text-sm font-semibold text-ink">{label}</span><span className="mt-1 block text-xs leading-5 text-ink-light">{description}</span></span>
+    <span className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${checked?"bg-brand":"bg-ink-faint/30"}`}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={e=>onChange(e.target.checked)} className="sr-only"/>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${checked?"left-[22px]":"left-0.5"}`}/>
+    </span>
+  </label>;
+}
 
 export function Settings(){
   const {email}=useAuth();
@@ -11,6 +23,11 @@ export function Settings(){
   const updateProfile=useUpdateOwnProfile();
   const avatarUpload=useAvatarUpload();
   const avatarInput=useRef<HTMLInputElement>(null);
+  const {data:privacy}=useSocialPrivacy();
+  const updatePrivacy=useUpdateSocialPrivacy();
+  const [privacyDraft,setPrivacyDraft]=useState<SocialPrivacy>(DEFAULT_SOCIAL_PRIVACY);
+  const [privacySuccess,setPrivacySuccess]=useState(false);
+  const [privacyError,setPrivacyError]=useState<string|null>(null);
   const [photoSuccess,setPhotoSuccess]=useState(false);
   const [birthdayMonth,setBirthdayMonth]=useState("");
   const [birthdayDay,setBirthdayDay]=useState("");
@@ -30,6 +47,8 @@ export function Settings(){
     setBirthdayDay(profile.birthday_day?String(profile.birthday_day):"");
     setBirthdayVisibility(profile.birthday_visibility??"followers");
   },[profile]);
+
+  useEffect(()=>{if(privacy)setPrivacyDraft(privacy);},[privacy]);
 
   async function handlePhoto(e:React.ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0];
@@ -52,6 +71,11 @@ export function Settings(){
     }catch(err){setBirthdayError((err as Error).message);}
   }
 
+  async function savePrivacy(){
+    setPrivacyError(null);setPrivacySuccess(false);
+    try{await updatePrivacy.mutateAsync(privacyDraft);setPrivacySuccess(true);}catch(err){setPrivacyError((err as Error).message);}
+  }
+
   async function handleChangePassword(e:React.FormEvent){
     e.preventDefault();setError(null);setSuccess(false);
     if(newPassword!==confirmPassword){setError("New passwords don't match.");return;}
@@ -66,7 +90,7 @@ export function Settings(){
     setSuccess(true);setCurrentPassword("");setNewPassword("");setConfirmPassword("");
   }
 
-  return <div className="max-w-prose pb-10">
+  return <div className="max-w-prose pb-28 md:pb-10">
     <h1 className="text-2xl">Settings</h1>
     <p className="mt-1 text-ink-light">Account, privacy, notifications, preferences and security.</p>
 
@@ -93,6 +117,19 @@ export function Settings(){
         {birthdaySuccess&&<p className="text-sm text-trust-dark">Birthday settings saved.</p>}
         <button type="submit" disabled={updateProfile.isPending} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{updateProfile.isPending?"Saving…":"Save birthday"}</button>
       </form>
+    </section>
+
+    <section className="mt-8 border-t border-paper-dim pt-6">
+      <h2 className="text-lg">Social privacy</h2>
+      <p className="mt-1 text-sm text-ink-light">Choose what other POSSARA members can see about your activity.</p>
+      <div className="mt-4 space-y-2">
+        <PrivacyToggle label="Show online status" description="Allow people you message to see when you are online or recently active." checked={privacyDraft.show_online_status} disabled={updatePrivacy.isPending} onChange={value=>{setPrivacySuccess(false);setPrivacyDraft(current=>({...current,show_online_status:value}));}}/>
+        <PrivacyToggle label="Share read receipts" description="Allow senders to see Seen when you have opened their messages. Your unread badge will still clear normally." checked={privacyDraft.send_read_receipts} disabled={updatePrivacy.isPending} onChange={value=>{setPrivacySuccess(false);setPrivacyDraft(current=>({...current,send_read_receipts:value}));}}/>
+        <PrivacyToggle label="Show my Moment views" description="Let a Moment owner see your name in their viewer list after you watch it." checked={privacyDraft.show_story_views} disabled={updatePrivacy.isPending} onChange={value=>{setPrivacySuccess(false);setPrivacyDraft(current=>({...current,show_story_views:value}));}}/>
+      </div>
+      {privacyError&&<p className="mt-3 text-sm text-flag">{privacyError}</p>}
+      {privacySuccess&&<p className="mt-3 text-sm text-trust-dark">Privacy settings saved.</p>}
+      <button type="button" onClick={savePrivacy} disabled={updatePrivacy.isPending} className="mt-4 rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{updatePrivacy.isPending?"Saving…":"Save privacy"}</button>
     </section>
 
     <section className="mt-8 border-t border-paper-dim pt-6"><h2 className="text-lg">Account</h2><p className="mt-1 text-sm text-ink-light">Signed in as {email}</p></section>
