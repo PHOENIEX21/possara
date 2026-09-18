@@ -100,7 +100,7 @@ export function PostComposer({
     return <>
       <div className="flex items-center gap-3 rounded-2xl border border-paper-dim bg-white px-4 py-3 shadow-sm">
         {avatar}
-        <button onClick={() => setExpanded(true)} className="flex-1 rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">
+        <button onClick={() => setExpanded(true)} className="min-w-0 flex-1 truncate rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">
           {placeholder ? placeholder : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
         </button>
         <label aria-label="Add photo" className="shrink-0 cursor-pointer text-trust-dark hover:text-trust">
