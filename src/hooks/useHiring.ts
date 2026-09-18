@@ -57,10 +57,7 @@ export function useSaveCbtQuestions(jobId:string){
 export function useCbtAttempt(applicationId:string|undefined){
  return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});
 }
-export function useSubmitCbt(_jobId:string,applicationId:string){
- const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{answers:Record<string,string>;startedAt:string})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers,p_started_at:input.startedAt});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
-}
+export function useStartCbt(applicationId:string){return useMutation({mutationFn:async()=>{const {data,error}=await supabase.rpc("start_job_cbt",{p_application_id:applicationId});if(error)throw error;return (data?.[0]??null) as {started_at:string;time_limit_seconds:number}|null;}});}\nexport function useSubmitCbt(_jobId:string,applicationId:string){\n const qc=useQueryClient();\n return useMutation({mutationFn:async(input:{answers:Record<string,string>})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});\n}
 export function useMyJobApplication(jobId:string|undefined){
  const {userId}=useAuth();
  return useQuery({queryKey:["my-job-application",jobId,userId],enabled:!!jobId&&!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*").eq("job_posting_id",jobId as string).eq("applicant_id",userId as string).maybeSingle();if(error)throw error;return data;}});
