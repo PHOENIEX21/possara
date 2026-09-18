@@ -256,7 +256,7 @@ export function ExtraordinaryPeople() {
               return <button key={personIndex} type="button" aria-label={`Show ${PEOPLE[personIndex].name}`} onClick={() => setActive(personIndex)} className={personIndex === active ? "active" : ""} />;
             })}
           </div>
-          <span className="min-w-[48px] text-right text-[11px] font-semibold tabular-nums text-white/65">{currentPosition + 1} / {availableIndexes.length}</span>
+          
         </div>
         <button type="button" onClick={next} aria-label="Next achiever"><ChevronRight size={18} /></button>
       </div>

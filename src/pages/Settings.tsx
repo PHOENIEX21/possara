@@ -6,6 +6,7 @@ import { useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { DEFAULT_SOCIAL_PRIVACY, useSocialPrivacy, useUpdateSocialPrivacy } from "../hooks/useSocialPrivacy";
 import type { SocialPrivacy } from "../hooks/useSocialPrivacy";
+import { InstallAppCard } from "../components/InstallAppCard";
 
 function PrivacyToggle({label,description,checked,onChange,disabled}:{label:string;description:string;checked:boolean;onChange:(value:boolean)=>void;disabled?:boolean}){
   return <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-paper-dim bg-white p-4">
@@ -133,6 +134,8 @@ export function Settings(){
     </section>
 
     <section className="mt-8 border-t border-paper-dim pt-6"><h2 className="text-lg">Account</h2><p className="mt-1 text-sm text-ink-light">Signed in as {email}</p></section>
+
+    <InstallAppCard/>
 
     <section className="mt-8 border-t border-paper-dim pt-6">
       <h2 className="text-lg">Security</h2><p className="mt-1 text-sm text-ink-light">Changing your password requires your current password.</p>
