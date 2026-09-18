@@ -22,7 +22,7 @@ export function useOpportunities({ limit = 20, categorySlug, categorySlugs }: Us
         if (!categoryIds.length) return [];
       }
       const nowIso = new Date().toISOString();
-      let query = supabase.from("opportunities").select("*, organizations(name, verified, is_sponsored), opportunity_categories(name, icon, color), opportunity_candidates(opportunity_sources(name,verified_source,trust_tier,last_success_at))").eq("status", "active").or(`deadline.is.null,deadline.gte.${nowIso}`).order("created_at", { ascending: false }).limit(limit);
+      let query = supabase.from("opportunities").select("*, organizations(name, verified, is_sponsored), opportunity_categories(name, icon, color)").eq("status", "active").or(`deadline.is.null,deadline.gte.${nowIso}`).order("created_at", { ascending: false }).limit(limit);
       if (categoryIds) query = query.in("category_id", categoryIds);
       const { data, error } = await query;
       if (error) throw error;
@@ -32,5 +32,5 @@ export function useOpportunities({ limit = 20, categorySlug, categorySlugs }: Us
 }
 
 export function useOpportunity(id: string | undefined) {
-  return useQuery({ queryKey: ["opportunity", id], enabled: !!id, queryFn: async (): Promise<OpportunityWithOrg | null> => { const { data, error } = await supabase.from("opportunities").select("*, organizations(name, verified, is_sponsored), opportunity_categories(name, icon, color), opportunity_candidates(opportunity_sources(name,verified_source,trust_tier,last_success_at))").eq("id", id as string).single(); if (error) throw error; return data as OpportunityWithOrg; } });
+  return useQuery({ queryKey: ["opportunity", id], enabled: !!id, queryFn: async (): Promise<OpportunityWithOrg | null> => { const { data, error } = await supabase.from("opportunities").select("*, organizations(name, verified, is_sponsored), opportunity_categories(name, icon, color)").eq("id", id as string).single(); if (error) throw error; return data as OpportunityWithOrg; } });
 }
