@@ -14,18 +14,26 @@ const PRIMARY = [
 const OPPS = [{to:"/jobs",label:"Jobs",icon:Briefcase},{to:"/scholarships",label:"Scholarships",icon:GraduationCap},{to:"/admissions",label:"Admissions",icon:School}];
 function LinkRow({to,label,Icon,onClick}:{to:string;label:string;Icon:typeof HomeIcon;onClick?:()=>void}){return <NavLink to={to} end={to==="/"} onClick={onClick} className={({isActive})=>`nav-row ${isActive?"nav-row-active":""}`}><Icon size={19}/><span>{label}</span></NavLink>}
 
-function EntryExperience(){
- const {userId,loading}=useAuth();
- const [visible,setVisible]=useState(false);
- const [leaving,setLeaving]=useState(false);
- useEffect(()=>{ if(loading)return; setLeaving(false); if(userId){ const key="possara-signed-in-entry-seen"; if(sessionStorage.getItem(key))return; sessionStorage.setItem(key,"1"); setVisible(true); const leaveTimer=window.setTimeout(()=>setLeaving(true),2600); const closeTimer=window.setTimeout(()=>setVisible(false),3300); return()=>{window.clearTimeout(leaveTimer);window.clearTimeout(closeTimer)}; } if(sessionStorage.getItem("possara-guest-welcome-dismissed"))return; setVisible(true); },[loading,userId]);
- function enterAsGuest(){ sessionStorage.setItem("possara-guest-welcome-dismissed","1"); setLeaving(true); window.setTimeout(()=>setVisible(false),500); }
- if(!visible)return null;
- const guest=!userId;
- return <div className={`fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#11101a] px-6 text-white transition-opacity duration-700 ${leaving?"opacity-0":"opacity-100"}`} role="dialog" aria-modal="true" aria-label={guest?"Welcome to POSSARA":"Opening POSSARA"}>
-  <style>{`@keyframes possaraFloat{0%,100%{transform:translate3d(0,2px,0) rotate(-1.5deg)}50%{transform:translate3d(0,-17px,0) rotate(1.5deg)}}@keyframes possaraOrbit{from{transform:rotate(0deg) translateX(67px) rotate(0deg)}to{transform:rotate(360deg) translateX(67px) rotate(-360deg)}}@keyframes possaraWord{0%{opacity:0;transform:translateY(16px);letter-spacing:.38em}100%{opacity:1;transform:translateY(0);letter-spacing:.14em}}@keyframes possaraReveal{0%{opacity:0;transform:translateY(13px)}100%{opacity:1;transform:translateY(0)}}@keyframes possaraGlow{0%,100%{opacity:.28;transform:scale(.9)}50%{opacity:.72;transform:scale(1.12)}}`}</style>
-  <div className="pointer-events-none absolute inset-0"><div className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/10 blur-3xl" style={{animation:"possaraGlow 3.4s ease-in-out infinite"}}/><div className="absolute left-1/2 top-1/2 h-2 w-2 rounded-full bg-white/80 shadow-[0_0_22px_rgba(255,255,255,.65)]" style={{animation:"possaraOrbit 5s linear infinite"}}/><div className="absolute left-[22%] top-[27%] h-1.5 w-1.5 rounded-full bg-white/35"/><div className="absolute right-[19%] top-[34%] h-2 w-2 rounded-full bg-violet-300/45"/><div className="absolute bottom-[23%] left-[30%] h-1 w-1 rounded-full bg-white/45"/></div>
-  <div className="relative flex w-full max-w-md flex-col items-center text-center"><div className="flex h-28 w-28 items-center justify-center rounded-[2.2rem] border border-white/10 bg-white/[.06] shadow-2xl backdrop-blur-md" style={{animation:"possaraFloat 3.4s ease-in-out infinite"}}><BrandMark className="h-[72px] w-[72px] text-white"/></div><p className="mt-7 text-[11px] font-semibold uppercase text-white/45" style={{animation:"possaraWord 1.15s .15s both"}}>POSSARA</p><div style={{animation:"possaraReveal .9s .65s both"}}><h1 className="mt-3 text-2xl font-bold leading-tight sm:text-3xl">{guest?"Welcome to a world of possibilities.":"Welcome back."}</h1><p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-white/60">{guest?"Discover people, opportunities, learning and ideas that can move you forward.":"Your people, opportunities and progress are ready."}</p></div>{guest?<div className="mt-8 w-full space-y-3" style={{animation:"possaraReveal .9s 1.05s both"}}><NavLink to="/signin" onClick={enterAsGuest} className="flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-[#171128] shadow-xl transition hover:-translate-y-0.5">Sign in</NavLink><NavLink to="/signin?mode=signup" onClick={enterAsGuest} className="flex w-full items-center justify-center rounded-full border border-white/20 bg-white/[.06] px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/[.1]">Join POSSARA</NavLink><button type="button" onClick={enterAsGuest} className="px-4 py-2 text-xs font-medium text-white/55 hover:text-white">Explore first</button></div>:<div className="mt-7 flex items-center gap-2 text-xs font-medium text-white/45" style={{animation:"possaraReveal .8s 1s both"}}><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-300"/>Opening your POSSARA…</div>}</div>
+function SessionTransition(){
+ const [kind,setKind]=useState<"signup"|"logout"|null>(null);
+ useEffect(()=>{
+   const value=sessionStorage.getItem("possara-transition");
+   if(value!=="signup"&&value!=="logout")return;
+   sessionStorage.removeItem("possara-transition");
+   setKind(value);
+   const timer=window.setTimeout(()=>setKind(null),2200);
+   return()=>window.clearTimeout(timer);
+ },[]);
+ if(!kind)return null;
+ const signup=kind==="signup";
+ return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#11101a] px-6 text-white" role="status" aria-live="polite">
+   <style>{`@keyframes possaraOnce{0%{opacity:0;transform:scale(.88) translateY(10px)}35%{opacity:1;transform:scale(1.03) translateY(0)}75%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.98)}}`}</style>
+   <div className="flex flex-col items-center text-center" style={{animation:"possaraOnce 2.15s ease both"}}>
+     <div className="flex h-28 w-28 items-center justify-center rounded-[2.2rem] border border-white/10 bg-white/[.06] shadow-2xl"><BrandMark className="h-[72px] w-[72px] text-white"/></div>
+     <p className="mt-6 text-[11px] font-semibold uppercase tracking-[.16em] text-white/50">POSSARA</p>
+     <h1 className="mt-2 text-2xl font-bold">{signup?"Welcome to POSSARA.":"See you again."}</h1>
+     <p className="mt-2 max-w-xs text-sm leading-6 text-white/60">{signup?"Your account is ready. Start discovering people, growth and opportunities.":"Your POSSARA session has ended securely."}</p>
+   </div>
  </div>;
 }
 
@@ -34,9 +42,9 @@ export function AppLayout(){
  usePresenceHeartbeat();
  const isHome=location.pathname==="/";
  const isAdmin=role==="admin"&&isVerified;
- async function logout(){setOpen(false);sessionStorage.removeItem("possara-signed-in-entry-seen");sessionStorage.removeItem("possara-guest-welcome-dismissed");await signOut();window.location.replace("/signin")}
+ async function logout(){setOpen(false);sessionStorage.setItem("possara-transition","logout");await signOut();window.location.replace("/signin")}
  return <div className="min-h-screen bg-paper">
-  <EntryExperience/>
+  <SessionTransition/>
   <header className="app-header"><div className="app-header-inner"><NavLink to="/" className="brand-lockup"><BrandMark/><span>POSSARA</span></NavLink><NavLink to="/search" className="desktop-search"><Search size={17}/><span>Search POSSARA</span><kbd>/</kbd></NavLink><div className="header-actions"><NavLink to="/search" aria-label="Search"><Search size={20}/></NavLink>{userId&&<><NavLink to="/messages" className="relative" aria-label="Messages"><MessageCircle size={20}/>{!!unreadMessages&&unreadMessages>0&&<i/>}</NavLink><NavLink to="/notifications" className="relative" aria-label="Notifications"><Bell size={20}/>{!!unreadCount&&unreadCount>0&&<i/>}</NavLink></>}{!userId&&<NavLink to="/signin" className="signin-pill">Sign in</NavLink>}<button onClick={()=>setOpen(!open)} className="mobile-menu-btn" aria-label="Menu">{open?<X/>:<Menu/>}</button></div></div></header>
   {isHome&&<><section className="possara-welcome" aria-label="Welcome to POSSARA"><div className="possara-welcome-inner"><div className="possara-welcome-mark"><Sparkles size={18}/></div><div><p className="possara-welcome-kicker">Welcome to POSSARA</p><h1>See what is possible. Find what moves you forward.</h1><p className="possara-welcome-copy">Discover inspiring people, real opportunities, useful learning and a community built around growth.</p></div></div></section><ExtraordinaryPeople/></>}
   {open&&<div className="mobile-drawer"><div className="mobile-drawer-card overflow-y-auto pb-24">{PRIMARY.map(i=><LinkRow key={i.to} to={i.to} label={i.label} Icon={i.icon} onClick={()=>setOpen(false)}/>)}<p className="drawer-label">Learn & grow</p><LinkRow to="/study" label="POSSARA Study" Icon={BookOpen} onClick={()=>setOpen(false)}/><LinkRow to="/plus" label="POSSARA+" Icon={Crown} onClick={()=>setOpen(false)}/><p className="drawer-label">Explore opportunities</p>{OPPS.map(i=><LinkRow key={i.to} to={i.to} label={i.label} Icon={i.icon} onClick={()=>setOpen(false)}/>)}{userId&&<><p className="drawer-label">Your progress</p><LinkRow to="/applications" label="Applications" Icon={Briefcase} onClick={()=>setOpen(false)}/><LinkRow to="/passport" label="Growth Passport" Icon={Sparkles} onClick={()=>setOpen(false)}/><p className="drawer-label">Your account</p>{isAdmin&&<><LinkRow to="/admin" label="Admin" Icon={ShieldCheck} onClick={()=>setOpen(false)}/><LinkRow to="/admin/opportunity-discovery" label="Opportunity engine" Icon={Radar} onClick={()=>setOpen(false)}/></>}<LinkRow to="/messages" label="Messages" Icon={MessageCircle} onClick={()=>setOpen(false)}/><LinkRow to="/notifications" label="Notifications" Icon={Bell} onClick={()=>setOpen(false)}/><LinkRow to="/saved" label="Saved" Icon={Bookmark} onClick={()=>setOpen(false)}/><LinkRow to="/settings" label="Settings" Icon={SettingsIcon} onClick={()=>setOpen(false)}/><button onClick={logout} className="nav-row w-full"><LogOut size={19}/>Sign out</button></>}</div></div>}
