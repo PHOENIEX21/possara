@@ -9,6 +9,7 @@ import type { Profile, Organization } from "../types/database";
 import { MemberFollowButton } from "../components/MemberFollowButton";
 import { useSkillDirectory } from "../hooks/useSkillDirectory";
 import { FriendSuggestions } from "../components/FriendSuggestions";
+import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 
 const PROFESSIONS: { label: string; keywords: string[] }[] = [
   { label: "Tutor / Teacher", keywords: ["tutor", "teacher", "teach", "education", "educator", "lesson", "mathematics", "english", "science"] },
@@ -125,7 +126,7 @@ export function Connect(){
       </div>
     </>}
 
-    {tab==="organizations"&&<div className="grid gap-3 sm:grid-cols-2">{filteredOrgs?.map(org=><Link key={org.id} to={`/organizations/${org.slug}`} className="flex items-start gap-3 rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">{org.logo_url?<img src={org.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div><p className="font-medium">{org.name}{org.verified&&<span className="ml-2 text-xs text-trust-dark">Verified</span>}</p>{org.description&&<p className="mt-1 line-clamp-2 text-xs text-ink-light">{org.description}</p>}</div></Link>)}</div>}
+    {tab==="organizations"&&<div className="grid gap-3 sm:grid-cols-2">{filteredOrgs?.map(org=><Link key={org.id} to={`/organizations/${org.slug}`} className="flex items-start gap-3 rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">{org.logo_url?<img src={org.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div><p className="font-medium">{org.name}{org.verified&&<OrganizationVerificationBadge compact/>}</p>{org.description&&<p className="mt-1 line-clamp-2 text-xs text-ink-light">{org.description}</p>}</div></Link>)}</div>}
     {photo&&<ProfilePhotoViewer src={photo.src} name={photo.name} onClose={()=>setPhoto(null)}/>} 
   </div>;
 }
