@@ -16,10 +16,10 @@ interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
-  { value: "inspire", label: "Inspire", help: "Encouragement, lessons, motivation and experiences that can move someone forward." },
-  { value: "care", label: "Care", help: "Support, kindness, thoughtful advice and community-minded conversations." },
-  { value: "talent", label: "Talent", help: "Skills, creative work, projects, achievements and things worth showing." },
-  { value: "business", label: "Business", help: "Products, services, businesses, portfolios and useful offers. Paid campaigns remain separate." },
+  { value: "motivation", label: "Motivation", help: "Motivation, lessons and experiences that can help someone keep moving forward." },
+  { value: "encouragement", label: "Encouragement", help: "Positive support, hope and words that strengthen someone." },
+  { value: "advice", label: "Advice", help: "Practical guidance, lessons learned and thoughtful suggestions." },
+  { value: "uplifting", label: "Uplifting", help: "Positive achievements, gratitude and stories that can brighten someone’s day." },
 ] as const;
 
 export function PostComposer({
@@ -137,8 +137,8 @@ export function PostComposer({
       {showHomeTopicPicker && !categoryId && (
         <div className="mb-4">
           <div className="mb-3">
-            <p className="text-sm font-semibold text-ink">Add a topic if it helps</p>
-            <p className="mt-1 text-xs text-ink-faint">Optional. Business posts also appear in the Business community inside Advertise.</p>
+            <p className="text-sm font-semibold text-ink">What kind of Home post is this?</p>
+            <p className="mt-1 text-xs text-ink-faint">Optional, but choosing one helps people understand what you are sharing.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {HOME_TOPICS.map((item) => (

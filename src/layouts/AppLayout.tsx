@@ -13,7 +13,7 @@ const PRIMARY = [
  {to:"/",label:"Home",icon:HomeIcon}, {to:"/opportunities",label:"Opportunities",icon:Compass}, {to:"/connect",label:"Connect",icon:Users}, {to:"/profile/me",label:"Profile",icon:User},
 ];
 const OPPS = [{to:"/jobs",label:"Jobs",icon:Briefcase},{to:"/scholarships",label:"Scholarships",icon:GraduationCap},{to:"/admissions",label:"Admissions",icon:School}];
-function LinkRow({to,label,Icon,onClick}:{to:string;label:string;Icon:typeof HomeIcon;onClick?:()=>void}){return <NavLink to={to} end={to==="/"} onClick={onClick} className={({isActive})=>`nav-row ${isActive?"nav-row-active":""}`}><Icon size={19}/><span>{label}</span></NavLink>}
+function LinkRow({to,label,Icon,onClick}:{to:string;label:string;Icon:typeof HomeIcon;onClick?:()=>void}){const location=useLocation();function activate(){if(to==="/"&&location.pathname==="/")window.scrollTo({top:0,behavior:"smooth"});onClick?.();}return <NavLink to={to} end={to==="/"} onClick={activate} className={({isActive})=>`nav-row ${isActive?"nav-row-active":""}`}><Icon size={19}/><span>{label}</span></NavLink>}
 
 function EntryExperience(){
   const [transition,setTransition]=useState<"signup"|"logout"|null>(null);

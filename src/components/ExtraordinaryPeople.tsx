@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 type Person = {
   name: string;
@@ -248,7 +248,7 @@ export function ExtraordinaryPeople() {
       </div>
 
       <div className="achievement-controls">
-        <button type="button" onClick={previous} aria-label="Previous achiever"><ChevronLeft size={18} /></button>
+        
         <div className="flex items-center gap-3">
           <div className="achievement-dots" aria-label="Achievement position">
             {visibleDotPositions.map((position) => {
@@ -258,7 +258,7 @@ export function ExtraordinaryPeople() {
           </div>
           
         </div>
-        <button type="button" onClick={next} aria-label="Next achiever"><ChevronRight size={18} /></button>
+        
       </div>
     </section>
   );
