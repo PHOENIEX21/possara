@@ -113,14 +113,25 @@ export function useActiveStories() {
     refetchInterval: 45_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<AuthorWithStories[]> => {
+      // Keep the Moment query independent from PostgREST relationship inference.
+      // A relationship error here used to make a successfully published Moment
+      // disappear from the bar, even though the story row and storage object existed.
       const { data, error } = await supabase
         .from("stories")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*")
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      const rows = await attachSignedUrls((data as StoryWithAuthor[] | null) ?? []);
+      const rawRows = (data ?? []) as Omit<StoryWithAuthor, "profiles">[];
+      const authorIds = [...new Set(rawRows.map((story) => story.author_id).filter(Boolean))];
+      const { data: profiles, error: profileError } = authorIds.length
+        ? await supabase.from("profiles").select("id,full_name,avatar_url").in("id", authorIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const hydrated = rawRows.map((story) => ({ ...story, profiles: profileById.get(story.author_id) ?? null })) as StoryWithAuthor[];
+      const rows = await attachSignedUrls(hydrated);
       const byAuthor = new Map<string, AuthorWithStories>();
       rows.forEach((story) => {
         if (!byAuthor.has(story.author_id)) byAuthor.set(story.author_id, { authorId: story.author_id, author: story.profiles, stories: [] });
@@ -140,12 +151,19 @@ export function useMyStories() {
     queryFn: async (): Promise<StoryWithAuthor[]> => {
       const { data, error } = await supabase
         .from("stories")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*")
         .eq("author_id", userId as string)
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return attachSignedUrls((data as StoryWithAuthor[]) ?? []);
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id,full_name,avatar_url")
+        .eq("id", userId as string)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      const hydrated = ((data ?? []) as Omit<StoryWithAuthor, "profiles">[]).map((story) => ({ ...story, profiles: profile ?? null })) as StoryWithAuthor[];
+      return attachSignedUrls(hydrated);
     },
   });
 }
