@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Briefcase, MapPin, Search } from "lucide-react";
+import { Briefcase, Building2, MapPin, Search, ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useHiringJobs } from "../hooks/useHiring";
 import { useOpportunities } from "../hooks/useOpportunities";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { OpportunityCard } from "../components/OpportunityCard";
@@ -18,6 +20,7 @@ function matchesWorkStyle(location: string | null, tags: string[] | null, style:
 export function Jobs() {
   const { data: opportunities, isLoading, error } = useOpportunities({ limit: 100, categorySlug: "jobs" });
   const { data: communityPosts } = useFeedPosts({ categorySlug: "jobs" });
+  const { data: nativeJobs, isLoading: nativeLoading, error: nativeError } = useHiringJobs();
   const [locationQuery, setLocationQuery] = useState("");
   const [workStyle, setWorkStyle] = useState<WorkStyle>("all");
 
@@ -66,6 +69,13 @@ export function Jobs() {
           ))}
           {!isLoading && !error && <span className="ml-auto text-xs text-ink-faint">{filtered.length} live {filtered.length === 1 ? "role" : "roles"}</span>}
         </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-end justify-between gap-3"><div><p className="eyebrow">Apply inside POSSARA</p><h2 className="text-xl font-bold">Jobs from registered organizations</h2></div><Link to="/organizations/manage" className="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold"><Building2 size={13}/>I&apos;m hiring</Link></div>
+        {nativeLoading&&<div className="feed-skeleton"/>}
+        {nativeError&&<p className="text-flag">Couldn&apos;t load organization jobs right now.</p>}
+        <div className="space-y-3">{nativeJobs?.map(job=><Link key={job.id} to={"/jobs/"+job.id} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><h3 className="font-bold">{job.title}</h3><p className="text-sm text-ink-light">{job.organizations?.name} · {job.location}</p><div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold"><span className="rounded-full bg-brand-light px-2 py-1 text-brand-dark">{job.employment_type} · {job.work_style}</span><span className="rounded-full bg-paper-dim px-2 py-1">{job.rank}</span>{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-opportunity-dark">CBT</span>}{(job.organizations?.verified||job.organizations?.verification_status==="verified")&&<span className="inline-flex items-center gap-1 rounded-full bg-trust-light px-2 py-1 text-trust-dark"><ShieldCheck size={11}/>Verified</span>}</div></div></div></Link>)}</div>
       </section>
 
       <div>

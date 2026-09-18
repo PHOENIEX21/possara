@@ -23,6 +23,17 @@ import { PostDetail } from "./pages/PostDetail";
 import { Profile } from "./pages/Profile";
 import { Organizations } from "./pages/Organizations";
 import { OrganizationPage } from "./pages/OrganizationPage";
+import { OrganizationRegister } from "./pages/OrganizationRegister";
+import { OrganizationManage } from "./pages/OrganizationManage";
+import { JobDetail } from "./pages/JobDetail";
+import { JobApply } from "./pages/JobApply";
+import { JobApplicants } from "./pages/JobApplicants";
+import { JobCbt } from "./pages/JobCbt";
+import { JobCbtBuilder } from "./pages/JobCbtBuilder";
+import { JobApplicantReview } from "./pages/JobApplicantReview";
+import { JobInterviewBuilder } from "./pages/JobInterviewBuilder";
+import { OrganizationTeam } from "./pages/OrganizationTeam";
+import { OrganizationSettings } from "./pages/OrganizationSettings";
 import { SearchPage } from "./pages/SearchPage";
 import { Notifications } from "./pages/Notifications";
 import { Messages } from "./pages/Messages";
@@ -71,6 +82,7 @@ export default function App() {
               <Route path="/contribute" element={<Contribute />} />
               <Route path="/opportunities" element={<Opportunities />} />
               <Route path="/jobs" element={<Jobs />} />
+              <Route path="/jobs/:id" element={<JobDetail />} />
               <Route path="/scholarships" element={<Scholarships />} />
               <Route path="/competitions" element={<Competitions />} />
               <Route path="/admissions" element={<Admissions />} />
@@ -87,6 +99,16 @@ export default function App() {
 
               <Route element={<RequireAuth />}>
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/organizations/register" element={<OrganizationRegister />} />
+                <Route path="/organizations/manage" element={<OrganizationManage />} />
+                <Route path="/organizations/:id/team" element={<OrganizationTeam />} />
+                <Route path="/organizations/:id/settings" element={<OrganizationSettings />} />
+                <Route path="/jobs/:id/apply" element={<JobApply />} />
+                <Route path="/jobs/:id/cbt" element={<JobCbt />} />
+                <Route path="/organizations/jobs/:id/applicants" element={<JobApplicants />} />
+                <Route path="/organizations/jobs/:id/applicants/:applicationId" element={<JobApplicantReview />} />
+                <Route path="/organizations/jobs/:id/cbt" element={<JobCbtBuilder />} />
+                <Route path="/organizations/jobs/:id/interview" element={<JobInterviewBuilder />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/messages/:userId" element={<Messages />} />
                 <Route path="/saved" element={<Saved />} />

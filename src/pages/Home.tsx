@@ -32,7 +32,7 @@ export function Home(){
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
 
   return <div className="feed-layout">
-    <div className="feed-column">
+    <div className="feed-column">\n      <section className="rounded-3xl bg-ink p-5 text-white"><p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/55">POSSARA community</p><h1 className="mt-2 text-2xl font-bold">Grow through what people share.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-white/65">Encouragement, useful advice and real experiences from people helping one another move forward.</p></section>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
@@ -47,7 +47,7 @@ export function Home(){
 
 
       <section className="home-feed-heading home-feed-heading-premium">
-        <div><p className="eyebrow">Home community</p><h2>Encouragement with purpose</h2><p>Motivation, useful advice and uplifting experiences from people in the POSSARA community.</p></div>
+        <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Motivation, useful advice and uplifting experiences from people in the POSSARA community.</p></div>
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 

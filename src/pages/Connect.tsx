@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Building2, Sparkles, GraduationCap, BriefcaseBusiness } from "lucide-react";
+import { Search, Users, Building2, Sparkles, GraduationCap } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useOwnProfile } from "../hooks/useProfile";
@@ -9,6 +9,7 @@ import type { Profile, Organization } from "../types/database";
 import { MemberFollowButton } from "../components/MemberFollowButton";
 import { useSkillDirectory } from "../hooks/useSkillDirectory";
 import { FriendSuggestions } from "../components/FriendSuggestions";
+import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 
 const PROFESSIONS: { label: string; keywords: string[] }[] = [
   { label: "Tutor / Teacher", keywords: ["tutor", "teacher", "teach", "education", "educator", "lesson", "mathematics", "english", "science"] },
@@ -85,13 +86,8 @@ export function Connect(){
   const filteredOrgs=organizations?.filter(o=>!query.trim()||o.name.toLowerCase().includes(query.toLowerCase())||o.description?.toLowerCase().includes(query.toLowerCase()));
 
   return <div className="page-stack">
-    <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div><h1 className="text-2xl">Connect</h1><p className="mt-1 text-ink-light">Find people to follow, tutors, mentors, skilled people and organizations worth knowing.</p></div>
-      <Link to="/opportunities" className="inline-flex w-fit items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark"><BriefcaseBusiness size={16}/>Match Opportunities</Link>
-    </section>
-
-    <div className="rounded-2xl border border-brand/15 bg-brand-light/40 p-4">
-      <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link><Link to="/opportunities" className="text-sm font-medium text-brand-dark hover:underline">Find opportunities for me →</Link></div></div></div>
+    <section><p className="eyebrow">People &amp; relationships</p><h1 className="text-2xl">Connect</h1><p className="mt-1 text-ink-light">Find people to follow, tutors, mentors, skilled people and organizations worth knowing.</p></section>\n\n    <div className="rounded-2xl border border-brand/15 bg-brand-light/40 p-4">
+      <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link></div></div></div>
     </div>
 
     <FriendSuggestions/>
@@ -125,7 +121,7 @@ export function Connect(){
       </div>
     </>}
 
-    {tab==="organizations"&&<div className="grid gap-3 sm:grid-cols-2">{filteredOrgs?.map(org=><Link key={org.id} to={`/organizations/${org.slug}`} className="flex items-start gap-3 rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">{org.logo_url?<img src={org.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div><p className="font-medium">{org.name}{org.verified&&<span className="ml-2 text-xs text-trust-dark">Verified</span>}</p>{org.description&&<p className="mt-1 line-clamp-2 text-xs text-ink-light">{org.description}</p>}</div></Link>)}</div>}
+    {tab==="organizations"&&<div className="grid gap-3 sm:grid-cols-2">{filteredOrgs?.map(org=><Link key={org.id} to={`/organizations/${org.slug}`} className="flex items-start gap-3 rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">{org.logo_url?<img src={org.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div><p className="font-medium">{org.name}{org.verified&&<OrganizationVerificationBadge compact/>}</p>{org.description&&<p className="mt-1 line-clamp-2 text-xs text-ink-light">{org.description}</p>}</div></Link>)}</div>}
     {photo&&<ProfilePhotoViewer src={photo.src} name={photo.name} onClose={()=>setPhoto(null)}/>} 
   </div>;
 }
