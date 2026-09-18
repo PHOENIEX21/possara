@@ -31,6 +31,7 @@ import { JobApplicants } from "./pages/JobApplicants";
 import { JobCbt } from "./pages/JobCbt";
 import { JobCbtBuilder } from "./pages/JobCbtBuilder";
 import { JobApplicantReview } from "./pages/JobApplicantReview";
+import { JobInterviewBuilder } from "./pages/JobInterviewBuilder";
 import { SearchPage } from "./pages/SearchPage";
 import { Notifications } from "./pages/Notifications";
 import { Messages } from "./pages/Messages";
@@ -103,6 +104,7 @@ export default function App() {
                 <Route path="/organizations/jobs/:id/applicants" element={<JobApplicants />} />
                 <Route path="/organizations/jobs/:id/applicants/:applicationId" element={<JobApplicantReview />} />
                 <Route path="/organizations/jobs/:id/cbt" element={<JobCbtBuilder />} />
+                <Route path="/organizations/jobs/:id/interview" element={<JobInterviewBuilder />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/messages/:userId" element={<Messages />} />
                 <Route path="/saved" element={<Saved />} />
