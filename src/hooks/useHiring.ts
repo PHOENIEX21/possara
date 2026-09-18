@@ -88,3 +88,8 @@ export function useInviteOrganizationMember(organizationId:string){
  const qc=useQueryClient();
  return useMutation({mutationFn:async(input:{username:string;role:"recruiter"|"viewer"})=>{const username=input.username.trim().replace(/^@/,"");const {data:profile,error:pError}=await supabase.from("profiles").select("id,username").ilike("username",username).maybeSingle();if(pError)throw pError;if(!profile)throw new Error("No POSSARA account was found with that username.");const {error}=await supabase.from("organization_members").insert({organization_id:organizationId,user_id:profile.id,role:input.role,invited_at:new Date().toISOString(),joined_at:new Date().toISOString()});if(error?.code==="23505")throw new Error("That person is already on this organization team.");if(error)throw error;return profile;},onSuccess:()=>qc.invalidateQueries({queryKey:["organization-members",organizationId]})});
 }
+
+export function useUpdateOrganization(organizationId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{logo_url?:string|null;description?:string;location?:string;website?:string|null})=>{const {data,error}=await supabase.from("organizations").update(input).eq("id",organizationId).select("*").single();if(error)throw error;return data;},onSuccess:()=>{qc.invalidateQueries({queryKey:["my-organizations"]});qc.invalidateQueries({queryKey:["organization"]});}});
+}
