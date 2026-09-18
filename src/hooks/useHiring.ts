@@ -78,10 +78,13 @@ export function useSaveInterviewQuestions(jobId:string){
  return useMutation({mutationFn:async(rows:string[])=>{const {error:del}=await supabase.from("interview_questions").delete().eq("job_posting_id",jobId);if(del)throw del;if(rows.length){const {error}=await supabase.from("interview_questions").insert(rows.map((question_text,i)=>({job_posting_id:jobId,question_text,answer_type:"short_text",required:true,sort_order:i})));if(error)throw error;}},onSuccess:()=>qc.invalidateQueries({queryKey:["interview-questions",jobId]})});
 }
 
-export function useOrganizationMembers(organizationId:string|undefined){
- return useQuery({queryKey:["organization-members",organizationId],enabled:!!organizationId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("id,user_id,role,invited_at,joined_at,profiles:profiles!organization_members_user_id_fkey(full_name,username,avatar_url)").eq("organization_id",organizationId as string).order("joined_at");if(error)throw error;return data??[];}});
-}
+export function useOrganizationMembers(organizationId:string|undefined){\n return useQuery({queryKey:["organization-members",organizationId],enabled:!!organizationId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("id,user_id,role,invited_at,joined_at").eq("organization_id",organizationId as string).order("joined_at");if(error)throw error;const ids=(data??[]).map(m=>m.user_id);if(!ids.length)return [];const {data:profiles,error:pError}=await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id",ids);if(pError)throw pError;const byId=new Map((profiles??[]).map(p=>[p.id,p]));return (data??[]).map(m=>({...m,profile:byId.get(m.user_id)??null}));}});\n}
 export function useManageOrganizationMember(organizationId:string){
  const qc=useQueryClient();
  return useMutation({mutationFn:async(input:{memberId:string;role:"owner"|"recruiter"|"viewer"}|{memberId:string;remove:true})=>{if("remove" in input){const {error}=await supabase.from("organization_members").delete().eq("id",input.memberId);if(error)throw error;}else{const {error}=await supabase.from("organization_members").update({role:input.role}).eq("id",input.memberId);if(error)throw error;}},onSuccess:()=>qc.invalidateQueries({queryKey:["organization-members",organizationId]})});
+}
+
+export function useInviteOrganizationMember(organizationId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{username:string;role:"recruiter"|"viewer"})=>{const username=input.username.trim().replace(/^@/,"");const {data:profile,error:pError}=await supabase.from("profiles").select("id,username").ilike("username",username).maybeSingle();if(pError)throw pError;if(!profile)throw new Error("No POSSARA account was found with that username.");const {error}=await supabase.from("organization_members").insert({organization_id:organizationId,user_id:profile.id,role:input.role,invited_at:new Date().toISOString(),joined_at:new Date().toISOString()});if(error?.code==="23505")throw new Error("That person is already on this organization team.");if(error)throw error;return profile;},onSuccess:()=>qc.invalidateQueries({queryKey:["organization-members",organizationId]})});
 }
