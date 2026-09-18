@@ -120,9 +120,24 @@ section.max-w-3xl > .relative.h-44.overflow-hidden > .absolute.left-5.top-5 {
 
 @media (max-width: 639px) {
   .home-moments-card {
+    margin-left: -.25rem;
+    margin-right: -.25rem;
     border-radius: 1.25rem;
     padding: .9rem;
   }
+
+  .home-compose-section {
+    margin-left: -.25rem;
+    margin-right: -.25rem;
+  }
+
+  .home-filter-row {
+    margin-right: -.75rem;
+    padding-right: .75rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .home-filter-row button { scroll-snap-align: start; }
 
   .home-feed-heading-premium {
     margin-top: .35rem;
