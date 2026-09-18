@@ -37,3 +37,11 @@ export function useMyJobApplications(){
  const {userId}=useAuth();
  return useQuery({queryKey:["my-job-applications",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, job_postings(title,organization_id,organizations(name,slug))").eq("applicant_id",userId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
 }
+
+export function useJobApplicants(jobId:string|undefined){
+ return useQuery({queryKey:["job-applicants",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, profiles:applicant_id(id,full_name,username,avatar_url,headline,skills,location)").eq("job_posting_id",jobId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
+}
+export function useUpdateJobApplication(jobId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{id:string;status:"shortlisted"|"rejected"|"hired"})=>{const {error}=await supabase.from("job_applications").update({status:input.status}).eq("id",input.id);if(error)throw error;},onSuccess:()=>qc.invalidateQueries({queryKey:["job-applicants",jobId]})});
+}
