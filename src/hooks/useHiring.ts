@@ -39,7 +39,7 @@ export function useMyJobApplications(){
 }
 
 export function useJobApplicants(jobId:string|undefined){
- return useQuery({queryKey:["job-applicants",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, profiles:applicant_id(id,full_name,username,avatar_url,headline,skills,location)").eq("job_posting_id",jobId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
+ return useQuery({queryKey:["job-applicants",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, profiles:profiles!job_applications_applicant_id_fkey(id,full_name,username,avatar_url,headline,skills,location)").eq("job_posting_id",jobId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
 }
 export function useUpdateJobApplication(jobId:string){
  const qc=useQueryClient();
