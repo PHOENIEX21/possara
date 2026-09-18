@@ -23,7 +23,7 @@ export function TrustRankBadge({ rank, compact = false }: { rank: MemberTrustRan
       aria-label={rank.official ? "POSSARA Official" : `${rank.label} POSSARA Trust Rank`}
       className={`inline-flex shrink-0 items-center justify-center rounded-full border ${STYLE[rank.rankKey]} ${compact ? "h-[18px] w-[18px]" : "h-6 w-6"}`}
     >
-      {rank.official ? <span aria-hidden="true" className={compact ? "text-[12px] leading-none" : "text-[15px] leading-none"}>🥇</span> : <BadgeCheck size={size} strokeWidth={2.4} aria-hidden="true"/>}
+      <BadgeCheck size={size} strokeWidth={2.6} aria-hidden="true"/>
     </span>
   );
 }

@@ -62,7 +62,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       }
       let query = supabase
         .from("posts")
-        .select("*, profiles(full_name, avatar_url, username, headline, profession), shared_from_post:posts!posts_shared_from_post_id_fkey(id,author_id,content,media_urls,profiles(full_name,avatar_url,username))")
+        .select("*")
         .eq("status", "published")
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -76,6 +76,15 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       if (error) throw error;
       if (!posts?.length) return [];
       const postIds = posts.map((p) => p.id);
+      const profileIds = [...new Set(posts.map((p) => p.author_id).filter((id): id is string => !!id))];
+      const { data: feedProfiles } = await supabase.from("profiles").select("id,full_name,avatar_url,username,headline,profession").in("id", profileIds.length ? profileIds : ["00000000-0000-0000-0000-000000000000"]);
+      const feedProfileById = new Map((feedProfiles ?? []).map((profile) => [profile.id, profile]));
+      const sharedIds = [...new Set(posts.map((p) => p.shared_from_post_id).filter((id): id is string => !!id))];
+      const { data: sharedRows } = sharedIds.length ? await supabase.from("posts").select("id,author_id,content,media_urls").in("id", sharedIds) : { data: [] as {id:string;author_id:string|null;content:string;media_urls:string[]|null}[] };
+      const sharedAuthorIds = [...new Set((sharedRows ?? []).map((p) => p.author_id).filter((id): id is string => !!id))];
+      const { data: sharedProfiles } = sharedAuthorIds.length ? await supabase.from("profiles").select("id,full_name,avatar_url,username").in("id", sharedAuthorIds) : { data: [] as {id:string;full_name:string|null;avatar_url:string|null;username:string|null}[] };
+      const sharedProfileById = new Map((sharedProfiles ?? []).map((profile) => [profile.id, profile]));
+      const sharedById = new Map((sharedRows ?? []).map((shared) => [shared.id, { ...shared, profiles: shared.author_id ? sharedProfileById.get(shared.author_id) ?? null : null }]));
       const { data: reactions } = await supabase
         .from("reactions")
         .select("post_id,user_id,type,created_at")
@@ -136,10 +145,10 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
             avatar_url: profile?.avatar_url ?? null,
           };
         });
-        const rawShared = (p as typeof p & { shared_from_post?: SharedPostPreview | SharedPostPreview[] | null }).shared_from_post;
-        const sharedFromPost = Array.isArray(rawShared) ? rawShared[0] ?? null : rawShared ?? null;
+        const sharedFromPost = p.shared_from_post_id ? sharedById.get(p.shared_from_post_id) ?? null : null;
         return {
           ...p,
+          profiles: p.author_id ? feedProfileById.get(p.author_id) ?? null : null,
           shared_from_post: sharedFromPost,
           spark_count: counts.spark,
           viewer_reacted: viewerReaction === "spark",

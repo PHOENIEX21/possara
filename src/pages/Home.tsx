@@ -7,15 +7,13 @@ import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
-import { InterestingPlaces } from "../components/InterestingPlaces";
-import { FriendSuggestions } from "../components/FriendSuggestions";
 
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
-  { key: "inspire", label: "Inspire" },
-  { key: "care", label: "Care" },
-  { key: "talent", label: "Talent" },
-  { key: "business", label: "Business" },
+  { key: "motivation", label: "Motivation" },
+  { key: "encouragement", label: "Encouragement" },
+  { key: "advice", label: "Advice" },
+  { key: "uplifting", label: "Uplifting" },
 ] as const;
 
 const AD_INTERVAL = 5;
@@ -42,24 +40,21 @@ export function Home(){
 
       <section className="home-compose-section">
         <PostComposer
-          placeholder="Share an idea, achievement, question, business or something useful…"
+          placeholder="Share motivation, encouragement, advice or something uplifting…"
           showHomeTopicPicker
-          showCategoryPicker
         />
       </section>
 
-      <InterestingPlaces/>
-      <FriendSuggestions/>
 
       <section className="home-feed-heading home-feed-heading-premium">
-        <div><p className="eyebrow">Community stream</p><h2>What people are sharing</h2><p>Real people, useful ideas, progress, businesses and things worth discovering.</p></div>
+        <div><p className="eyebrow">Home community</p><h2>Encouragement with purpose</h2><p>Motivation, useful advice and uplifting experiences from people in the POSSARA community.</p></div>
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
       <div className="feed-list feed-list-premium">
         {isLoading&&<div className="feed-skeleton"/>}
         {error&&<p className="rounded-2xl bg-white p-4 text-flag shadow-sm">Couldn&apos;t load the feed right now.</p>}
-        {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"Nothing here yet":`No ${filter} posts yet`}</h2><p>Be the first to share something meaningful.</p></div>}
+        {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Share something encouraging, useful or uplifting.</p></div>}
         {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
         {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}
       </div>
