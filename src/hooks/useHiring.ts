@@ -45,3 +45,23 @@ export function useUpdateJobApplication(jobId:string){
  const qc=useQueryClient();
  return useMutation({mutationFn:async(input:{id:string;status:"shortlisted"|"rejected"|"hired"})=>{const {error}=await supabase.from("job_applications").update({status:input.status}).eq("id",input.id);if(error)throw error;},onSuccess:()=>qc.invalidateQueries({queryKey:["job-applicants",jobId]})});
 }
+
+export type CbtQuestion={id:string;job_posting_id:string;question_text:string;choices:string[];sort_order:number};
+export function useCbtQuestions(jobId:string|undefined){
+ return useQuery({queryKey:["job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_questions").select("id,job_posting_id,question_text,choices,sort_order").eq("job_posting_id",jobId as string).order("sort_order");if(error)throw error;return (data??[]) as CbtQuestion[];}});
+}
+export function useSaveCbtQuestions(jobId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(rows:{questionText:string;choices:string[];correctChoice:string}[])=>{const {error:del}=await supabase.from("job_cbt_questions").delete().eq("job_posting_id",jobId);if(del)throw del;if(!rows.length)return;const {error}=await supabase.from("job_cbt_questions").insert(rows.map((q,i)=>({job_posting_id:jobId,question_text:q.questionText,choices:q.choices,correct_choice:q.correctChoice,sort_order:i})));if(error)throw error;},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-questions",jobId]})});
+}
+export function useCbtAttempt(applicationId:string|undefined){
+ return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});
+}
+export function useSubmitCbt(jobId:string,applicationId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{answers:Record<string,string>;startedAt:string})=>{const {data:questions,error:qError}=await supabase.from("job_cbt_questions").select("id,correct_choice").eq("job_posting_id",jobId);if(qError)throw qError;if(!questions?.length)throw new Error("This assessment has no questions yet.");const score=Math.round((questions.filter(q=>input.answers[q.id]===q.correct_choice).length/questions.length)*100);const {data:attempt,error:aError}=await supabase.from("job_cbt_attempts").upsert({application_id:applicationId,started_at:input.startedAt,submitted_at:new Date().toISOString(),score},{onConflict:"application_id"}).select("id").single();if(aError)throw aError;await supabase.from("job_cbt_answers").delete().eq("attempt_id",attempt.id);const answers=questions.filter(q=>input.answers[q.id]).map(q=>({attempt_id:attempt.id,question_id:q.id,selected_choice:input.answers[q.id]}));if(answers.length){const {error}=await supabase.from("job_cbt_answers").insert(answers);if(error)throw error;}return score;},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
+}
+export function useMyJobApplication(jobId:string|undefined){
+ const {userId}=useAuth();
+ return useQuery({queryKey:["my-job-application",jobId,userId],enabled:!!jobId&&!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*").eq("job_posting_id",jobId as string).eq("applicant_id",userId as string).maybeSingle();if(error)throw error;return data;}});
+}
