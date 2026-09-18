@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search, UserCheck, UserPlus } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useFollowCounts, useFollowStatus, useToggleFollow } from "../hooks/useFollow";
@@ -82,6 +82,17 @@ function localDateKey(value: string) {
   const date = new Date(value);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+}
+
+function profileLocationLabel(location: string | null, country: string | null) {
+  const cleanLocation = location?.trim() ?? "";
+  const cleanCountry = country?.trim() ?? "";
+  if (!cleanLocation) return cleanCountry;
+  if (!cleanCountry) return cleanLocation;
+  const locationLower = cleanLocation.toLocaleLowerCase();
+  const countryLower = cleanCountry.toLocaleLowerCase();
+  if (locationLower === countryLower || locationLower.endsWith(`, ${countryLower}`)) return cleanLocation;
+  return `${cleanLocation}, ${cleanCountry}`;
 }
 
 function ProfilePosts({ profileId }: { profileId: string }) {
@@ -179,6 +190,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
   const [photoOpen,setPhotoOpen]=useState(false);
   const [profileMenuOpen,setProfileMenuOpen]=useState(false);
   const name=profile.full_name??"Member";
+  const locationLabel=profileLocationLabel(profile.location,profile.country);
   const socialLinks = [
     {kind:"instagram" as const,label:"Instagram",symbol:"◎",value:profile.instagram_url},
     {kind:"x" as const,label:"X",symbol:"X",value:profile.x_url},
@@ -191,7 +203,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
   const detailItems=[
     profile.workplace?{icon:BriefcaseBusiness,label:profile.workplace}:null,
     profile.school?{icon:GraduationCap,label:profile.school}:null,
-    (profile.location||profile.country)?{icon:MapPin,label:[profile.location,profile.country].filter(Boolean).join(", ")}:null,
+    locationLabel?{icon:MapPin,label:locationLabel}:null,
   ].filter(Boolean) as {icon:typeof MapPin;label:string}[];
 
   const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="relative z-20 h-24 w-24 rounded-[2rem] border-4 border-white bg-white object-cover shadow-xl sm:h-28 sm:w-28"/>:<div className="relative z-20 flex h-24 w-24 items-center justify-center rounded-[2rem] border-4 border-white bg-trust-light text-3xl font-semibold text-trust-dark shadow-xl sm:h-28 sm:w-28">{name.charAt(0).toUpperCase()}</div>;
@@ -201,7 +213,6 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#171128] via-brand-dark to-trust-dark sm:h-56">
         {profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[.06]"/>
-        <div className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.14em] text-white/85 backdrop-blur"><Sparkles size={12}/>POSSARA profile</div>
       </div>
 
       <div className="relative px-4 pb-6 sm:px-6">

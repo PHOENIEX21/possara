@@ -1,11 +1,9 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
-import { useFollowStatus, useToggleFollow } from "../hooks/useFollow";
-import { useAuth } from "../store/auth";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
 
 const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
@@ -68,27 +66,6 @@ function profilePath(person: ReactionPerson) {
 
 function formatCompactCount(value: number) {
   return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
-}
-
-function PostHeaderFollow({ authorId }: { authorId: string | null }) {
-  const { userId } = useAuth();
-  const { data: isFollowing, isLoading } = useFollowStatus(authorId ?? undefined);
-  const toggle = useToggleFollow(authorId ?? "");
-
-  if (!userId || !authorId || userId === authorId || isLoading || isFollowing) return null;
-
-  return (
-    <button
-      type="button"
-      onClick={() => toggle.mutate(false)}
-      disabled={toggle.isPending}
-      className="post-header-follow inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-brand-dark transition hover:bg-brand-light disabled:opacity-50"
-      aria-label="Follow this member"
-    >
-      <Plus size={13} strokeWidth={2.4} />
-      {toggle.isPending ? "Following…" : "Follow"}
-    </button>
-  );
 }
 
 function reactionPreviewLabel(post: PostWithAuthor) {
@@ -160,8 +137,6 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
 
   return (
     <>
-      <PostHeaderFollow authorId={post.author_id} />
-
       {post.reaction_count > 0 && (
         <button
           type="button"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
+import { MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, UserPlus, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
@@ -8,6 +8,7 @@ import { useAuth } from "../store/auth";
 import { useRepost } from "../hooks/useRepost";
 import { usePostStory } from "../hooks/useStories";
 import { useMemberTrustRank } from "../hooks/useTrustRank";
+import { useFollowStatus, useToggleFollow } from "../hooks/useFollow";
 import { InAppShareDialog } from "./InAppShareDialog";
 import { ReportButton } from "./ReportButton";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
@@ -81,6 +82,25 @@ function profilePath(userId: string | null, username: string | null | undefined,
 function CommentTrustBadge({ userId }: { userId: string | null }) {
   const { data: rank } = useMemberTrustRank(userId);
   return <TrustRankBadge rank={rank} compact />;
+}
+
+function PostHeaderFollow({ authorId }: { authorId: string | null }) {
+  const { userId } = useAuth();
+  const { data: isFollowing, isLoading } = useFollowStatus(authorId ?? undefined);
+  const toggle = useToggleFollow(authorId ?? "");
+  if (!userId || !authorId || userId === authorId || isLoading || isFollowing) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate(false)}
+      disabled={toggle.isPending}
+      className="inline-flex min-h-8 items-center gap-1 rounded-full bg-brand-light px-2.5 py-1 text-xs font-bold text-brand-dark transition hover:bg-brand/15 disabled:opacity-50"
+      aria-label="Follow this member"
+    >
+      <UserPlus size={13} strokeWidth={2.3}/>
+      {toggle.isPending ? "Following…" : "Follow"}
+    </button>
+  );
 }
 
 function CommentThread({ postId }: { postId: string }) {
@@ -231,7 +251,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   return (
     <article className="relative rounded-2xl border border-paper-dim bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3 pr-20 sm:pr-24">
+        <div className="flex min-w-0 items-center gap-3 pr-2">
           {post.profiles?.avatar_url ? (
             <button type="button" onClick={() => setPhotoOpen(true)} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}>
               <img src={post.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
@@ -252,28 +272,31 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           </div>
         </div>
 
-        {(userId || isOwner) && (
-          <div className="relative">
-            <button type="button" onClick={() => setMenuOpen((value) => !value)} className="rounded-full p-2 text-ink-faint hover:bg-paper-dim hover:text-ink" aria-label="Post options">
-              <MoreHorizontal size={19} />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-10 z-20 w-72 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-lg">
-                {isOwner && (
-                  <>
-                    <button onClick={() => { setEditing(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-paper"><Pencil size={14} />Edit post</button>
-                    <button onClick={() => { setConfirmingDelete(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-flag hover:bg-paper"><Trash2 size={14} />Delete post</button>
-                  </>
-                )}
-                {!isOwner && userId && (
-                  <div className="border-t border-paper-dim px-3 py-2 first:border-t-0">
-                    <ReportButton postId={post.id} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          <PostHeaderFollow authorId={post.author_id} />
+          {(userId || isOwner) && (
+            <div className="relative">
+              <button type="button" onClick={() => setMenuOpen((value) => !value)} className="rounded-full p-2 text-ink-faint hover:bg-paper-dim hover:text-ink" aria-label="Post options">
+                <MoreHorizontal size={19} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-10 z-20 w-72 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-lg">
+                  {isOwner && (
+                    <>
+                      <button onClick={() => { setEditing(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-paper"><Pencil size={14} />Edit post</button>
+                      <button onClick={() => { setConfirmingDelete(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-flag hover:bg-paper"><Trash2 size={14} />Delete post</button>
+                    </>
+                  )}
+                  {!isOwner && userId && (
+                    <div className="border-t border-paper-dim px-3 py-2 first:border-t-0">
+                      <ReportButton postId={post.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {editing ? (
@@ -312,11 +335,11 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         <div className="flex flex-wrap items-center gap-1">
           <PostReactionControl post={post} />
 
-          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
+          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
             <MessageCircle size={17} />{post.comment_count > 0 ? post.comment_count : ""} {post.comment_count === 1 ? "Comment" : "Comments"}
           </button>
 
-          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
+          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
             <Share2 size={17} />Share
           </button>
         </div>
