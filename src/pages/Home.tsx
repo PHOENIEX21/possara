@@ -40,7 +40,7 @@ export function Home(){
 
       <section className="home-compose-section">
         <PostComposer
-          placeholder="Share motivation, encouragement, advice or something uplifting…"
+          placeholder="Share something encouraging…"
           showHomeTopicPicker
         />
       </section>
