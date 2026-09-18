@@ -57,7 +57,7 @@ export function useSaveCbtQuestions(jobId:string){
 export function useCbtAttempt(applicationId:string|undefined){
  return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});
 }
-export function useSubmitCbt(jobId:string,applicationId:string){
+export function useSubmitCbt(_jobId:string,applicationId:string){
  const qc=useQueryClient();
  return useMutation({mutationFn:async(input:{answers:Record<string,string>;startedAt:string})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers,p_started_at:input.startedAt});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
 }
