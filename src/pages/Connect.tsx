@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Building2, Sparkles, GraduationCap, BriefcaseBusiness } from "lucide-react";
+import { Search, Users, Building2, Sparkles, GraduationCap } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useOwnProfile } from "../hooks/useProfile";
@@ -91,7 +91,7 @@ export function Connect(){
     </section>
 
     <div className="rounded-2xl border border-brand/15 bg-brand-light/40 p-4">
-      <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link><Link to="/opportunities" className="text-sm font-medium text-brand-dark hover:underline">Find opportunities for me →</Link></div></div></div>
+      <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link></div></div></div>
     </div>
 
     <FriendSuggestions/>
