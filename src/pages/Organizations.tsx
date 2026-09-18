@@ -98,7 +98,7 @@ export function Organizations(){
   }
 
   return <div className="page-stack">
-    <section className="page-hero"><div><p className="eyebrow">Organization directory</p><h1>Explore organizations by type and location.</h1><p>You do not need to know a name first. Start with Hotels, Schools, Health, Technology, Religious organizations, Recreation and more, then narrow by country and state. POSSARA can also show active opportunities linked to each organization.</p></div></section>
+    <section className="page-hero"><div className="min-w-0 flex-1"><p className="eyebrow">Organization directory</p><h1>Explore real organizations — or create yours.</h1><p>Organizations on POSSARA can own a profile, publish verified roles and manage applicants. Browse by type and location, or register the organization you manage.</p><div className="mt-4 flex flex-wrap gap-2"><Link to="/organizations/register" className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">Register an organization</Link><Link to="/organizations/manage" className="rounded-xl border border-black/10 px-4 py-2.5 text-sm font-semibold">Manage hiring</Link></div></div></section>
 
     <section>
       <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-lg font-semibold">Choose a category</h2><p className="text-sm text-ink-faint">Tap a category and POSSARA will take you straight to its directory view.</p></div><button type="button" onClick={()=>{setIndustry("");setCountry("");setState("");setQuery("");moveToDirectory();}} className="text-xs font-medium text-brand-dark">Reset directory</button></div>
