@@ -48,7 +48,7 @@ export function useUpdateJobApplication(jobId:string){
 
 export type CbtQuestion={id:string;job_posting_id:string;question_text:string;choices:string[];sort_order:number};
 export function useCbtQuestions(jobId:string|undefined){
- return useQuery({queryKey:["job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_questions").select("id,job_posting_id,question_text,choices,sort_order").eq("job_posting_id",jobId as string).order("sort_order");if(error)throw error;return (data??[]) as CbtQuestion[];}});
+ return useQuery({queryKey:["job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.rpc("get_job_cbt_questions",{p_job_id:jobId as string});if(error)throw error;return (data??[]) as CbtQuestion[];}});
 }
 export function useSaveCbtQuestions(jobId:string){
  const qc=useQueryClient();
@@ -59,7 +59,7 @@ export function useCbtAttempt(applicationId:string|undefined){
 }
 export function useSubmitCbt(jobId:string,applicationId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{answers:Record<string,string>;startedAt:string})=>{const {data:questions,error:qError}=await supabase.from("job_cbt_questions").select("id,correct_choice").eq("job_posting_id",jobId);if(qError)throw qError;if(!questions?.length)throw new Error("This assessment has no questions yet.");const score=Math.round((questions.filter(q=>input.answers[q.id]===q.correct_choice).length/questions.length)*100);const {data:attempt,error:aError}=await supabase.from("job_cbt_attempts").upsert({application_id:applicationId,started_at:input.startedAt,submitted_at:new Date().toISOString(),score},{onConflict:"application_id"}).select("id").single();if(aError)throw aError;await supabase.from("job_cbt_answers").delete().eq("attempt_id",attempt.id);const answers=questions.filter(q=>input.answers[q.id]).map(q=>({attempt_id:attempt.id,question_id:q.id,selected_choice:input.answers[q.id]}));if(answers.length){const {error}=await supabase.from("job_cbt_answers").insert(answers);if(error)throw error;}return score;},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
+ return useMutation({mutationFn:async(input:{answers:Record<string,string>;startedAt:string})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers,p_started_at:input.startedAt});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
 }
 export function useMyJobApplication(jobId:string|undefined){
  const {userId}=useAuth();
