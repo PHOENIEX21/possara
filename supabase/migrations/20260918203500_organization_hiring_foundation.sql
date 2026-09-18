@@ -40,3 +40,45 @@ drop policy if exists "Recruiters read applicant job documents" on storage.objec
 grant select on public.organization_members,public.job_postings,public.screening_questions,public.interview_questions,public.job_applications,public.job_question_answers,public.job_cbt_questions,public.job_cbt_attempts,public.job_cbt_answers to authenticated;
 grant insert,update,delete on public.organization_members,public.job_postings,public.screening_questions,public.interview_questions,public.job_applications,public.job_question_answers,public.job_cbt_questions,public.job_cbt_attempts,public.job_cbt_answers to authenticated;
 grant select on public.job_postings,public.screening_questions to anon;
+
+-- CBT answer keys are never readable by candidates. Candidate question delivery and scoring use guarded RPCs.
+revoke select on public.job_cbt_questions from authenticated;
+drop policy if exists "CBT questions visible after application" on public.job_cbt_questions;
+drop policy if exists "Recruiters manage interview questions" on public.interview_questions;
+create policy "Recruiters manage interview questions" on public.interview_questions for all to authenticated using(exists(select 1 from public.job_postings j join public.organization_members om on om.organization_id=j.organization_id where j.id=job_posting_id and om.user_id=(select auth.uid()) and om.role in('owner','recruiter'))) with check(exists(select 1 from public.job_postings j join public.organization_members om on om.organization_id=j.organization_id where j.id=job_posting_id and om.user_id=(select auth.uid()) and om.role in('owner','recruiter')));
+drop policy if exists "Recruiters manage CBT questions" on public.job_cbt_questions;
+create policy "Recruiters manage CBT questions" on public.job_cbt_questions for all to authenticated using(exists(select 1 from public.job_postings j join public.organization_members om on om.organization_id=j.organization_id where j.id=job_posting_id and om.user_id=(select auth.uid()) and om.role in('owner','recruiter'))) with check(exists(select 1 from public.job_postings j join public.organization_members om on om.organization_id=j.organization_id where j.id=job_posting_id and om.user_id=(select auth.uid()) and om.role in('owner','recruiter')));
+drop policy if exists "Applicants manage own CBT attempt" on public.job_cbt_attempts;
+create policy "Applicants manage own CBT attempt" on public.job_cbt_attempts for all to authenticated using(exists(select 1 from public.job_applications a where a.id=application_id and a.applicant_id=(select auth.uid()))) with check(exists(select 1 from public.job_applications a where a.id=application_id and a.applicant_id=(select auth.uid())));
+drop policy if exists "Recruiters read CBT attempts" on public.job_cbt_attempts;
+create policy "Recruiters read CBT attempts" on public.job_cbt_attempts for select to authenticated using(exists(select 1 from public.job_applications a join public.job_postings j on j.id=a.job_posting_id join public.organization_members om on om.organization_id=j.organization_id where a.id=application_id and om.user_id=(select auth.uid()) and om.role in('owner','recruiter')));
+drop policy if exists "Applicants manage own CBT answers" on public.job_cbt_answers;
+create policy "Applicants manage own CBT answers" on public.job_cbt_answers for all to authenticated using(exists(select 1 from public.job_cbt_attempts t join public.job_applications a on a.id=t.application_id where t.id=attempt_id and a.applicant_id=(select auth.uid()))) with check(exists(select 1 from public.job_cbt_attempts t join public.job_applications a on a.id=t.application_id where t.id=attempt_id and a.applicant_id=(select auth.uid())));
+
+create or replace function public.get_job_cbt_questions(p_job_id uuid)
+returns table(id uuid,job_posting_id uuid,question_text text,choices jsonb,sort_order int)
+language sql security definer set search_path=public as $$
+ select q.id,q.job_posting_id,q.question_text,q.choices,q.sort_order from public.job_cbt_questions q
+ where q.job_posting_id=p_job_id and (
+  exists(select 1 from public.job_applications a where a.job_posting_id=p_job_id and a.applicant_id=auth.uid())
+  or exists(select 1 from public.job_postings j join public.organization_members om on om.organization_id=j.organization_id where j.id=p_job_id and om.user_id=auth.uid() and om.role in('owner','recruiter'))
+ ) order by q.sort_order
+$$;
+grant execute on function public.get_job_cbt_questions(uuid) to authenticated;
+
+create or replace function public.submit_job_cbt(p_application_id uuid,p_answers jsonb,p_started_at timestamptz)
+returns int language plpgsql security definer set search_path=public as $$
+declare v_job uuid;v_total int;v_correct int;v_score int;v_attempt uuid;
+begin
+ select job_posting_id into v_job from public.job_applications where id=p_application_id and applicant_id=auth.uid();
+ if v_job is null then raise exception 'Application not found';end if;
+ select count(*),count(*) filter(where p_answers->>q.id::text=q.correct_choice) into v_total,v_correct from public.job_cbt_questions q where q.job_posting_id=v_job;
+ if v_total=0 then raise exception 'Assessment has no questions';end if;
+ v_score:=round((v_correct::numeric/v_total::numeric)*100);
+ insert into public.job_cbt_attempts(application_id,started_at,submitted_at,score) values(p_application_id,p_started_at,now(),v_score)
+ on conflict(application_id) do update set submitted_at=excluded.submitted_at,score=excluded.score returning id into v_attempt;
+ delete from public.job_cbt_answers where attempt_id=v_attempt;
+ insert into public.job_cbt_answers(attempt_id,question_id,selected_choice) select v_attempt,q.id,p_answers->>q.id::text from public.job_cbt_questions q where q.job_posting_id=v_job and p_answers ? q.id::text;
+ return v_score;
+end $$;
+grant execute on function public.submit_job_cbt(uuid,jsonb,timestamptz) to authenticated;
