@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
+import { MemberFollowButton } from "./MemberFollowButton";
 
 const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
   { type: "spark", emoji: "✨", label: "Spark" },
@@ -14,7 +15,7 @@ const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
 ];
 
 const HOLD_MS = 480;
-const PEOPLE_PREVIEW_LIMIT = 100;
+const PEOPLE_PREVIEW_LIMIT = 500;
 
 type ReactionPerson = {
   user_id: string;
@@ -250,9 +251,9 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
                       {person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
                       {person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs">
-                      <span>{reaction?.emoji}</span>
-                      <span className="hidden sm:inline">{reaction?.label}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <MemberFollowButton targetUserId={person.user_id} compact/>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs"><span>{reaction?.emoji}</span><span className="hidden sm:inline">{reaction?.label}</span></span>
                     </div>
                   </Link>
                 );

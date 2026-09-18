@@ -4,9 +4,10 @@ interface TrustBadgeProps {
   verified: boolean;
   lastVerifiedAt: string | null;
   sponsored?: boolean | null;
+  sourceVerified?: boolean;
 }
 
-export function TrustBadge({ verified, lastVerifiedAt, sponsored }: TrustBadgeProps) {
+export function TrustBadge({ verified, lastVerifiedAt, sponsored, sourceVerified = false }: TrustBadgeProps) {
   const formattedDate = lastVerifiedAt
     ? new Date(lastVerifiedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
     : null;
@@ -16,6 +17,10 @@ export function TrustBadge({ verified, lastVerifiedAt, sponsored }: TrustBadgePr
       {verified ? (
         <span className="inline-flex items-center gap-1.5 text-trust-dark">
           <ShieldCheck size={16} strokeWidth={2} />Verified organization
+        </span>
+      ) : sourceVerified ? (
+        <span className="inline-flex items-center gap-1.5 text-trust-dark">
+          <ShieldCheck size={16} strokeWidth={2} />Verified source
         </span>
       ) : lastVerifiedAt ? (
         <span className="inline-flex items-center gap-1.5 text-trust-dark">

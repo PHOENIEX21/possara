@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import { Image, MessageSquareText, FilePlus, Megaphone, Trophy } from "lucide-react";
 
 const PATHWAYS = [
-  { icon: MessageSquareText, title: "Uplifting post", description: "Share encouragement, progress, gratitude or a useful lesson with the Home community.", to: "/", cta: "Create on Home" },
+  { icon: MessageSquareText, title: "Community post", description: "Post to Home or choose any community category such as jobs, scholarships, admissions, grants, training and more. Every post also stays on your profile.", to: "/", cta: "Create on Home" },
   { icon: Image, title: "Moment", description: "Share a positive image update that lasts for 24 hours. Moments are created from Home.", to: "/", cta: "Create a Moment" },
   { icon: Trophy, title: "Milestone", description: "Milestones are being connected to the profile journey for this staging build.", to: "/profile/me", cta: "Open profile" },
-  { icon: Megaphone, title: "Advertisement", description: "Create an image-led sponsored campaign for review.", to: "/advertise", cta: "Create ad" },
+  { icon: Megaphone, title: "Business & advertising", description: "Share an ordinary business post or create a separate sponsored campaign for review.", to: "/advertise", cta: "Open business" },
 ];
 
 export function Contribute() {

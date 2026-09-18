@@ -57,7 +57,7 @@ export function InAppShareDialog({ open, onClose, title, path, preview, onShareT
 
   const send = useMutation({
     mutationFn: async (recipientId: string) => {
-      if (!userId) throw new Error("Sign in to share inside POSSARA.");
+      if (!userId) throw new Error("Sign in to pass this on inside POSSARA.");
       const content = `${shareText}\n${absoluteUrl}`.slice(0, 4000);
       const { error } = await supabase.from("messages").insert({ sender_id: userId, recipient_id: recipientId, content });
       if (error) throw error;
@@ -80,7 +80,7 @@ export function InAppShareDialog({ open, onClose, title, path, preview, onShareT
     setBusyAction("profile");
     try {
       const result = await onShareToProfile();
-      flash(result?.alreadyShared ? "Already on your profile" : "Shared to your profile");
+      flash(result?.alreadyShared ? "Already on your profile" : "Passed on to your profile");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Couldn’t share to profile");
     } finally {
@@ -93,7 +93,7 @@ export function InAppShareDialog({ open, onClose, title, path, preview, onShareT
     setBusyAction("moment");
     try {
       await onShareToMoment();
-      flash("Shared to your Moment");
+      flash("Passed on to your Moment");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Couldn’t share to Moment");
     } finally {
@@ -114,7 +114,7 @@ export function InAppShareDialog({ open, onClose, title, path, preview, onShareT
     try {
       if (navigator.share) {
         await navigator.share({ title, text: preview?.trim() || title, url: absoluteUrl });
-        flash("Shared");
+        flash("Passed on");
       } else {
         await copyLink();
       }
@@ -134,14 +134,14 @@ export function InAppShareDialog({ open, onClose, title, path, preview, onShareT
     <div className="fixed inset-0 z-[95] flex items-end bg-ink/45 sm:items-center sm:justify-center sm:p-4" onClick={onClose}>
       <div className="max-h-[88vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-paper-dim px-4 py-3">
-          <div><p className="font-semibold">Share</p><p className="text-xs text-ink-faint">Share inside POSSARA or outside the app.</p></div>
+          <div><p className="font-semibold">Pass on</p><p className="text-xs text-ink-faint">Send it to someone, your profile, a Moment or another app.</p></div>
           <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={18}/></button>
         </div>
 
         <div className="border-b border-paper-dim p-3">
           <div className="grid grid-cols-4 gap-2 text-center">
-            {onShareToProfile && userId && <button type="button" onClick={shareToProfile} disabled={!!busyAction} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light text-brand-dark"><Repeat2 size={18}/></span>{busyAction === "profile" ? "Sharing…" : "My profile"}</button>}
-            {onShareToMoment && userId && <button type="button" onClick={shareToMoment} disabled={!!busyAction} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light text-trust-dark"><Sparkles size={18}/></span>{busyAction === "moment" ? "Sharing…" : "My Moment"}</button>}
+            {onShareToProfile && userId && <button type="button" onClick={shareToProfile} disabled={!!busyAction} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light text-brand-dark"><Repeat2 size={18}/></span>{busyAction === "profile" ? "Passing on…" : "My profile"}</button>}
+            {onShareToMoment && userId && <button type="button" onClick={shareToMoment} disabled={!!busyAction} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light text-trust-dark"><Sparkles size={18}/></span>{busyAction === "moment" ? "Passing on…" : "My Moment"}</button>}
             <button type="button" onClick={shareWhatsApp} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><MessageCircle size={18}/></span>WhatsApp</button>
             <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-paper-dim text-ink"><Copy size={18}/></span>Copy link</button>
             <button type="button" onClick={shareMore} className="flex flex-col items-center gap-1.5 rounded-2xl p-2 text-[11px] font-medium hover:bg-paper"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-paper-dim text-ink"><MoreHorizontal size={18}/></span>More apps</button>

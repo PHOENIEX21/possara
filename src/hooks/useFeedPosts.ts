@@ -20,6 +20,13 @@ function emptyReactionCounts(): Record<PostReactionType, number> {
 
 export interface PostWithAuthor extends Post {
   profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
+  shared_from_post: {
+    id: string;
+    author_id: string | null;
+    content: string;
+    media_urls: string[] | null;
+    profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
+  } | null;
   spark_count: number;
   viewer_reacted: boolean;
   reaction_count: number;
@@ -52,7 +59,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       }
       let query = supabase
         .from("posts")
-        .select("*, profiles(full_name, avatar_url, username, headline, profession)")
+        .select("*, profiles(full_name, avatar_url, username, headline, profession), shared_from_post:posts!posts_shared_from_post_id_fkey(id,author_id,content,media_urls,profiles(full_name,avatar_url,username,headline,profession))")
         .eq("status", "published")
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -109,6 +116,11 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       }
 
       return posts.map((p) => {
+        const sharedRaw = (p as any).shared_from_post;
+        const sharedPost = Array.isArray(sharedRaw) ? sharedRaw[0] ?? null : sharedRaw ?? null;
+        if (sharedPost?.profiles && Array.isArray(sharedPost.profiles)) {
+          sharedPost.profiles = sharedPost.profiles[0] ?? null;
+        }
         const counts = reactionCountsByPost.get(p.id) ?? emptyReactionCounts();
         const viewerReaction = viewerReactionByPost.get(p.id) ?? null;
         const reactionPreview: PostReactionPreview[] = (previewRefsByPost.get(p.id) ?? []).map((item) => {
@@ -123,6 +135,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         });
         return {
           ...p,
+          shared_from_post: sharedPost,
           spark_count: counts.spark,
           viewer_reacted: viewerReaction === "spark",
           reaction_count: reactionTotalByPost.get(p.id) ?? 0,
