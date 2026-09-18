@@ -126,6 +126,17 @@ export function StoriesBar() {
   const otherGroups = groups?.filter((group) => group.authorId !== userId) ?? [];
   const myGroup = groups?.find((group) => group.authorId === userId);
 
+  async function openViewer(authorId: string, fallback: AuthorWithStories) {
+    setUploadError(null);
+    try {
+      const fresh = await refetchStories();
+      const latest = fresh.data?.find((group) => group.authorId === authorId);
+      setViewingGroup(latest ?? fallback);
+    } catch {
+      setViewingGroup(fallback);
+    }
+  }
+
   function clearMusic() { if (musicPreview) URL.revokeObjectURL(musicPreview); setMusicFile(null); setMusicPreview(null); setMusicTitle(""); setSelectedTrack(null); }
   function resetComposer() { if (imagePreview) URL.revokeObjectURL(imagePreview); if (musicPreview) URL.revokeObjectURL(musicPreview); setMode("photo"); setImageFile(null); setImagePreview(null); setTextBody(""); setMusicFile(null); setMusicPreview(null); setMusicTitle(""); setSelectedTrack(null); setMusicPickerOpen(false); setAudience("public"); setBackgroundStyle("midnight"); setUploadError(null); }
   function openComposer() { resetComposer(); setComposerOpen(true); }
@@ -153,8 +164,8 @@ export function StoriesBar() {
 
   return <div>
     <div className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
-      {userId && <div className="flex shrink-0 flex-col items-center gap-1"><div className="relative h-14 w-14"><button type="button" onClick={() => myGroup ? setViewingGroup(myGroup) : openComposer()} className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-brand/40">{myGroup ? <div className="h-full w-full rounded-full border-2 border-brand p-0.5">{myGroup.stories[0]?.media_url ? <img src={myGroup.stories[0].media_url} alt="" className="h-full w-full rounded-full object-cover"/> : <div className="flex h-full w-full items-center justify-center rounded-full bg-paper text-sm font-medium text-trust-dark">You</div>}</div> : <Plus size={20} className="text-brand" />}</button>{myGroup && <button type="button" onClick={openComposer} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand text-white" aria-label="Add another Moment"><Plus size={14} /></button>}</div><span className="text-[11px] text-ink-light">Your Moment</span></div>}
-      {otherGroups.map((group) => <button key={group.authorId} type="button" onClick={() => setViewingGroup(group)} className="flex shrink-0 flex-col items-center gap-1"><div className="h-14 w-14 rounded-full border-2 border-brand p-0.5"><div className="h-full w-full rounded-full bg-paper p-0.5">{group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : <div className="flex h-full w-full items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{(group.author?.full_name ?? "?").charAt(0).toUpperCase()}</div>}</div></div><span className="max-w-[60px] truncate text-[11px] text-ink-light">{group.author?.full_name?.split(" ")[0] ?? "Member"}</span></button>)}
+      {userId && <div className="flex shrink-0 flex-col items-center gap-1"><div className="relative h-14 w-14"><button type="button" onClick={() => myGroup ? void openViewer(myGroup.authorId, myGroup) : openComposer()} className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-brand/40">{myGroup ? <div className="h-full w-full rounded-full border-2 border-brand p-0.5">{myGroup.stories[0]?.media_url ? <img src={myGroup.stories[0].media_url} alt="" className="h-full w-full rounded-full object-cover"/> : <div className="flex h-full w-full items-center justify-center rounded-full bg-paper text-sm font-medium text-trust-dark">You</div>}</div> : <Plus size={20} className="text-brand" />}</button>{myGroup && <button type="button" onClick={openComposer} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand text-white" aria-label="Add another Moment"><Plus size={14} /></button>}</div><span className="text-[11px] text-ink-light">Your Moment</span></div>}
+      {otherGroups.map((group) => <button key={group.authorId} type="button" onClick={() => void openViewer(group.authorId, group)} className="flex shrink-0 flex-col items-center gap-1"><div className="h-14 w-14 rounded-full border-2 border-brand p-0.5"><div className="h-full w-full rounded-full bg-paper p-0.5">{group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : <div className="flex h-full w-full items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{(group.author?.full_name ?? "?").charAt(0).toUpperCase()}</div>}</div></div><span className="max-w-[60px] truncate text-[11px] text-ink-light">{group.author?.full_name?.split(" ")[0] ?? "Member"}</span></button>)}
     </div>
     {uploadMessage && <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-trust-dark">{!postStory.isPending && <CheckCircle2 size={14} />}<span>{uploadMessage}</span></div>}
     {!composerOpen && uploadError && <p className="mt-2 text-xs text-flag">{uploadError}</p>}

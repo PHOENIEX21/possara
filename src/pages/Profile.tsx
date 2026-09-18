@@ -161,9 +161,9 @@ function ProfilePosts({ profileId }: { profileId: string }) {
   );
 }
 
-type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onOwnCoverClick?:()=>void; onRemoveCover?:()=>void; coverUploading?:boolean };
+type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onOwnAvatarClick?:()=>void; avatarUploading?:boolean; onOwnCoverClick?:()=>void; onRemoveCover?:()=>void; coverUploading?:boolean };
 
-function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
+function ProfileView({profile,own=false,onEdit,onOwnAvatarClick,avatarUploading=false,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
   const {data:counts}=useFollowCounts(profile.id);
   const {data:trustRank}=useMemberTrustRank(profile.id);
   const [photoOpen,setPhotoOpen]=useState(false);
@@ -196,7 +196,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
 
       <div className="relative px-4 pb-6 sm:px-6">
         <div className="relative -mt-12 flex items-end justify-between gap-3 sm:-mt-14">
-          {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
+          {own&&onOwnAvatarClick?<button type="button" onClick={onOwnAvatarClick} disabled={avatarUploading} className="group relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02] disabled:opacity-70" aria-label="Change profile photo" title="Change profile photo">{avatarContent}<span className="absolute bottom-1 right-1 z-30 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-ink text-white shadow-lg"><Camera size={15}/></span></button>:profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
           <div className="relative z-20 mb-1 flex flex-wrap items-center justify-end gap-2">
             {!own&&<><MessageButton targetUserId={profile.id}/><MemberFollowButton targetUserId={profile.id}/></>}
             {own&&onEdit&&<button type="button" onClick={onEdit} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-paper"><Pencil size={14}/>Edit profile</button>}
@@ -308,15 +308,18 @@ export function Profile(){
   const {userId}=useAuth();
   const {data:ownProfile,isLoading}=useOwnProfile();
   const coverUpload=useCoverUpload();
+  const avatarUpload=useAvatarUpload();
   const updateOwnProfile=useUpdateOwnProfile();
   const coverInputRef=useRef<HTMLInputElement>(null);
+  const avatarInputRef=useRef<HTMLInputElement>(null);
   const [coverStatus,setCoverStatus]=useState<string|null>(null);
   const [editing,setEditing]=useState(false);
   const isOwn=username==="me"||!!(id&&id===userId)||!!(ownProfile?.username&&username===ownProfile.username);
   const coverBusy=coverUpload.isPending||updateOwnProfile.isPending;
+  async function changeOwnAvatar(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await avatarUpload.mutateAsync(file);setCoverStatus("Profile photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}
   async function changeOwnCover(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await coverUpload.mutateAsync(file);setCoverStatus("Cover photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}
   async function removeOwnCover(){if(!ownProfile?.cover_url)return;setCoverStatus(null);try{await updateOwnProfile.mutateAsync({cover_url:null});setCoverStatus("Cover photo removed.");}catch(err){setCoverStatus((err as Error).message);}}
-  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="max-w-3xl rounded-xl bg-white px-3 py-2 text-sm text-ink-light shadow-sm">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-flex rounded-full border border-paper-dim bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-sm">Privacy, notifications & account settings</Link></div>;}
+  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnAvatarClick={()=>avatarInputRef.current?.click()} avatarUploading={avatarUpload.isPending} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnAvatar} className="hidden"/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="max-w-3xl rounded-xl bg-white px-3 py-2 text-sm text-ink-light shadow-sm">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-flex rounded-full border border-paper-dim bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-sm">Privacy, notifications & account settings</Link></div>;}
   if(id)return <PublicProfileById id={id}/>;
   if(username)return <PublicProfile username={username}/>;
   return <p className="text-ink-light">No profile specified.</p>;
