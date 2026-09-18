@@ -38,3 +38,29 @@
 @keyframes welcomeDrift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-34px,22px,0) scale(1.12)}}
 @media(max-width:639px){.possara-welcome-inner{align-items:flex-start;padding-top:1.15rem;padding-bottom:1.15rem}.possara-welcome-mark{width:2.35rem;height:2.35rem;border-radius:.85rem}.possara-welcome h1{font-size:1.2rem}.possara-welcome-copy{font-size:.8rem;line-height:1.25rem}.achievement-hero{min-height:430px}.achievement-hero-shade{background:linear-gradient(0deg,rgba(8,8,12,.95) 0%,rgba(8,8,12,.72) 49%,rgba(8,8,12,.14) 78%,rgba(8,8,12,.08) 100%)}.achievement-hero-content{max-width:none}.achievement-hero-content h1{font-size:2.25rem}}
 @media(prefers-reduced-motion:reduce){.possara-welcome::before,.possara-welcome::after{animation:none}}
+
+
+/* Purposeful mobile achievement carousel: edge-to-edge, swipe-first, with copy safely above controls. */
+@media(max-width:639px){
+  .achievement-hero{
+    width:calc(100% + 2rem);
+    margin-left:-1rem;
+    margin-right:-1rem;
+    border-radius:0;
+  }
+  .achievement-hero-content{
+    inset-inline:0;
+    bottom:0;
+    padding-left:1.25rem;
+    padding-right:1.25rem;
+    padding-bottom:5.75rem;
+  }
+  .achievement-main{font-size:1rem;line-height:1.45}
+  .achievement-lesson{font-size:.82rem;line-height:1.4}
+  .achievement-controls{
+    left:1.25rem;
+    right:1.25rem;
+    bottom:1.25rem;
+    justify-content:center;
+  }
+}
