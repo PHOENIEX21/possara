@@ -35,7 +35,7 @@ export function useApplyToJob(jobId:string){
 }
 export function useMyJobApplications(){
  const {userId}=useAuth();
- return useQuery({queryKey:["my-job-applications",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, job_postings(title,organization_id,organizations(name,slug))").eq("applicant_id",userId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
+ return useQuery({queryKey:["my-job-applications",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*, job_postings(title,organization_id,requires_cbt,organizations(name,slug))").eq("applicant_id",userId as string).order("applied_at",{ascending:false});if(error)throw error;return data??[];}});
 }
 
 export function useJobApplicants(jobId:string|undefined){
