@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
+import { MemberFollowButton } from "./MemberFollowButton";
 
 const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
   { type: "spark", emoji: "✨", label: "Spark" },
@@ -14,7 +15,7 @@ const REACTIONS: { type: PostReactionType; emoji: string; label: string }[] = [
 ];
 
 const HOLD_MS = 480;
-const PEOPLE_PREVIEW_LIMIT = 100;
+const PEOPLE_PREVIEW_LIMIT = 1000;
 
 type ReactionPerson = {
   user_id: string;
@@ -239,22 +240,24 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
                 const reaction = REACTIONS.find((item) => item.type === person.type);
                 const name = person.profile?.full_name ?? person.profile?.username ?? "POSSARA member";
                 return (
-                  <Link key={`${person.user_id}-${person.type}`} to={profilePath(person)} onClick={() => setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">
-                    {person.profile?.avatar_url ? (
-                      <img src={person.profile.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover" />
-                    ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-light font-serif text-base font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-[17px] font-semibold text-ink">{name}</p>
-                      {person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
-                      {person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
+                  <div key={`${person.user_id}-${person.type}`} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">
+                    <Link to={profilePath(person)} onClick={() => setPeopleOpen(false)} className="flex min-w-0 flex-1 items-center gap-3">
+                      {person.profile?.avatar_url ? (
+                        <img src={person.profile.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-light text-base font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[16px] font-semibold text-ink">{name}</p>
+                        {person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
+                        {person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
+                      </div>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-paper-dim px-2 py-1 text-xs" title={reaction?.label}>{reaction?.emoji}</span>
+                      <MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs">
-                      <span>{reaction?.emoji}</span>
-                      <span className="hidden sm:inline">{reaction?.label}</span>
-                    </div>
-                  </Link>
+                  </div>
                 );
               })}
               {!isLoading && !error && people?.length === 0 && <p className="p-5 text-center text-sm text-ink-faint">No reactions yet.</p>}

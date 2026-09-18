@@ -25,12 +25,12 @@ export interface StoryWithAuthor {
   music_url?: string | null;
   created_at: string;
   expires_at: string;
-  profiles: Pick<Profile, "full_name" | "avatar_url"> | null;
+  profiles: Pick<Profile, "full_name" | "avatar_url" | "username"> | null;
 }
 
 export interface AuthorWithStories {
   authorId: string;
-  author: Pick<Profile, "full_name" | "avatar_url"> | null;
+  author: Pick<Profile, "full_name" | "avatar_url" | "username"> | null;
   stories: StoryWithAuthor[];
 }
 
@@ -57,8 +57,8 @@ const MUSIC_EXTENSION_MIME: Record<string, string> = {
   oga: "audio/ogg",
   wav: "audio/wav",
 };
-const SIGNED_URL_SECONDS = 60 * 10;
-const SIGNED_URL_REUSE_MS = 8 * 60 * 1000;
+const SIGNED_URL_SECONDS = 60 * 30;
+const SIGNED_URL_REUSE_MS = 20 * 60 * 1000;
 const signedMomentCache = new Map<string, { url: string; reusableUntil: number }>();
 
 function resolveMusicMime(file: File) {
@@ -73,10 +73,17 @@ async function stableSignedUrl(bucket: "moments" | "moment-music", path: string)
   const key = `${bucket}:${path}`;
   const cached = signedMomentCache.get(key);
   if (cached && cached.reusableUntil > Date.now()) return cached.url;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_SECONDS);
-  if (error || !data?.signedUrl) return null;
-  signedMomentCache.set(key, { url: data.signedUrl, reusableUntil: Date.now() + SIGNED_URL_REUSE_MS });
-  return data.signedUrl;
+
+  signedMomentCache.delete(key);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_SECONDS);
+    if (!error && data?.signedUrl) {
+      signedMomentCache.set(key, { url: data.signedUrl, reusableUntil: Date.now() + SIGNED_URL_REUSE_MS });
+      return data.signedUrl;
+    }
+    if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 120));
+  }
+  return null;
 }
 
 async function attachSignedUrls(rows: StoryWithAuthor[]): Promise<StoryWithAuthor[]> {
@@ -112,10 +119,11 @@ export function useActiveStories() {
     queryKey: ["active-stories", userId ?? "guest"],
     refetchInterval: 45_000,
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
     queryFn: async (): Promise<AuthorWithStories[]> => {
       const { data, error } = await supabase
         .from("stories")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*, profiles(full_name, avatar_url, username)")
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -137,10 +145,11 @@ export function useMyStories() {
     queryKey: ["my-stories", userId],
     enabled: !!userId,
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
     queryFn: async (): Promise<StoryWithAuthor[]> => {
       const { data, error } = await supabase
         .from("stories")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*, profiles(full_name, avatar_url, username)")
         .eq("author_id", userId as string)
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
@@ -186,6 +195,7 @@ export function usePostStory() {
 
       let imagePath: string | null = null;
       let musicPath: string | null = null;
+      let insertedStoryId: string | null = null;
 
       try {
         if (imageFile) {
@@ -228,11 +238,13 @@ export function usePostStory() {
           .single();
 
         if (error) throw new Error(`Moment could not be published: ${error.message}`);
+        insertedStoryId = data.id as string;
         if (musicFile && (!musicPath || data.music_path !== musicPath)) throw new Error("Moment music uploaded but was not attached to the published Moment.");
         if (input.musicTrackKey && data.music_track_key !== input.musicTrackKey) throw new Error("The selected POSSARA Music track was not attached to the published Moment.");
         if (imageFile && (!imagePath || data.storage_path !== imagePath)) throw new Error("Moment photo uploaded but was not attached to the published Moment.");
         return data.id as string;
       } catch (error) {
+        if (insertedStoryId) await supabase.from("stories").delete().eq("id", insertedStoryId).eq("author_id", userId);
         if (imagePath) await supabase.storage.from("moments").remove([imagePath]);
         if (musicPath) await supabase.storage.from("moment-music").remove([musicPath]);
         throw error;
