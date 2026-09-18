@@ -28,6 +28,8 @@ import { OrganizationManage } from "./pages/OrganizationManage";
 import { JobDetail } from "./pages/JobDetail";
 import { JobApply } from "./pages/JobApply";
 import { JobApplicants } from "./pages/JobApplicants";
+import { JobCbt } from "./pages/JobCbt";
+import { JobCbtBuilder } from "./pages/JobCbtBuilder";
 import { SearchPage } from "./pages/SearchPage";
 import { Notifications } from "./pages/Notifications";
 import { Messages } from "./pages/Messages";
@@ -96,7 +98,9 @@ export default function App() {
                 <Route path="/organizations/register" element={<OrganizationRegister />} />
                 <Route path="/organizations/manage" element={<OrganizationManage />} />
                 <Route path="/jobs/:id/apply" element={<JobApply />} />
+                <Route path="/jobs/:id/cbt" element={<JobCbt />} />
                 <Route path="/organizations/jobs/:id/applicants" element={<JobApplicants />} />
+                <Route path="/organizations/jobs/:id/cbt" element={<JobCbtBuilder />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/messages/:userId" element={<Messages />} />
                 <Route path="/saved" element={<Saved />} />
