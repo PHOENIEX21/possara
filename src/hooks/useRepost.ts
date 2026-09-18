@@ -8,7 +8,7 @@ export function useRepost() {
 
   return useMutation({
     mutationFn: async (postId: string) => {
-      if (!userId) throw new Error("Sign in to share a post to your profile.");
+      if (!userId) throw new Error("Sign in to pass on a post to your profile.");
 
       const { data: existing, error: existingError } = await supabase
         .from("posts")
@@ -30,14 +30,10 @@ export function useRepost() {
         .single();
       if (originalError || !original) throw new Error("This post is no longer available to share.");
 
-      const profile = Array.isArray((original as any).profiles) ? (original as any).profiles[0] : (original as any).profiles;
-      const originalAuthor = profile?.full_name || (profile?.username ? `@${profile.username}` : "a POSSARA member");
-      const repostContent = `Shared from ${originalAuthor}\n\n${original.content}`.slice(0, 4000);
-
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
-        content: repostContent,
-        media_urls: original.media_urls,
+        content: "",
+        media_urls: null,
         type: original.type ?? "general",
         category_id: original.category_id,
         topic: original.topic,

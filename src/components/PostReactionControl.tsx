@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
+import { MemberFollowButton } from "./MemberFollowButton";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
@@ -250,9 +251,9 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
                       {person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
                       {person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs">
-                      <span>{reaction?.emoji}</span>
-                      <span className="hidden sm:inline">{reaction?.label}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs"><span>{reaction?.emoji}</span><span className="hidden sm:inline">{reaction?.label}</span></div>
+                      <MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/>
                     </div>
                   </Link>
                 );

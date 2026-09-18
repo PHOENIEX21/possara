@@ -4,16 +4,22 @@ interface TrustBadgeProps {
   verified: boolean;
   lastVerifiedAt: string | null;
   sponsored?: boolean | null;
+  sourceName?: string | null;
+  sourceVerified?: boolean;
 }
 
-export function TrustBadge({ verified, lastVerifiedAt, sponsored }: TrustBadgeProps) {
+export function TrustBadge({ verified, lastVerifiedAt, sponsored, sourceName, sourceVerified = false }: TrustBadgeProps) {
   const formattedDate = lastVerifiedAt
     ? new Date(lastVerifiedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
     : null;
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      {verified ? (
+      {sourceVerified ? (
+        <span className="inline-flex items-center gap-1.5 font-medium text-trust-dark">
+          <ShieldCheck size={16} strokeWidth={2.2} />Verified source{sourceName ? ` · ${sourceName}` : ""}
+        </span>
+      ) : verified ? (
         <span className="inline-flex items-center gap-1.5 text-trust-dark">
           <ShieldCheck size={16} strokeWidth={2} />Verified organization
         </span>

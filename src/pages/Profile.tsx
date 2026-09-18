@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search, UserCheck, UserPlus } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
-import { useFollowCounts, useFollowStatus, useToggleFollow } from "../hooks/useFollow";
+import { useFollowCounts } from "../hooks/useFollow";
 import { useOpportunityCategories } from "../components/CategoryChips";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { useCoverUpload } from "../hooks/useCoverUpload";
@@ -11,32 +11,10 @@ import { useFeedPosts } from "../hooks/useFeedPosts";
 import { PostCard } from "../components/PostCard";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { ProfileSharePresence } from "../components/ProfileSharePresence";
+import { MemberFollowButton } from "../components/MemberFollowButton";
+import { TrustRankBadge } from "../components/TrustRankBadge";
+import { useMemberTrustRank } from "../hooks/useTrustRank";
 import type { Profile as ProfileType } from "../types/database";
-
-function FollowButton({ targetUserId }: { targetUserId: string }) {
-  const { userId } = useAuth();
-  const { data: isFollowing } = useFollowStatus(targetUserId);
-  const toggle = useToggleFollow(targetUserId);
-
-  if (!userId || userId === targetUserId) return null;
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        onClick={() => toggle.mutate(!!isFollowing)}
-        disabled={toggle.isPending}
-        className={`inline-flex min-h-10 whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-          isFollowing ? "border border-ink-faint/25 bg-white text-ink-light hover:bg-paper" : "bg-ink text-white hover:-translate-y-0.5"
-        }`}
-      >
-        {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
-        {toggle.isPending ? "Working…" : isFollowing ? "Following" : "Follow"}
-      </button>
-      {toggle.error && <span className="max-w-48 text-right text-[11px] text-flag">{(toggle.error as Error).message}</span>}
-    </div>
-  );
-}
 
 function MessageButton({ targetUserId }: { targetUserId: string }) {
   const { userId } = useAuth();
@@ -187,6 +165,7 @@ type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onO
 
 function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
   const {data:counts}=useFollowCounts(profile.id);
+  const {data:trustRank}=useMemberTrustRank(profile.id);
   const [photoOpen,setPhotoOpen]=useState(false);
   const [profileMenuOpen,setProfileMenuOpen]=useState(false);
   const name=profile.full_name??"Member";
@@ -219,7 +198,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
         <div className="relative -mt-12 flex items-end justify-between gap-3 sm:-mt-14">
           {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
           <div className="relative z-20 mb-1 flex flex-wrap items-center justify-end gap-2">
-            {!own&&<><MessageButton targetUserId={profile.id}/><FollowButton targetUserId={profile.id}/></>}
+            {!own&&<><MessageButton targetUserId={profile.id}/><MemberFollowButton targetUserId={profile.id}/></>}
             {own&&onEdit&&<button type="button" onClick={onEdit} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-paper"><Pencil size={14}/>Edit profile</button>}
             {own&&onOwnCoverClick&&<div className="relative">
               <button type="button" onClick={()=>setProfileMenuOpen(open=>!open)} disabled={coverUploading} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-faint/25 bg-white text-ink-light shadow-sm transition hover:bg-paper disabled:opacity-60" aria-label="Profile options" aria-haspopup="menu" aria-expanded={profileMenuOpen} title="Profile options"><MoreHorizontal size={18}/></button>
@@ -229,7 +208,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
         </div>
 
         <div className="mt-4 sm:max-w-2xl">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 className="text-3xl font-bold tracking-tight text-ink">{name}</h1>{profile.username&&<span className="text-sm font-medium text-ink-faint">@{profile.username}</span>}</div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><h1 className="text-3xl font-bold tracking-tight text-ink">{name}</h1><TrustRankBadge rank={trustRank}/>{profile.username&&<span className="text-sm font-medium text-ink-faint">@{profile.username}</span>}</div>
           {(profile.headline||profile.profession)&&<p className="mt-2 max-w-xl text-[15px] font-medium leading-6 text-ink-light">{profile.headline||profile.profession}</p>}
           <ProfileSharePresence profile={profile}/>
         </div>
@@ -246,7 +225,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">About</p>
             {profile.bio?<p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-ink-light">{profile.bio}</p>:<p className="mt-2 text-sm text-ink-faint">No introduction added yet.</p>}
-            {profile.skills.length>0&&<div className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Skills</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><span key={skill} className="rounded-full bg-paper px-3 py-1.5 text-xs font-medium text-ink-light">{skill}</span>)}</div></div>}
+            {profile.skills.length>0&&<div className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Skills</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><Link key={skill} to={`/connect?skill=${encodeURIComponent(skill)}`} title={`Find people with ${skill}`} className="rounded-full bg-paper px-3 py-1.5 text-xs font-medium text-ink-light transition hover:bg-brand-light hover:text-brand-dark">{skill}</Link>)}</div></div>}
           </div>
           <div className="space-y-4">
             {profile.goal_categories.length>0&&<div><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Interested in</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.goal_categories.map(goal=><span key={goal} className="rounded-full border border-brand/15 bg-brand-light px-3 py-1.5 text-xs font-medium text-brand-dark">{goal.replace(/-/g," ")}</span>)}</div></div>}

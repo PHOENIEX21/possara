@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Building2, Sparkles, GraduationCap, BriefcaseBusiness, UserCheck, UserPlus } from "lucide-react";
+import { Search, Users, Building2, Sparkles, GraduationCap, BriefcaseBusiness } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useOwnProfile } from "../hooks/useProfile";
-import { useFollowStatus, useToggleFollow } from "../hooks/useFollow";
-import { useAuth } from "../store/auth";
 import type { Profile, Organization } from "../types/database";
+import { MemberFollowButton } from "../components/MemberFollowButton";
+import { useSkillDirectory } from "../hooks/useSkillDirectory";
+import { FriendSuggestions } from "../components/FriendSuggestions";
 
 const PROFESSIONS: { label: string; keywords: string[] }[] = [
   { label: "Tutor / Teacher", keywords: ["tutor", "teacher", "teach", "education", "educator", "lesson", "mathematics", "english", "science"] },
@@ -48,34 +49,14 @@ function tokens(values:Array<string|null|undefined>){
   return values.flatMap(v=>(v??"").toLowerCase().split(/[^a-z0-9+#.]+/)).filter(v=>v.length>2);
 }
 
-function FollowAction({ targetUserId }: { targetUserId: string }) {
-  const { userId } = useAuth();
-  const { data: isFollowing, isLoading } = useFollowStatus(targetUserId);
-  const toggle = useToggleFollow(targetUserId);
-
-  if (!userId) {
-    return <Link to="/signin" className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand/25 bg-brand-light px-3 py-1.5 text-xs font-semibold text-brand-dark"><UserPlus size={14}/>Follow</Link>;
-  }
-  if (userId === targetUserId) return null;
-
-  return <div className="flex shrink-0 flex-col items-end gap-1">
-    <button
-      type="button"
-      disabled={isLoading || toggle.isPending}
-      onClick={()=>toggle.mutate(!!isFollowing)}
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${isFollowing?"border border-ink-faint/30 bg-white text-ink-light":"bg-ink text-white"}`}
-    >
-      {isFollowing?<UserCheck size={14}/>:<UserPlus size={14}/>} {toggle.isPending?"Working…":isFollowing?"Following":"Follow"}
-    </button>
-    {toggle.error&&<span className="max-w-40 text-right text-[10px] text-flag">{(toggle.error as Error).message}</span>}
-  </div>;
-}
-
 export function Connect(){
+  const [searchParams]=useSearchParams();
   const {data:members,isLoading}=useMemberDirectory();
   const {data:organizations}=useOrganizations();
   const {data:ownProfile}=useOwnProfile();
-  const [query,setQuery]=useState("");
+  const initialSkill=searchParams.get("skill")?.trim() ?? "";
+  const [query,setQuery]=useState(initialSkill);
+  const {data:skillDirectory}=useSkillDirectory(query,40);
   const [profession,setProfession]=useState<string|null>(null);
   const [tab,setTab]=useState<"people"|"organizations">("people");
   const [photo,setPhoto]=useState<{src:string;name:string}|null>(null);
@@ -113,12 +94,16 @@ export function Connect(){
       <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link><Link to="/opportunities" className="text-sm font-medium text-brand-dark hover:underline">Find opportunities for me →</Link></div></div></div>
     </div>
 
+    <FriendSuggestions/>
+
     <div className="flex gap-2">
       <button onClick={()=>setTab("people")} className={`rounded-full px-4 py-2 text-sm font-medium ${tab==="people"?"bg-ink text-white":"bg-white text-ink-light"}`}><Users size={15} className="mr-1 inline"/>People</button>
       <button onClick={()=>setTab("organizations")} className={`rounded-full px-4 py-2 text-sm font-medium ${tab==="organizations"?"bg-ink text-white":"bg-white text-ink-light"}`}><Building2 size={15} className="mr-1 inline"/>Organizations</button>
     </div>
 
     <label className="relative block max-w-md"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={tab==="people"?"Search name, @username, skill or location…":"Search organizations…"} className="w-full rounded-full border border-ink-faint/30 py-2 pl-9 pr-4 text-sm outline-none focus:border-brand"/></label>
+
+    {tab==="people"&&skillDirectory&&skillDirectory.length>0&&<div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Skills people added on POSSARA">{skillDirectory.slice(0,20).map(skill=><button key={skill.id} type="button" onClick={()=>setQuery(skill.name)} className="whitespace-nowrap rounded-full border border-brand/15 bg-brand-light/35 px-3 py-1.5 text-xs font-medium text-brand-dark">{skill.name}<span className="ml-1 text-ink-faint">· {skill.member_count}</span></button>)}</div>}
 
     {tab==="people"&&<>
       <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"><button onClick={()=>setProfession(null)} className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm ${!profession?"border-ink bg-ink text-white":"border-ink-faint/30 text-ink-light"}`}>People to follow</button>{PROFESSIONS.map(p=><button key={p.label} onClick={()=>setProfession(p.label)} className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm ${profession===p.label?"border-brand bg-brand text-white":"border-ink-faint/30 text-ink-light"}`}>{p.label}</button>)}</div>
@@ -132,8 +117,8 @@ export function Connect(){
           return <div key={member.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">
               {member.avatar_url?<button type="button" onClick={()=>setPhoto({src:member.avatar_url!,name})} className="h-11 w-11 shrink-0 rounded-full"><img src={member.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/></button>:<Link to={path} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-trust-light text-trust-dark">{name.charAt(0).toUpperCase()}</Link>}
-              <Link to={path} className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium hover:underline">{name}</p>{isTutor&&<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[10px] font-medium text-brand-dark"><GraduationCap size={11}/>Tutor</span>}</div>{member.username&&<p className="truncate text-xs text-ink-faint">@{member.username}</p>}{(member.headline||member.profession)&&<p className="truncate text-xs text-ink-light">{member.headline||member.profession}</p>}{member.skills?.length>0&&<p className="mt-1 line-clamp-1 text-xs text-ink-faint">{member.skills.slice(0,3).join(" · ")}</p>}{member.location&&<p className="text-xs text-ink-faint">{member.location}{member.country?`, ${member.country}`:""}</p>}{matchCount>0&&<p className="mt-1 text-[11px] font-medium text-trust-dark">Relevant to your profile</p>}</Link>
-              <FollowAction targetUserId={member.id}/>
+              <Link to={path} className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-medium hover:underline">{name}</p>{isTutor&&<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[10px] font-medium text-brand-dark"><GraduationCap size={11}/>Tutor</span>}</div>{member.username&&<p className="truncate text-xs text-ink-faint">@{member.username}</p>}{(member.headline||member.profession)&&<p className="truncate text-xs text-ink-light">{member.headline||member.profession}</p>}{member.skills?.length>0&&<p className="mt-1 line-clamp-1 text-xs text-ink-faint">{member.skills.slice(0,3).join(" · ")}</p>}{(member.location||member.country)&&<p className="text-xs text-ink-faint">{member.location&&member.country&&member.location.toLowerCase().endsWith(member.country.toLowerCase())?member.location:[member.location,member.country].filter(Boolean).join(", ")}</p>}{matchCount>0&&<p className="mt-1 text-[11px] font-medium text-trust-dark">Relevant to your profile</p>}</Link>
+              <MemberFollowButton targetUserId={member.id} compact/>
             </div>
           </div>;
         })}

@@ -18,8 +18,17 @@ function emptyReactionCounts(): Record<PostReactionType, number> {
   return { like: 0, spark: 0, insightful: 0, useful: 0 };
 }
 
+export interface SharedPostPreview {
+  id: string;
+  author_id: string | null;
+  content: string;
+  media_urls: string[] | null;
+  profiles: Pick<Profile, "full_name" | "avatar_url" | "username"> | null;
+}
+
 export interface PostWithAuthor extends Post {
   profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
+  shared_from_post: SharedPostPreview | null;
   spark_count: number;
   viewer_reacted: boolean;
   reaction_count: number;
@@ -28,6 +37,7 @@ export interface PostWithAuthor extends Post {
   viewer_reaction: PostReactionType | null;
   author_role: UserRole | null;
   comment_count: number;
+  share_count: number;
 }
 interface UseFeedPostsOptions {
   postType?: "general" | "resource" | "opportunity" | "event";
@@ -52,7 +62,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       }
       let query = supabase
         .from("posts")
-        .select("*, profiles(full_name, avatar_url, username, headline, profession)")
+        .select("*, profiles(full_name, avatar_url, username, headline, profession), shared_from_post:posts!posts_shared_from_post_id_fkey(id,author_id,content,media_urls,profiles(full_name,avatar_url,username))")
         .eq("status", "published")
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -75,9 +85,14 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const authorIds = [...new Set(posts.map((p) => p.author_id).filter((id): id is string => !!id))];
       const { data: roles } = await supabase.from("user_roles").select("user_id, role").in("user_id", authorIds.length ? authorIds : ["00000000-0000-0000-0000-000000000000"]);
       const roleByUser = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
-      const { data: comments } = await supabase.from("comments").select("post_id").in("post_id", postIds).is("deleted_at", null);
+      const [{ data: comments }, { data: shares }] = await Promise.all([
+        supabase.from("comments").select("post_id").in("post_id", postIds).is("deleted_at", null),
+        supabase.from("posts").select("shared_from_post_id").in("shared_from_post_id", postIds).eq("status","published").is("deleted_at",null),
+      ]);
       const commentCountByPost = new Map<string, number>();
       (comments ?? []).forEach((c) => { if (c.post_id) commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1); });
+      const shareCountByPost = new Map<string, number>();
+      (shares ?? []).forEach((share) => { if (share.shared_from_post_id) shareCountByPost.set(share.shared_from_post_id, (shareCountByPost.get(share.shared_from_post_id) ?? 0) + 1); });
 
       const reactionCountsByPost = new Map<string, Record<PostReactionType, number>>();
       const reactionTotalByPost = new Map<string, number>();
@@ -121,8 +136,11 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
             avatar_url: profile?.avatar_url ?? null,
           };
         });
+        const rawShared = (p as typeof p & { shared_from_post?: SharedPostPreview | SharedPostPreview[] | null }).shared_from_post;
+        const sharedFromPost = Array.isArray(rawShared) ? rawShared[0] ?? null : rawShared ?? null;
         return {
           ...p,
+          shared_from_post: sharedFromPost,
           spark_count: counts.spark,
           viewer_reacted: viewerReaction === "spark",
           reaction_count: reactionTotalByPost.get(p.id) ?? 0,
@@ -131,6 +149,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
           viewer_reaction: viewerReaction,
           author_role: p.author_id ? roleByUser.get(p.author_id) ?? null : null,
           comment_count: commentCountByPost.get(p.id) ?? 0,
+          share_count: shareCountByPost.get(p.id) ?? 0,
         };
       });
     },

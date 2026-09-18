@@ -104,7 +104,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
 
 export function StoriesBar() {
   const { userId } = useAuth();
-  const { data: groups } = useActiveStories();
+  const { data: groups, refetch: refetchStories } = useActiveStories();
   const postStory = usePostStory();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
@@ -141,7 +141,11 @@ export function StoriesBar() {
     setUploadMessage("Publishing Moment…");
     try {
       await postStory.mutateAsync({ imageFile: mode === "photo" ? imageFile : null, textBody, musicFile, musicTitle, musicTrackKey: selectedTrack?.trackKey ?? null, musicTrackCreator: selectedTrack?.creator ?? null, audience, backgroundStyle });
-      setUploadMessage("Moment published."); resetComposer(); setComposerOpen(false); window.setTimeout(() => setUploadMessage(null), 3000);
+      const fresh = await refetchStories();
+      const ownFreshGroup = fresh.data?.find((group) => group.authorId === userId) ?? null;
+      setUploadMessage("Moment published."); resetComposer(); setComposerOpen(false);
+      if (ownFreshGroup) setViewingGroup(ownFreshGroup);
+      window.setTimeout(() => setUploadMessage(null), 3000);
     } catch (error) { setUploadMessage(null); setUploadError((error as Error).message); }
   }
 
@@ -149,7 +153,7 @@ export function StoriesBar() {
 
   return <div>
     <div className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
-      {userId && <div className="flex shrink-0 flex-col items-center gap-1"><div className="relative h-14 w-14"><button type="button" onClick={() => myGroup ? setViewingGroup(myGroup) : openComposer()} className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-brand/40">{myGroup ? <div className="h-full w-full rounded-full border-2 border-brand p-0.5"><div className="flex h-full w-full items-center justify-center rounded-full bg-paper text-sm font-medium text-trust-dark">You</div></div> : <Plus size={20} className="text-brand" />}</button>{myGroup && <button type="button" onClick={openComposer} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand text-white" aria-label="Add another Moment"><Plus size={14} /></button>}</div><span className="text-[11px] text-ink-light">Your Moment</span></div>}
+      {userId && <div className="flex shrink-0 flex-col items-center gap-1"><div className="relative h-14 w-14"><button type="button" onClick={() => myGroup ? setViewingGroup(myGroup) : openComposer()} className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-brand/40">{myGroup ? <div className="h-full w-full rounded-full border-2 border-brand p-0.5">{myGroup.stories[0]?.media_url ? <img src={myGroup.stories[0].media_url} alt="" className="h-full w-full rounded-full object-cover"/> : <div className="flex h-full w-full items-center justify-center rounded-full bg-paper text-sm font-medium text-trust-dark">You</div>}</div> : <Plus size={20} className="text-brand" />}</button>{myGroup && <button type="button" onClick={openComposer} className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand text-white" aria-label="Add another Moment"><Plus size={14} /></button>}</div><span className="text-[11px] text-ink-light">Your Moment</span></div>}
       {otherGroups.map((group) => <button key={group.authorId} type="button" onClick={() => setViewingGroup(group)} className="flex shrink-0 flex-col items-center gap-1"><div className="h-14 w-14 rounded-full border-2 border-brand p-0.5"><div className="h-full w-full rounded-full bg-paper p-0.5">{group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : <div className="flex h-full w-full items-center justify-center rounded-full bg-trust-light text-sm font-medium text-trust-dark">{(group.author?.full_name ?? "?").charAt(0).toUpperCase()}</div>}</div></div><span className="max-w-[60px] truncate text-[11px] text-ink-light">{group.author?.full_name?.split(" ")[0] ?? "Member"}</span></button>)}
     </div>
     {uploadMessage && <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-trust-dark">{!postStory.isPending && <CheckCircle2 size={14} />}<span>{uploadMessage}</span></div>}
