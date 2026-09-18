@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useOpportunities } from "../hooks/useOpportunities";
 import { OpportunityCard } from "../components/OpportunityCard";
 import { TrustBadge } from "../components/TrustBadge";
+import { useOrganizationJobs } from "../hooks/useHiring";
 
 function useOrganization(slug:string|undefined){return useQuery({queryKey:["organization",slug],enabled:!!slug,queryFn:async()=>{const {data,error}=await supabase.from("organizations").select("*").eq("slug",slug as string).single();if(error)throw error;return data;}})}
 
@@ -13,6 +14,8 @@ export function OrganizationPage(){
   const {data:org,isLoading,error}=useOrganization(slug);
   const {data:allOpportunities}=useOpportunities({limit:100});
   const orgOpportunities=allOpportunities?.filter(o=>o.organization_id===org?.id);
+  const {data:nativeJobs}=useOrganizationJobs(org?.id);
+  const openNativeJobs=(nativeJobs??[]).filter(j=>j.status==="open");
 
   if(isLoading)return <p className="text-ink-light">Loading…</p>;
   if(error||!org)return <div><p className="text-flag">This organization couldn't be found.</p><Link to="/organizations" className="mt-3 inline-block text-sm text-trust-dark underline">Back to organizations</Link></div>;
@@ -36,6 +39,8 @@ export function OrganizationPage(){
         </div>
       </div>
     </section>
+
+    {openNativeJobs.length>0&&<section><div className="mb-3"><p className="eyebrow">Hire directly on POSSARA</p><h2 className="text-xl">Open roles</h2><p className="mt-1 text-sm text-ink-light">Apply securely without leaving POSSARA.</p></div><div className="grid gap-3 sm:grid-cols-2">{openNativeJobs.map(job=><Link key={job.id} to={"/jobs/"+job.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5"><div className="flex items-start justify-between gap-2"><div><h3 className="font-bold">{job.title}</h3><p className="mt-1 text-xs text-ink-faint">{job.rank} · {job.employment_type} · {job.work_style}</p></div>{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-[10px] font-bold text-opportunity-dark">CBT</span>}</div><p className="mt-3 text-sm text-ink-light">{job.location}</p></Link>)}</div></section>}
 
     <section>
       <div className="mb-3 flex items-end justify-between gap-3"><div><p className="eyebrow">Openings</p><h2 className="text-xl">Jobs & opportunities from {org.name}</h2><p className="mt-1 text-sm text-ink-light">Active opportunities connected to this organization appear here.</p></div><span className="inline-flex items-center gap-1 rounded-full bg-paper-dim px-3 py-1.5 text-xs font-medium text-ink-light"><Briefcase size={13}/>{orgOpportunities?.length??0} active</span></div>
