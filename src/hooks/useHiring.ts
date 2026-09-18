@@ -57,7 +57,11 @@ export function useSaveCbtQuestions(jobId:string){
 export function useCbtAttempt(applicationId:string|undefined){
  return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});
 }
-export function useStartCbt(applicationId:string){return useMutation({mutationFn:async()=>{const {data,error}=await supabase.rpc("start_job_cbt",{p_application_id:applicationId});if(error)throw error;return (data?.[0]??null) as {started_at:string;time_limit_seconds:number}|null;}});}\nexport function useSubmitCbt(_jobId:string,applicationId:string){\n const qc=useQueryClient();\n return useMutation({mutationFn:async(input:{answers:Record<string,string>})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});\n}
+export function useStartCbt(applicationId:string){return useMutation({mutationFn:async()=>{const {data,error}=await supabase.rpc("start_job_cbt",{p_application_id:applicationId});if(error)throw error;return (data?.[0]??null) as {started_at:string;time_limit_seconds:number}|null;}});}
+export function useSubmitCbt(_jobId:string,applicationId:string){
+ const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{answers:Record<string,string>})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
+}
 export function useMyJobApplication(jobId:string|undefined){
  const {userId}=useAuth();
  return useQuery({queryKey:["my-job-application",jobId,userId],enabled:!!jobId&&!!userId,queryFn:async()=>{const {data,error}=await supabase.from("job_applications").select("*").eq("job_posting_id",jobId as string).eq("applicant_id",userId as string).maybeSingle();if(error)throw error;return data;}});
@@ -78,7 +82,9 @@ export function useSaveInterviewQuestions(jobId:string){
  return useMutation({mutationFn:async(rows:string[])=>{const {error:del}=await supabase.from("interview_questions").delete().eq("job_posting_id",jobId);if(del)throw del;if(rows.length){const {error}=await supabase.from("interview_questions").insert(rows.map((question_text,i)=>({job_posting_id:jobId,question_text,answer_type:"short_text",required:true,sort_order:i})));if(error)throw error;}},onSuccess:()=>qc.invalidateQueries({queryKey:["interview-questions",jobId]})});
 }
 
-export function useOrganizationMembers(organizationId:string|undefined){\n return useQuery({queryKey:["organization-members",organizationId],enabled:!!organizationId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("id,user_id,role,invited_at,joined_at").eq("organization_id",organizationId as string).order("joined_at");if(error)throw error;const ids=(data??[]).map(m=>m.user_id);if(!ids.length)return [];const {data:profiles,error:pError}=await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id",ids);if(pError)throw pError;const byId=new Map((profiles??[]).map(p=>[p.id,p]));return (data??[]).map(m=>({...m,profile:byId.get(m.user_id)??null}));}});\n}
+export function useOrganizationMembers(organizationId:string|undefined){
+ return useQuery({queryKey:["organization-members",organizationId],enabled:!!organizationId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("id,user_id,role,invited_at,joined_at").eq("organization_id",organizationId as string).order("joined_at");if(error)throw error;const ids=(data??[]).map(m=>m.user_id);if(!ids.length)return [];const {data:profiles,error:pError}=await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id",ids);if(pError)throw pError;const byId=new Map((profiles??[]).map(p=>[p.id,p]));return (data??[]).map(m=>({...m,profile:byId.get(m.user_id)??null}));}});
+}
 export function useManageOrganizationMember(organizationId:string){
  const qc=useQueryClient();
  return useMutation({mutationFn:async(input:{memberId:string;role:"owner"|"recruiter"|"viewer"}|{memberId:string;remove:true})=>{if("remove" in input){const {error}=await supabase.from("organization_members").delete().eq("id",input.memberId);if(error)throw error;}else{const {error}=await supabase.from("organization_members").update({role:input.role}).eq("id",input.memberId);if(error)throw error;}},onSuccess:()=>qc.invalidateQueries({queryKey:["organization-members",organizationId]})});
