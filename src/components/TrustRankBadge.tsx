@@ -1,37 +1,29 @@
+import { BadgeCheck, Medal } from "lucide-react";
 import type { MemberTrustRank } from "../hooks/useTrustRank";
 
 const STYLE: Record<Exclude<MemberTrustRank["rankKey"], "restricted">, string> = {
-  bronze: "border-[#b7794b]/30 bg-[#f7eee7] text-[#85502d]",
-  silver: "border-slate-300 bg-slate-100 text-slate-600",
-  gold: "border-amber-300/70 bg-amber-50 text-amber-700",
-  platinum: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  diamond: "border-cyan-200 bg-cyan-50 text-cyan-700",
-  official: "border-amber-300/70 bg-amber-50 text-amber-800",
-};
-
-const SYMBOL: Record<Exclude<MemberTrustRank["rankKey"], "restricted">, string> = {
-  bronze: "🥉",
-  silver: "◆",
-  gold: "◆",
-  platinum: "✦",
-  diamond: "💎",
-  official: "🥇",
+  bronze: "border-[#b7794b]/45 bg-gradient-to-br from-[#f4d7bd] via-[#c88956] to-[#8d5734] text-white shadow-[0_1px_5px_rgba(141,87,52,.28)]",
+  silver: "border-slate-300 bg-gradient-to-br from-white via-slate-300 to-slate-500 text-white shadow-[0_1px_5px_rgba(100,116,139,.25)]",
+  gold: "border-amber-300 bg-gradient-to-br from-[#fff0a8] via-[#e9b949] to-[#a96800] text-white shadow-[0_1px_6px_rgba(217,151,0,.28)]",
+  platinum: "border-violet-200 bg-gradient-to-br from-white via-violet-200 to-indigo-500 text-white shadow-[0_1px_6px_rgba(99,102,241,.24)]",
+  diamond: "border-cyan-200 bg-gradient-to-br from-white via-cyan-200 to-sky-500 text-white shadow-[0_1px_7px_rgba(14,165,233,.26)]",
+  official: "border-amber-300 bg-gradient-to-br from-[#fff4b8] via-[#f3bd43] to-[#b46c00] text-white shadow-[0_1px_7px_rgba(217,151,0,.3)]",
 };
 
 export function TrustRankBadge({ rank, compact = false }: { rank: MemberTrustRank | null | undefined; compact?: boolean }) {
   if (!rank || rank.rankKey === "restricted") return null;
   const title = rank.official
-    ? "POSSARA Official account"
-    : `POSSARA Trust Rank · ${rank.score}/100. Built from account trust, useful participation, contribution and confirmed moderation history. Followers and POSSARA+ payment do not increase rank.`;
+    ? "POSSARA Official"
+    : `${rank.label} POSSARA Trust Rank · ${rank.score}/100. Trust is earned through account quality, useful participation, contribution and confirmed moderation history.`;
+  const size = compact ? 16 : 20;
 
   return (
     <span
       title={title}
       aria-label={rank.official ? "POSSARA Official" : `${rank.label} POSSARA Trust Rank`}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full border font-semibold ${STYLE[rank.rankKey]} ${compact ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs"}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border ${STYLE[rank.rankKey]} ${compact ? "h-[18px] w-[18px]" : "h-6 w-6"}`}
     >
-      <span aria-hidden="true">{SYMBOL[rank.rankKey]}</span>
-      <span>{rank.official ? "Official" : rank.label}</span>
+      {rank.official ? <Medal size={size-3} strokeWidth={2.5} aria-hidden="true"/> : <BadgeCheck size={size} strokeWidth={2.4} aria-hidden="true"/>}
     </span>
   );
 }

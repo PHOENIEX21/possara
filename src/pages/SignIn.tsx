@@ -138,7 +138,7 @@ export function SignIn() {
       }
 
       queryClient.clear();
-      sessionStorage.removeItem("possara-signed-in-entry-seen");
+      sessionStorage.setItem("possara-transition","signup");
       setLoading(false);
       window.location.replace("/profile/me");
       return;
@@ -177,7 +177,6 @@ export function SignIn() {
     }
 
     queryClient.clear();
-    sessionStorage.removeItem("possara-signed-in-entry-seen");
     setLoading(false);
     window.location.replace("/profile/me");
   }
@@ -185,7 +184,6 @@ export function SignIn() {
   async function handleGoogle() {
     setError(null);
     await clearCurrentBrowserSession();
-    sessionStorage.removeItem("possara-signed-in-entry-seen");
     const { error: oAuthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },

@@ -8,7 +8,7 @@ export function useRepost() {
 
   return useMutation({
     mutationFn: async (postId: string) => {
-      if (!userId) throw new Error("Sign in to share a post to your profile.");
+      if (!userId) throw new Error("Sign in to pass a post on to your profile.");
 
       const { data: existing, error: existingError } = await supabase
         .from("posts")
@@ -23,31 +23,32 @@ export function useRepost() {
 
       const { data: original, error: originalError } = await supabase
         .from("posts")
-        .select("id,content,media_urls,type,category_id,topic,status,deleted_at,profiles(full_name,username)")
+        .select("id,type,category_id,topic,status,deleted_at,shared_from_post_id")
         .eq("id", postId)
         .eq("status", "published")
         .is("deleted_at", null)
         .single();
-      if (originalError || !original) throw new Error("This post is no longer available to share.");
+      if (originalError || !original) throw new Error("This post is no longer available to pass on.");
 
-      const profile = Array.isArray((original as any).profiles) ? (original as any).profiles[0] : (original as any).profiles;
-      const originalAuthor = profile?.full_name || (profile?.username ? `@${profile.username}` : "a POSSARA member");
-      const repostContent = `Shared from ${originalAuthor}\n\n${original.content}`.slice(0, 4000);
+      const sourcePostId = original.shared_from_post_id ?? original.id;
 
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
-        content: repostContent,
-        media_urls: original.media_urls,
+        content: "",
+        media_urls: null,
         type: original.type ?? "general",
         category_id: original.category_id,
         topic: original.topic,
         status: "published",
         visibility: "public",
-        shared_from_post_id: original.id,
+        shared_from_post_id: sourcePostId,
       });
       if (error) throw error;
       return { alreadyShared: false };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feed-posts"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post-detail"] });
+    },
   });
 }

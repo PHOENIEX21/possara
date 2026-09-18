@@ -16,6 +16,9 @@ export type DiscoverySource = {
   check_every_minutes: number;
   adapter: Record<string, unknown>;
   auto_publish: boolean;
+  verified_source: boolean;
+  verified_at: string | null;
+  verification_note: string | null;
   requires_setup: boolean;
   setup_note: string | null;
   last_checked_at: string | null;
@@ -194,16 +197,29 @@ export function useToggleDiscoverySource() {
   });
 }
 
+export function useVerifyDiscoverySource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
+      const { error } = await supabase.rpc("admin_verify_opportunity_source", {
+        p_source_id: id,
+        p_note: note?.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateDiscovery(qc),
+  });
+}
+
 export function useSetDiscoveryAutoPublish() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, autoPublish }: { id: string; autoPublish: boolean }) => {
-      const { data: source, error: readError } = await supabase.from("opportunity_sources").select("trust_tier").eq("id", id).single();
-      if (readError) throw readError;
-      if (autoPublish && source.trust_tier === "trusted_aggregator") throw new Error("Auto-publish is restricted to official or direct partner sources.");
-      const { data, error } = await supabase.from("opportunity_sources").update({ auto_publish: autoPublish, updated_at: new Date().toISOString() }).eq("id", id).select("id");
+      const { error } = await supabase.rpc("admin_set_opportunity_source_auto_publish", {
+        p_source_id: id,
+        p_enabled: autoPublish,
+      });
       if (error) throw error;
-      if (!data?.length) throw new Error("Auto-publish setting was not changed.");
     },
     onSuccess: () => invalidateDiscovery(qc),
   });
