@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
-import { useFollowCounts } from "../hooks/useFollow";
+import { ProfileConnections } from "../components/ProfileConnections";
 import { useOpportunityCategories } from "../components/CategoryChips";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { useCoverUpload } from "../hooks/useCoverUpload";
@@ -164,7 +164,6 @@ function ProfilePosts({ profileId }: { profileId: string }) {
 type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onOwnCoverClick?:()=>void; onRemoveCover?:()=>void; coverUploading?:boolean };
 
 function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
-  const {data:counts}=useFollowCounts(profile.id);
   const {data:trustRank}=useMemberTrustRank(profile.id);
   const [photoOpen,setPhotoOpen]=useState(false);
   const [profileMenuOpen,setProfileMenuOpen]=useState(false);
@@ -213,18 +212,14 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
           <ProfileSharePresence profile={profile}/>
         </div>
 
-        {counts&&<div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-paper p-2">
-          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{counts.followers}</p><p className="text-[11px] font-medium text-ink-faint">{counts.followers===1?"Follower":"Followers"}</p></div>
-          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{counts.following}</p><p className="text-[11px] font-medium text-ink-faint">Following</p></div>
-          <div className="rounded-xl bg-white px-3 py-3"><p className="text-lg font-bold text-ink">{profile.skills.length}</p><p className="text-[11px] font-medium text-ink-faint">Skills</p></div>
-        </div>}
+        <ProfileConnections profileId={profile.id}/>
 
         {detailItems.length>0&&<div className="mt-5 grid gap-2 sm:grid-cols-2">{detailItems.map(({icon:Icon,label})=><div key={label} className="flex items-center gap-2.5 rounded-xl border border-black/[.05] bg-white px-3 py-2.5 text-sm text-ink-light"><Icon size={16} className="shrink-0 text-brand-dark"/><span className="truncate">{label}</span></div>)}</div>}
 
         {(profile.bio||profile.skills.length>0||profile.goal_categories.length>0||socialLinks.length>0)&&<div className="mt-6 grid gap-5 border-t border-paper-dim pt-5 sm:grid-cols-[1.3fr_.9fr]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">About</p>
-            {profile.bio?<p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-ink-light">{profile.bio}</p>:<p className="mt-2 text-sm text-ink-faint">No introduction added yet.</p>}
+            {profile.bio?<p className="mt-2 whitespace-pre-line text-[15px] leading-7 text-ink-light">{profile.bio}</p>:own?<button type="button" onClick={onEdit} className="mt-2 text-sm font-medium text-brand-dark hover:underline">Add a short introduction about yourself</button>:<p className="mt-2 text-sm text-ink-faint">No introduction added yet.</p>}
             {profile.skills.length>0&&<div className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Skills</p><div className="mt-2 flex flex-wrap gap-1.5">{profile.skills.map(skill=><Link key={skill} to={`/connect?skill=${encodeURIComponent(skill)}`} title={`Find people with ${skill}`} className="rounded-full bg-paper px-3 py-1.5 text-xs font-medium text-ink-light transition hover:bg-brand-light hover:text-brand-dark">{skill}</Link>)}</div></div>}
           </div>
           <div className="space-y-4">
@@ -294,7 +289,7 @@ function EditOwnProfile({onDone}:{onDone:()=>void}){
       <label className="text-sm text-ink-light">Location<input value={location} onChange={e=>setLocation(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
       <label className="text-sm text-ink-light">Country<input value={country} onChange={e=>setCountry(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
     </div>
-    <label className="block text-sm text-ink-light">About<textarea rows={4} value={bio} onChange={e=>setBio(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>
+    <label className="block text-sm text-ink-light">Short introduction<textarea rows={3} maxLength={300} value={bio} onChange={e=>setBio(e.target.value)} className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/><span className="mt-1 block text-xs text-ink-faint">{bio.length}/300 · Tell people briefly who you are, what you do or what matters to you.</span></label>
     <div className="rounded-2xl border border-paper-dim bg-paper/50 p-4"><div className="mb-3"><p className="text-sm font-semibold text-ink">Social links</p><p className="text-xs text-ink-faint">Only platform symbols are shown on your public profile.</p></div><div className="grid gap-3 sm:grid-cols-2">{socialFields.map(field=><label key={field.label} className="text-sm text-ink-light">{field.label}<input value={field.value} onChange={e=>field.set(e.target.value)} placeholder={field.placeholder} className="mt-1 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-ink outline-none focus:border-brand"/></label>)}<label className="text-sm text-ink-light sm:col-span-2">Website / portfolio<input value={website} onChange={e=>setWebsite(e.target.value)} placeholder="yourwebsite.com" className="mt-1 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-ink outline-none focus:border-brand"/></label></div></div>
     <label className="block text-sm text-ink-light">Skills — separated by commas<input value={skillsInput} onChange={e=>setSkillsInput(e.target.value)} placeholder="e.g. Mathematics tutoring, Graphic design, React" className="mt-1 w-full rounded-xl border border-ink-faint/25 px-3 py-2.5 text-ink outline-none focus:border-brand"/><span className="mt-1 block text-xs text-ink-faint">POSSARA uses profession and skills to improve people and tutor recommendations.</span></label>
     <div><p className="text-sm text-ink-light">Opportunity interests</p><div className="mt-2 flex flex-wrap gap-2">{categories?.map(category=><button key={category.id} type="button" onClick={()=>setGoals(current=>current.includes(category.slug)?current.filter(value=>value!==category.slug):[...current,category.slug])} className={`rounded-full border px-3 py-1.5 text-sm ${goals.includes(category.slug)?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/30 text-ink-light"}`}>{category.name}</button>)}</div></div>
