@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Briefcase, Check, Copy, ShieldCheck } from "lucide-react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Briefcase, Check, ShieldCheck } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCreateJob, useMyOrganizations } from "../hooks/useHiring";
 
 type Screening={questionText:string;answerType:"short_text"|"number"|"date"|"yes_no"|"single_choice";choices:string[];required:boolean};
@@ -15,7 +15,7 @@ export function JobPostWizard(){
  const [f,setF]=useState({...defaults,...(duplicate?{title:duplicate.title+" (copy)",roleType:duplicate.role_type,rank:duplicate.rank,employmentType:duplicate.employment_type,workStyle:duplicate.work_style,location:duplicate.location,payMin:duplicate.pay_min?.toString()??"",payMax:duplicate.pay_max?.toString()??"",description:duplicate.description,requirements:(duplicate.requirements??[]).join("\n"),requiresCbt:!!duplicate.requires_cbt}:{}),location:duplicate?.location??org?.location??""});
  const verified=!!org&&(org.verified===true||org.verification_status==="verified");
  const canNext=step!==0||!!f.title.trim()&&!!f.roleType.trim()&&!!f.location.trim();
- async function save(){if(!organizationId)return;const result=await create.mutateAsync({organizationId,title:f.title,roleType:f.roleType,rank:f.rank,employmentType:f.employmentType,workStyle:f.workStyle,location:f.location,payMin:f.payMin?Number(f.payMin):undefined,payMax:f.payMax?Number(f.payMax):undefined,description:f.description,requirements:f.requirements.split("\n").map(x=>x.trim()).filter(Boolean),requiresCbt:f.requiresCbt,closesAt:f.closesAt?new Date(f.closesAt+"T23:59:59").toISOString():undefined,screening:f.screening});nav("/organizations/manage",{state:{jobCreated:true,published:result.published}});}
+ async function save(){if(!organizationId)return;const result=await create.mutateAsync({organizationId,title:f.title,roleType:f.roleType,rank:f.rank,employmentType:f.employmentType,workStyle:f.workStyle,location:f.location,payMin:f.payMin?Number(f.payMin):undefined,payMax:f.payMax?Number(f.payMax):undefined,description:f.description,requirements:f.requirements.split("\n").map((x:string)=>x.trim()).filter(Boolean),requiresCbt:f.requiresCbt,closesAt:f.closesAt?new Date(f.closesAt+"T23:59:59").toISOString():undefined,screening:f.screening});nav("/organizations/manage",{state:{jobCreated:true,published:result.published}});}
  return <div className="page-stack">
   <section className="page-hero"><div className="page-icon bg-brand-light text-brand-dark"><Briefcase size={22}/></div><div><p className="eyebrow">Organization hiring</p><h1>{duplicate?"Duplicate role":"Post a role"}</h1><p>A guided setup keeps each vacancy clear, complete and ready for applicants.</p></div></section>
   <div className="rounded-3xl border border-paper-dim bg-white p-5 shadow-card sm:p-7">
