@@ -131,11 +131,13 @@ function preloadImage(url: string) {
 }
 
 export function ExtraordinaryPeople() {
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(()=>{if(typeof window==="undefined")return 0;const saved=Number(window.sessionStorage.getItem("possara-extraordinary-active"));return Number.isFinite(saved)&&saved>=0&&saved<PEOPLE.length?saved:0;});
   const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [catalogueReady, setCatalogueReady] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(()=>{try{window.sessionStorage.setItem("possara-extraordinary-active",String(active));}catch{/* session storage can be unavailable */}},[active]);
 
   useEffect(() => {
     let cancelled = false;

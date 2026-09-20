@@ -26,6 +26,7 @@ import { OrganizationPage } from "./pages/OrganizationPage";
 import { OrganizationRegister } from "./pages/OrganizationRegister";
 import { OrganizationManage } from "./pages/OrganizationManage";
 import { JobDetail } from "./pages/JobDetail";
+import { JobPostWizard } from "./pages/JobPostWizard";
 import { JobApply } from "./pages/JobApply";
 import { JobApplicants } from "./pages/JobApplicants";
 import { JobCbt } from "./pages/JobCbt";
@@ -103,6 +104,7 @@ export default function App() {
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/organizations/register" element={<OrganizationRegister />} />
                 <Route path="/organizations/manage" element={<OrganizationManage />} />
+                <Route path="/organizations/:organizationId/jobs/new" element={<JobPostWizard />} />
                 <Route path="/organizations/:id/team" element={<OrganizationTeam />} />
                 <Route path="/organizations/:id/settings" element={<OrganizationSettings />} />
                 <Route path="/jobs/:id/apply" element={<JobApply />} />

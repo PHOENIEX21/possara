@@ -46,13 +46,14 @@ interface UseFeedPostsOptions {
   noCategoryOnly?: boolean;
   topic?: string;
   authorId?: string;
+  limit?: number;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, limit = 30 } = options;
   const { userId } = useAuth();
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, limit, userId],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
@@ -66,7 +67,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         .eq("status", "published")
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(limit);
       if (postType) query = query.eq("type", postType);
       if (noCategoryOnly) query = query.is("category_id", null);
       else if (categoryIds) query = query.in("category_id", categoryIds);

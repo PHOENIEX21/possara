@@ -21,6 +21,7 @@ type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 
 export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
+  const [feedLimit,setFeedLimit]=useState(30);
   const {data:posts,isLoading,error}=useFeedPosts({
     postType:"general",
     noCategoryOnly:true,
@@ -32,7 +33,8 @@ export function Home(){
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
 
   return <div className="feed-layout">
-    <div className="feed-column">\n      <section className="rounded-3xl bg-ink p-5 text-white"><p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/55">POSSARA community</p><h1 className="mt-2 text-2xl font-bold">Grow through what people share.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-white/65">Encouragement, useful advice and real experiences from people helping one another move forward.</p></section>
+    <div className="feed-column">
+      <section className="rounded-3xl bg-ink p-5 text-white"><p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/55">POSSARA community</p><h1 className="mt-2 text-2xl font-bold">Grow through what people share.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-white/65">Encouragement, useful advice and real experiences from people helping one another move forward.</p></section>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
@@ -57,6 +59,7 @@ export function Home(){
         {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Share something encouraging, useful or uplifting.</p></div>}
         {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
         {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}
+        {!isLoading&&!error&&visiblePosts.length>=feedLimit&&<div className="flex justify-center pt-2"><button type="button" onClick={()=>setFeedLimit(n=>n+30)} className="rounded-xl border border-paper-dim bg-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-paper">Load older posts</button></div>}
       </div>
     </div>
 

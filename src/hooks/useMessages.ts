@@ -391,3 +391,10 @@ export function useDeleteMessageForMe(otherUserId: string) {
     onSuccess: () => invalidateMessaging(queryClient, userId, otherUserId),
   });
 }
+
+
+export function useMessageRequests(){
+ const {userId}=useAuth();
+ return useQuery({queryKey:["message-requests",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("messages").select("id,sender_id,recipient_id,content,created_at,recipient_deleted_at").eq("recipient_id",userId as string).is("recipient_deleted_at",null).order("created_at",{ascending:false}).limit(300);if(error)throw error;const senders=[...new Set((data??[]).map((m:any)=>m.sender_id))];if(!senders.length)return [];const {data:sent,error:sentError}=await supabase.from("messages").select("recipient_id").eq("sender_id",userId as string).in("recipient_id",senders);if(sentError)throw sentError;const replied=new Set((sent??[]).map((m:any)=>m.recipient_id));const latest=new Map<string,any>();(data??[]).forEach((m:any)=>{if(!replied.has(m.sender_id)&&!latest.has(m.sender_id))latest.set(m.sender_id,m);});const ids=[...latest.keys()];if(!ids.length)return [];const {data:profiles}=await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id",ids);const byId=new Map((profiles??[]).map((p:any)=>[p.id,p]));return ids.map(id=>({senderId:id,message:latest.get(id),profile:byId.get(id)??null}));}});
+}
+export function useDeclineMessageRequest(){const {userId}=useAuth();const qc=useQueryClient();return useMutation({mutationFn:async(senderId:string)=>{if(!userId)throw new Error("Sign in first.");const {error}=await supabase.from("messages").update({recipient_deleted_at:new Date().toISOString()}).eq("recipient_id",userId).eq("sender_id",senderId).is("recipient_deleted_at",null);if(error)throw error;},onSuccess:()=>{qc.invalidateQueries({queryKey:["message-requests"]});qc.invalidateQueries({queryKey:["conversations"]});}});}
