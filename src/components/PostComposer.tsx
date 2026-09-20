@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image as ImageIcon, X } from "lucide-react";
+import { Image as ImageIcon, Music2, SmilePlus, X } from "lucide-react";
 import { useCreatePost } from "../hooks/useFeedPosts";
 import { useOpportunityCategories } from "./CategoryChips";
 import { useOwnProfile } from "../hooks/useProfile";
@@ -22,6 +22,11 @@ const HOME_TOPICS = [
   { value: "competition", label: "Competition", help: "Competitions, challenges, quizzes or contests shared by the community." },
   { value: "talent", label: "Talent", help: "Talent opportunities, showcases, auditions and calls for participation." },
 ] as const;
+const FEELINGS = [
+ {value:"happy",label:"😊 Happy"},{value:"grateful",label:"🙏 Grateful"},{value:"excited",label:"🤩 Excited"},
+ {value:"celebrating",label:"🎉 Celebrating"},{value:"birthday",label:"🎂 Celebrating a birthday"},{value:"proud",label:"🙌 Proud"},
+ {value:"blessed",label:"✨ Blessed"},{value:"motivated",label:"💪 Motivated"}
+] as const;
 
 export function PostComposer({
   postType = "general",
@@ -40,6 +45,9 @@ export function PostComposer({
   const [topic, setTopic] = useState<string>(defaultTopic);
   const [selectedPostType,setSelectedPostType]=useState<"general"|"resource"|"opportunity"|"event">(postType);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [musicFile,setMusicFile]=useState<File|null>(null);
+  const [feeling,setFeeling]=useState("");
+  const [showFeelings,setShowFeelings]=useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
 
@@ -71,6 +79,7 @@ export function PostComposer({
     setCategoryId("");
     setTopic(defaultTopic);
     clearImage();
+    setMusicFile(null); setFeeling(""); setShowFeelings(false);
     setExpanded(false);
   }
 
@@ -81,6 +90,8 @@ export function PostComposer({
     await createPost.mutateAsync({
       content: content.trim(),
       imageFile,
+      musicFile,
+      feeling:feeling||null,
       type: categorySelected ? "opportunity" : selectedPostType,
       categoryId: categoryId || null,
       topic: categorySelected ? null : (showHomeTopicPicker || defaultTopic ? topic || null : null),
@@ -160,6 +171,7 @@ export function PostComposer({
 
       {!categoryId&&<div className="mb-4"><p className="mb-2 text-sm font-semibold text-ink">What are you sharing?</p><div className="flex flex-wrap gap-2">{([{value:"general",label:"Community"},{value:"resource",label:"Resource"},{value:"event",label:"Event"}] as const).map(item=><button key={item.value} type="button" onClick={()=>setSelectedPostType(item.value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${selectedPostType===item.value?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/20 bg-white text-ink-light"}`}>{item.label}</button>)}</div></div>}
 
+      {feeling&&<div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-light px-3 py-1.5 text-sm font-medium text-brand-dark">{FEELINGS.find(x=>x.value===feeling)?.label}<button type="button" onClick={()=>setFeeling("")} aria-label="Remove feeling"><X size={13}/></button></div>}
       <div className="relative">
         <textarea
           autoFocus
@@ -173,6 +185,8 @@ export function PostComposer({
         <MentionSuggestions value={content} onChange={setContent}/>
       </div>
 
+      {showFeelings&&<div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-paper p-3">{FEELINGS.map(item=><button key={item.value} type="button" onClick={()=>{setFeeling(item.value);setShowFeelings(false);}} className="rounded-full bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-brand-light">{item.label}</button>)}</div>}
+      {musicFile&&<div className="mt-3 flex items-center justify-between rounded-xl border border-paper-dim bg-paper px-3 py-2 text-sm"><span className="min-w-0 truncate">🎵 {musicFile.name}</span><button type="button" onClick={()=>setMusicFile(null)} aria-label="Remove music"><X size={15}/></button></div>}
       {imagePreview && (
         <div className="relative mt-3 inline-block">
           <img src={imagePreview} alt="" className="max-h-64 rounded-lg object-cover" />
@@ -180,12 +194,14 @@ export function PostComposer({
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between border-t border-paper-dim pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-paper-dim pt-3">
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim">
           <ImageIcon size={16} /> Photo
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
         </label>
-        <div className="flex items-center gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Music<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setExpanded(true);}e.target.value="";}} className="hidden"/></label>
+        <button type="button" onClick={()=>setShowFeelings(v=>!v)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><SmilePlus size={16}/> Feeling</button>
+        <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={reset} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
           <button type="submit" disabled={!content.trim() || createPost.isPending} className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-40">
             {createPost.isPending ? "Posting…" : "Post"}
