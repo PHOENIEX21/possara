@@ -78,11 +78,16 @@ export function useApplicationReview(applicationId:string|undefined){
  return useQuery({queryKey:["application-review",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data:app,error}=await supabase.from("job_applications").select("*, profiles:profiles!job_applications_applicant_id_fkey(id,full_name,username,avatar_url,headline,skills,location), job_postings(id,title,organization_id,requires_cbt)").eq("id",applicationId as string).single();if(error)throw error;const {data:answers,error:aError}=await supabase.from("job_question_answers").select("answer_value,question_kind,question_id").eq("application_id",applicationId as string);if(aError)throw aError;const ids=(answers??[]).filter(a=>a.question_kind==="screening").map(a=>a.question_id);let questions:any[]=[];if(ids.length){const {data,error:qError}=await supabase.from("screening_questions").select("id,question_text").in("id",ids);if(qError)throw qError;questions=data??[];}const {data:attempt,error:tError}=await supabase.from("job_cbt_attempts").select("score,submitted_at").eq("application_id",applicationId as string).maybeSingle();if(tError)throw tError;return {app,answers:answers??[],questions,attempt};}});
 }
 export function useInterviewQuestions(jobId:string|undefined){
- return useQuery({queryKey:["interview-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("interview_questions").select("*").eq("job_posting_id",jobId as string).order("sort_order");if(error)throw error;return data??[];}});
+ return useQuery({queryKey:["interview-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.rpc("get_recruiter_interview_questions",{p_job_id:jobId as string});if(error)throw error;return data??[];}});
 }
 export function useSaveInterviewQuestions(jobId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(rows:string[])=>{const {error:del}=await supabase.from("interview_questions").delete().eq("job_posting_id",jobId);if(del)throw del;if(rows.length){const {error}=await supabase.from("interview_questions").insert(rows.map((question_text,i)=>({job_posting_id:jobId,question_text,answer_type:"short_text",sort_order:i})));if(error)throw error;}},onSuccess:()=>qc.invalidateQueries({queryKey:["interview-questions",jobId]})});
+ return useMutation({mutationFn:async(rows:string[])=>{const {data,error}=await supabase.rpc("save_recruiter_interview_questions",{p_job_id:jobId,p_questions:rows.map(question_text=>({question_text}))});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["interview-questions",jobId]})});
+}
+
+export function useMessageJobApplicants(jobId:string){
+ const {userId}=useAuth();const qc=useQueryClient();
+ return useMutation({mutationFn:async(input:{recipientIds:string[];content:string})=>{if(!userId)throw new Error("Sign in first.");const content=input.content.trim();if(!content)throw new Error("Write a message first.");if(content.length>4000)throw new Error("Message is too long.");const recipients=[...new Set(input.recipientIds)].filter(id=>id&&id!==userId);if(!recipients.length)throw new Error("There are no applicants to message.");const {error}=await supabase.from("messages").insert(recipients.map(recipient_id=>({sender_id:userId,recipient_id,content})));if(error)throw error;return recipients.length;},onSuccess:()=>{qc.invalidateQueries({queryKey:["conversations"]});qc.invalidateQueries({queryKey:["job-applicants",jobId]});}});
 }
 
 export function useOrganizationMembers(organizationId:string|undefined){
