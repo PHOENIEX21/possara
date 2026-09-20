@@ -46,6 +46,7 @@ interface UseFeedPostsOptions {
   noCategoryOnly?: boolean;
   topic?: string;
   authorId?: string;
+  limit?: number;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
