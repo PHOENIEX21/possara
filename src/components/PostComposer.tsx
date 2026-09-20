@@ -16,10 +16,11 @@ interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
-  { value: "motivation", label: "Motivation", help: "Motivation, lessons and experiences that can help someone keep moving forward." },
-  { value: "encouragement", label: "Encouragement", help: "Positive support, hope and words that strengthen someone." },
-  { value: "advice", label: "Advice", help: "Practical guidance, lessons learned and thoughtful suggestions." },
-  { value: "uplifting", label: "Uplifting", help: "Positive achievements, gratitude and stories that can brighten someone’s day." },
+  { value: "insight", label: "Insight", help: "Educative ideas, useful knowledge, lessons, motivation and uplifting experiences." },
+  { value: "job", label: "Job", help: "A job shared manually by a community member. Add deadline and application details in the post when relevant." },
+  { value: "scholarship", label: "Scholarship", help: "A scholarship shared manually by a community member. Add eligibility, deadline and link when available." },
+  { value: "competition", label: "Competition", help: "Competitions, challenges, quizzes or contests shared by the community." },
+  { value: "talent", label: "Talent", help: "Talent opportunities, showcases, auditions and calls for participation." },
 ] as const;
 
 export function PostComposer({
@@ -138,8 +139,8 @@ export function PostComposer({
       {showHomeTopicPicker && !categoryId && (
         <div className="mb-4">
           <div className="mb-3">
-            <p className="text-sm font-semibold text-ink">What kind of Home post is this?</p>
-            <p className="mt-1 text-xs text-ink-faint">Optional, but choosing one helps people understand what you are sharing.</p>
+            <p className="text-sm font-semibold text-ink">Choose a section for this post</p>
+            <p className="mt-1 text-xs text-ink-faint">For You shows everything. Choosing a section also lets people filter directly to posts like yours.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {HOME_TOPICS.map((item) => (
