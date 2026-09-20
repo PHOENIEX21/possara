@@ -1,5 +1,7 @@
 name: Recovery build verification
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [release/recovered-product-batch]
   workflow_dispatch:
