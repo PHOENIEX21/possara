@@ -5,6 +5,7 @@ import { Users, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { useFollowCounts } from "../hooks/useFollow";
+import { MemberFollowButton } from "./MemberFollowButton";
 
 type ConnectionTab = "followers" | "following" | "mutual";
 type ConnectionProfile = { id:string; full_name:string|null; username:string|null; avatar_url:string|null; headline:string|null; profession:string|null; location:string|null };
@@ -91,7 +92,7 @@ export function ProfileConnections({profileId}:{profileId:string}){
           {isLoading&&<p className="p-4 text-sm text-ink-light">Loading people…</p>}
           {error&&<p className="p-4 text-sm text-flag">Couldn&apos;t load these connections.</p>}
           {!isLoading&&!error&&people?.length===0&&<div className="p-8 text-center text-sm text-ink-faint"><Users size={25} className="mx-auto mb-2"/>No people to show yet.</div>}
-          {people?.map(person=>{const name=person.full_name??person.username??"POSSARA member";return <Link key={person.id} to={connectionPath(person)} onClick={close} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">{person.avatar_url?<img src={person.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-light text-sm font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate text-sm font-semibold text-ink">{name}</p>{person.username&&<p className="truncate text-xs text-ink-faint">@{person.username}</p>}<p className="truncate text-xs text-ink-light">{person.headline||person.profession||person.location||"POSSARA member"}</p></div></Link>})}
+          {people?.map(person=>{const name=person.full_name??person.username??"POSSARA member";return <div key={person.id} className="flex items-center gap-2 rounded-2xl px-3 py-3 hover:bg-paper"><Link to={connectionPath(person)} onClick={close} className="flex min-w-0 flex-1 items-center gap-3">{person.avatar_url?<img src={person.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover"/>:<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-trust-light text-sm font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate text-sm font-semibold text-ink">{name}</p>{person.username&&<p className="truncate text-xs text-ink-faint">@{person.username}</p>}<p className="truncate text-xs text-ink-light">{person.headline||person.profession||person.location||"POSSARA member"}</p></div></Link>{person.id!==userId&&<MemberFollowButton targetUserId={person.id}/>}</div>})}
         </div>
       </div>
     </div>}
