@@ -52,6 +52,7 @@ import { PossaraPlus } from "./pages/PossaraPlus";
 import { Applications } from "./pages/Applications";
 import { Passport } from "./pages/Passport";
 import { Insights } from "./pages/Insights";
+import { Places } from "./pages/Places";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/places" element={<Places />} />
               <Route path="/learn" element={<Study />} />
               <Route path="/study" element={<Study />} />
               <Route path="/study/topic/:id" element={<StudyTopic />} />
