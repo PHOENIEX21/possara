@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
@@ -10,10 +10,11 @@ import { StoriesBar } from "../components/StoriesBar";
 
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
-  { key: "motivation", label: "Motivation" },
-  { key: "encouragement", label: "Encouragement" },
-  { key: "advice", label: "Advice" },
-  { key: "uplifting", label: "Uplifting" },
+  { key: "insight", label: "Insight" },
+  { key: "job", label: "Jobs" },
+  { key: "scholarship", label: "Scholarships" },
+  { key: "competition", label: "Competitions" },
+  { key: "talent", label: "Talent" },
 ] as const;
 
 const AD_INTERVAL = 5;
@@ -22,8 +23,8 @@ type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
   const [feedLimit,setFeedLimit]=useState(30);
+  const feedStartRef=useRef<HTMLElement>(null);
   const {data:posts,isLoading,error}=useFeedPosts({
-    postType:"general",
     noCategoryOnly:true,
     topic:filter==="for-you"?undefined:filter,
   });
@@ -48,15 +49,15 @@ export function Home(){
       </section>
 
 
-      <section className="home-feed-heading home-feed-heading-premium">
-        <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Motivation, useful advice and uplifting experiences from people in the POSSARA community.</p></div>
-        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}<Link to="/places" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">Explore Places <ArrowUpRight size={13}/></Link></div>
+      <section ref={feedStartRef} id="home-posts" className="home-feed-heading home-feed-heading-premium">
+        <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Insights, knowledge, encouragement, jobs, scholarships, competitions and talent shared by people in the POSSARA community.</p></div>
+        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}<Link to="/places" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">Explore Places <ArrowUpRight size={13}/></Link></div>
       </section>
 
       <div className="feed-list feed-list-premium">
         {isLoading&&<div className="feed-skeleton"/>}
         {error&&<p className="rounded-2xl bg-white p-4 text-flag shadow-sm">Couldn&apos;t load the feed right now.</p>}
-        {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Share something encouraging, useful or uplifting.</p></div>}
+        {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Be the first to share something useful in this section.</p></div>}
         {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
         {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}
         {!isLoading&&!error&&visiblePosts.length>=feedLimit&&<div className="flex justify-center pt-2"><button type="button" onClick={()=>setFeedLimit(n=>n+30)} className="rounded-xl border border-paper-dim bg-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-paper">Load older posts</button></div>}
