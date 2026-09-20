@@ -48,7 +48,7 @@ export function Home(){
 
       <section className="home-feed-heading home-feed-heading-premium">
         <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Motivation, useful advice and uplifting experiences from people in the POSSARA community.</p></div>
-        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
+        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>setFilter(item.key)} className={filter===item.key?"active":""}>{item.label}</button>)}<Link to="/places" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">Explore Places <ArrowUpRight size={13}/></Link></div>
       </section>
 
       <div className="feed-list feed-list-premium">
