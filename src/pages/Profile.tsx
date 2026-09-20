@@ -14,6 +14,8 @@ import { ProfileSharePresence } from "../components/ProfileSharePresence";
 import { MemberFollowButton } from "../components/MemberFollowButton";
 import { TrustRankBadge } from "../components/TrustRankBadge";
 import { useMemberTrustRank } from "../hooks/useTrustRank";
+import { useProfileOrganizations } from "../hooks/useProfileOrganizations";
+import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 import type { Profile as ProfileType } from "../types/database";
 
 function MessageButton({ targetUserId }: { targetUserId: string }) {
@@ -165,6 +167,7 @@ type ProfileViewProps={ profile:ProfileType; own?:boolean; onEdit?:()=>void; onO
 
 function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,coverUploading=false}:ProfileViewProps){
   const {data:trustRank}=useMemberTrustRank(profile.id);
+  const {data:profileOrganizations}=useProfileOrganizations(profile.id);
   const [photoOpen,setPhotoOpen]=useState(false);
   const [profileMenuOpen,setProfileMenuOpen]=useState(false);
   const name=profile.full_name??"Member";
@@ -213,6 +216,8 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
         </div>
 
         <ProfileConnections profileId={profile.id}/>
+
+        {!!profileOrganizations?.length&&<div className="mt-4 rounded-2xl border border-paper-dim bg-paper/55 p-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-[.12em] text-ink-faint">Organizations</p><div className="flex flex-wrap gap-2">{profileOrganizations.map(org=><Link key={org.id} to={`/organizations/${org.slug}`} className="flex min-w-0 items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-paper-dim">{org.logo_url?<img src={org.logo_url} alt="" className="h-full w-full object-cover"/>:<BriefcaseBusiness size={15}/>}</span><span className="min-w-0"><span className="flex items-center gap-1.5"><span className="max-w-[180px] truncate text-sm font-semibold text-ink">{org.name}</span>{org.verified&&<OrganizationVerificationBadge compact/>}</span><span className="block text-[10px] capitalize text-ink-faint">{org.member_role}{org.industry?` · ${org.industry}`:""}</span></span></Link>)}</div><p className="mt-2 text-[11px] text-ink-faint">Open an organization page to follow its updates and jobs.</p></div>}
 
         {detailItems.length>0&&<div className="mt-5 grid gap-2 sm:grid-cols-2">{detailItems.map(({icon:Icon,label})=><div key={label} className="flex items-center gap-2.5 rounded-xl border border-black/[.05] bg-white px-3 py-2.5 text-sm text-ink-light"><Icon size={16} className="shrink-0 text-brand-dark"/><span className="truncate">{label}</span></div>)}</div>}
 
