@@ -321,8 +321,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const sourceText = post.shared_from_post?.content ?? displayContent;
   const sharePreview = sourceText.length > 180 ? `${sourceText.slice(0, 177)}…` : sourceText;
   const sharePath = `/post/${post.id}`;
-  const musicUrl=post.music_path?supabase.storage.from("post-music").getPublicUrl(post.music_path).data.publicUrl:null;
-  const feelingLabel=post.feeling?({happy:"😊 Happy",grateful:"🙏 Grateful",excited:"🤩 Excited",celebrating:"🎉 Celebrating",birthday:"🎂 Celebrating a birthday",proud:"🙌 Proud",blessed:"✨ Blessed",motivated:"💪 Motivated"} as Record<string,string>)[post.feeling]??post.feeling:null;
+  const postExtras=post as PostWithAuthor & {music_path?:string|null;music_title?:string|null;feeling?:string|null};
+  const musicUrl=postExtras.music_path?supabase.storage.from("post-music").getPublicUrl(postExtras.music_path).data.publicUrl:null;
+  const feelingLabel=postExtras.feeling?({happy:"😊 Happy",grateful:"🙏 Grateful",excited:"🤩 Excited",celebrating:"🎉 Celebrating",birthday:"🎂 Celebrating a birthday",proud:"🙌 Proud",blessed:"✨ Blessed",motivated:"💪 Motivated"} as Record<string,string>)[postExtras.feeling]??postExtras.feeling:null;
 
   if (deleted) return null;
 
