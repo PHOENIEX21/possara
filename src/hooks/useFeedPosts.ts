@@ -45,15 +45,16 @@ interface UseFeedPostsOptions {
   categorySlugs?: string[];
   noCategoryOnly?: boolean;
   topic?: string;
+  topics?: string[];
   authorId?: string;
   limit?: number;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, limit = 30 } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, limit = 30 } = options;
   const { userId } = useAuth();
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, authorId, limit, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, limit, userId],
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
@@ -66,12 +67,14 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         .select("*")
         .eq("status", "published")
         .is("deleted_at", null)
+        .or("classification_status.is.null,classification_status.eq.accepted")
         .order("created_at", { ascending: false })
         .limit(limit);
       if (postType) query = query.eq("type", postType);
       if (noCategoryOnly) query = query.is("category_id", null);
       else if (categoryIds) query = query.in("category_id", categoryIds);
       if (topic) query = query.eq("topic", topic);
+      else if (topics?.length) query = query.in("topic", topics);
       if (authorId) query = query.eq("author_id", authorId);
       const { data: posts, error } = await query;
       if (error) throw error;
