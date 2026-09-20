@@ -135,7 +135,9 @@ export function ExtraordinaryPeople() {
   const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [catalogueReady, setCatalogueReady] = useState(false);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);\n\n  useEffect(()=>{try{window.sessionStorage.setItem("possara-extraordinary-active",String(active));}catch{/* session storage can be unavailable */}},[active]);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(()=>{try{window.sessionStorage.setItem("possara-extraordinary-active",String(active));}catch{/* session storage can be unavailable */}},[active]);
 
   useEffect(() => {
     let cancelled = false;
