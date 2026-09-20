@@ -308,6 +308,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
   const [shareOpen, setShareOpen] = useState(false);
+  const [mediaOpen,setMediaOpen]=useState<string|null>(null);
 
   const name = post.profiles?.full_name ?? "A member of the community";
   const initial = name.charAt(0).toUpperCase();
@@ -320,6 +321,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const sourceText = post.shared_from_post?.content ?? displayContent;
   const sharePreview = sourceText.length > 180 ? `${sourceText.slice(0, 177)}…` : sourceText;
   const sharePath = `/post/${post.id}`;
+  const musicUrl=post.music_path?supabase.storage.from("post-music").getPublicUrl(post.music_path).data.publicUrl:null;
+  const feelingLabel=post.feeling?({happy:"😊 Happy",grateful:"🙏 Grateful",excited:"🤩 Excited",celebrating:"🎉 Celebrating",birthday:"🎂 Celebrating a birthday",proud:"🙌 Proud",blessed:"✨ Blessed",motivated:"💪 Motivated"} as Record<string,string>)[post.feeling]??post.feeling:null;
 
   if (deleted) return null;
 
@@ -360,8 +363,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             </div>
             {headline && <Link to={path} className="block truncate text-xs text-ink-light hover:underline">{headline}</Link>}
             <div className="flex items-center gap-2 text-xs text-ink-faint">
-              <span>{timeAgo(post.created_at)}</span>
-              {topicLabel && <><span>·</span><span>{topicLabel}</span></>}
+              <Link to={sharePath} className="hover:underline">{timeAgo(post.created_at)}</Link>
+              {topicLabel && <><span>·</span><span>{topicLabel}</span></>}{feelingLabel&&<><span>·</span><span>{feelingLabel}</span></>}
             </div>
           </div>
         </div>
@@ -458,6 +461,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       </div>
 
       {commentsOpen && <CommentThread postId={post.id} />}
+      {mediaOpen&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaOpen(null)}><button type="button" onClick={()=>setMediaOpen(null)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white" aria-label="Close image"><X size={22}/></button><img src={mediaOpen} alt="" className="max-h-full max-w-full object-contain" onClick={e=>e.stopPropagation()}/></div>}
       {photoOpen && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
       <InAppShareDialog
         open={shareOpen}
