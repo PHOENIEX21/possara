@@ -51,11 +51,11 @@ export function useCbtQuestions(jobId:string|undefined){
  return useQuery({queryKey:["job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.rpc("get_job_cbt_questions",{p_job_id:jobId as string});if(error)throw error;return (data??[]) as CbtQuestion[];}});
 }
 export function useRecruiterCbtQuestions(jobId:string|undefined){
- return useQuery({queryKey:["recruiter-job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_questions").select("*").eq("job_posting_id",jobId as string).order("sort_order");if(error)throw error;return data??[];}});
+ return useQuery({queryKey:["recruiter-job-cbt-questions",jobId],enabled:!!jobId,queryFn:async()=>{const {data,error}=await supabase.rpc("get_recruiter_job_cbt_questions",{p_job_id:jobId as string});if(error)throw error;return data??[];}});
 }
 export function useSaveCbtQuestions(jobId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(rows:{questionText:string;choices:string[];correctChoice:string}[])=>{const {error:del}=await supabase.from("job_cbt_questions").delete().eq("job_posting_id",jobId);if(del)throw del;if(!rows.length)return;const {error}=await supabase.from("job_cbt_questions").insert(rows.map((q,i)=>({job_posting_id:jobId,question_text:q.questionText,choices:q.choices,correct_choice:q.correctChoice,sort_order:i})));if(error)throw error;},onSuccess:()=>{qc.invalidateQueries({queryKey:["job-cbt-questions",jobId]});qc.invalidateQueries({queryKey:["recruiter-job-cbt-questions",jobId]});}});
+ return useMutation({mutationFn:async(input:{rows:{questionText:string;choices:string[];correctChoice:string}[];timeLimitSeconds:number})=>{const {data,error}=await supabase.rpc("save_job_cbt_questions",{p_job_id:jobId,p_questions:input.rows,p_time_limit_seconds:input.timeLimitSeconds});if(error)throw error;return Number(data);},onSuccess:()=>{qc.invalidateQueries({queryKey:["job-cbt-questions",jobId]});qc.invalidateQueries({queryKey:["recruiter-job-cbt-questions",jobId]});}});
 }
 export function useCbtAttempt(applicationId:string|undefined){
  return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});

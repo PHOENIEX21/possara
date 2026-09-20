@@ -11,8 +11,8 @@ export function Places() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5">
-      <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
+    <div className="mx-auto w-full max-w-3xl space-y-4 px-1 sm:space-y-5 sm:px-0">
+      <section className="rounded-2xl bg-ink p-4 text-white sm:rounded-3xl sm:p-7">
         <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/70 hover:text-white">
           <ArrowLeft size={14}/> Back to Home
         </Link>
@@ -26,7 +26,7 @@ export function Places() {
         </div>
       </section>
 
-      <div className="feed-list feed-list-premium">
+      <div className="feed-list feed-list-premium overflow-hidden sm:overflow-visible">
         {isLoading && <div className="feed-skeleton"/>}
         {error && <p className="rounded-2xl bg-white p-4 text-flag shadow-sm">Couldn&apos;t load Places right now.</p>}
         {!isLoading && !error && (posts ?? []).length === 0 && (
