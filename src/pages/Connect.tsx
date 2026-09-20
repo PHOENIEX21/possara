@@ -86,7 +86,9 @@ export function Connect(){
   const filteredOrgs=organizations?.filter(o=>!query.trim()||o.name.toLowerCase().includes(query.toLowerCase())||o.description?.toLowerCase().includes(query.toLowerCase()));
 
   return <div className="page-stack">
-    <section><p className="eyebrow">People &amp; relationships</p><h1 className="text-2xl">Connect</h1><p className="mt-1 text-ink-light">Find people to follow, tutors, mentors, skilled people and organizations worth knowing.</p></section>\n\n    <div className="rounded-2xl border border-brand/15 bg-brand-light/40 p-4">
+    <section><p className="eyebrow">People &amp; relationships</p><h1 className="text-2xl">Connect</h1><p className="mt-1 text-ink-light">Find people to follow, tutors, mentors, skilled people and organizations worth knowing.</p></section>
+
+    <div className="rounded-2xl border border-brand/15 bg-brand-light/40 p-4">
       <div className="flex items-start gap-3"><div className="rounded-xl bg-white p-2 text-brand-dark"><Sparkles size={18}/></div><div><p className="font-medium">People to follow</p><p className="mt-1 text-sm text-ink-light">Search by name or @username, or browse recommendations based on profession, skills and interests from your profile.</p><div className="mt-3 flex flex-wrap gap-3"><Link to="/profile/me" className="text-sm font-medium text-brand-dark hover:underline">Improve my recommendations →</Link></div></div></div>
     </div>
 
