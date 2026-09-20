@@ -9,6 +9,8 @@ import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
 import { useHiringJobs } from "../hooks/useHiring";
 
+const HOME_TOPIC_KEYS = ["insight", "job", "scholarship", "competition", "talent"] as const;
+
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
   { key: "insight", label: "Insight" },
@@ -28,6 +30,7 @@ export function Home(){
   const {data:posts,isLoading,error}=useFeedPosts({
     noCategoryOnly:true,
     topic:filter==="for-you"?undefined:filter,
+    topics:filter==="for-you"?[...HOME_TOPIC_KEYS]:undefined,
     limit:feedLimit,
   });
   const {data:ads}=useActiveAdvertisements();
