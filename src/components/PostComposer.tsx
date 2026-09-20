@@ -89,6 +89,25 @@ export function PostComposer({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!content.trim()) return;
+    if (showHomeTopicPicker && !categoryId) {
+      if (!topic) {
+        setClassificationError("Choose the section that accurately describes this post before publishing.");
+        return;
+      }
+      const { data: verdict, error: classificationRequestError } = await supabase.rpc("classify_home_post", {
+        p_content: content.trim(),
+        p_topic: topic,
+      });
+      if (classificationRequestError) {
+        setClassificationError("POSSARA could not check this post right now. Please try again.");
+        return;
+      }
+      if (verdict?.aligned === false) {
+        setClassificationError(verdict.reason || "This post does not appear to match the section you selected.");
+        return;
+      }
+      setClassificationError(null);
+    }
     const categorySelected = !!categoryId;
     await createPost.mutateAsync({
       content: content.trim(),
