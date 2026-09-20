@@ -19,7 +19,7 @@ import type { MessageDirectoryMember } from "../hooks/useMessageDirectory";
 import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useProfileById } from "../hooks/useProfile";
-import { useUserPresence } from "../hooks/useSocialPrivacy";
+import { useUserPresence } from "../hooks/useSocialPrivacy";\nimport { useTypingIndicator } from "../hooks/useTypingIndicator";
 
 const MESSAGE_REACTIONS: { type: MessageReactionType; emoji: string; label: string }[] = [
   { type: "spark", emoji: "✨", label: "Spark" },
@@ -120,7 +120,7 @@ type VoiceDraft={blob:Blob;url:string;duration:number;mimeType:string};
 function Thread({ otherUserId, conversations }: { otherUserId: string; conversations: ConversationPreview[] }) {
   const { userId }=useAuth();
   const {data:profile}=useProfileById(otherUserId);
-  const {data:presence}=useUserPresence(otherUserId);
+  const {data:presence}=useUserPresence(otherUserId);\n  const {otherTyping,broadcast}=useTypingIndicator(otherUserId);
   const {data:messages,isLoading}=useThread(otherUserId);
   const sendMessage=useSendMessage(otherUserId);
   const sendPhoto=useSendPhotoMessage(otherUserId);
@@ -278,11 +278,11 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
       {photoPreview&&<div className="mb-2 flex items-center gap-3 rounded-xl bg-paper p-2"><img src={photoPreview} alt="Selected" className="h-14 w-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Photo ready to send</p><p className="truncate text-[11px] text-ink-faint">{photoFile?.name}</p></div><button type="button" onClick={clearPhoto} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div>}
       {recording&&<div className="mb-2 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2"><div className="flex items-center gap-2 text-sm font-medium text-flag"><span className="h-2 w-2 animate-pulse rounded-full bg-flag"/>Recording · {recordingSeconds}s / 90s</div><button type="button" onClick={stopRecording} className="inline-flex items-center gap-1.5 rounded-full bg-flag px-3 py-1.5 text-xs font-semibold text-white"><Square size={12} fill="currentColor"/>Stop</button></div>}
       {voiceDraft&&!recording&&<div className="mb-2 rounded-xl bg-paper p-2"><div className="flex items-center gap-2"><audio src={voiceDraft.url} controls className="h-9 min-w-0 flex-1"/><button type="button" onClick={clearVoice} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div><div className="mt-2 flex justify-end"><button type="button" onClick={sendVoiceDraft} disabled={sendVoice.isPending} className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{sendVoice.isPending?"Sending…":`Send voice · ${voiceDraft.duration}s`}</button></div></div>}
-      <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
+      {otherTyping&&<p className="px-3 pb-1 text-xs font-medium text-ink-faint">Typing…</p>}\n      <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
         <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="hidden"/>
         {!editingMessage&&<button type="button" onClick={()=>photoInputRef.current?.click()} disabled={recording||sendPhoto.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-light hover:bg-paper-dim disabled:opacity-40" aria-label="Send a photo"><ImageIcon size={19}/></button>}
         {!editingMessage&&<button type="button" onClick={recording?stopRecording:startRecording} disabled={sendVoice.isPending||!!voiceDraft} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-40 ${recording?"bg-red-50 text-flag":"text-ink-light hover:bg-paper-dim"}`} aria-label={recording?"Stop voice recording":"Record voice note"}><Mic size={19}/></button>}
-        <textarea rows={1} maxLength={4000} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":photoFile?"Add a caption…":"Write a message…"} className="max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-3 py-2.5 text-sm outline-none focus:border-brand"/>
+        <textarea rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);broadcast(!!e.target.value.trim());}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":photoFile?"Add a caption…":"Write a message…"} className="max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-3 py-2.5 text-sm outline-none focus:border-brand"/>
         <button type="submit" disabled={recording||!!voiceDraft||(!text.trim()&&!photoFile)||sendMessage.isPending||sendPhoto.isPending||editMessage.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={editingMessage?"Save edit":"Send"}>{editingMessage?<Check size={16}/>:<Send size={16}/>}</button>
       </form>
       {(notice||sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error)&&<p className={`pb-1 text-xs ${notice?"text-ink-faint":"text-flag"}`}>{notice??((sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error) as Error).message}</p>}
