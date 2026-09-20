@@ -5,7 +5,8 @@ import { useOpportunityCategories } from "./CategoryChips";
 import { useOwnProfile } from "../hooks/useProfile";
 import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
-import { MentionSuggestions } from "./MentionSuggestions";\nimport { supabase } from "../lib/supabase";
+import { MentionSuggestions } from "./MentionSuggestions";
+import { supabase } from "../lib/supabase";
 
 interface PostComposerProps {
   postType?: "general" | "resource" | "opportunity" | "event";
@@ -49,7 +50,8 @@ export function PostComposer({
   const [feeling,setFeeling]=useState("");
   const [showFeelings,setShowFeelings]=useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [photoOpen, setPhotoOpen] = useState(false);\n  const [classificationError,setClassificationError]=useState<string|null>(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [classificationError,setClassificationError]=useState<string|null>(null);
 
   if (!userId) {
     return <div className="rounded-2xl border border-paper-dim bg-white px-5 py-4 text-sm text-ink-light shadow-sm">Sign in to share something useful, inspiring or worth seeing.</div>;
@@ -75,7 +77,8 @@ export function PostComposer({
   }
 
   function reset() {
-    setContent("");\n    setClassificationError(null);
+    setContent("");
+    setClassificationError(null);
     setCategoryId("");
     setTopic(defaultTopic);
     clearImage();
@@ -208,7 +211,8 @@ export function PostComposer({
           </button>
         </div>
       </div>
-      {classificationError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{classificationError}</div>}\n      {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
+      {classificationError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{classificationError}</div>}
+      {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
     </form>
     {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
   </>;
