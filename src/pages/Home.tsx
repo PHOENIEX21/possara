@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, Briefcase, Building2, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
+import { useHiringJobs } from "../hooks/useHiring";
 
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
@@ -29,7 +30,7 @@ export function Home(){
     topic:filter==="for-you"?undefined:filter,
     limit:feedLimit,
   });
-  const {data:ads}=useActiveAdvertisements();
+  const {data:ads}=useActiveAdvertisements();\n  const {data:nativeJobs,isLoading:nativeJobsLoading}=useHiringJobs();
   const visiblePosts=posts??[];
   const activeAds=ads??[];
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
@@ -55,10 +56,12 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}<Link to="/places" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">Explore Places <ArrowUpRight size={13}/></Link></div>
       </section>
 
+      {filter==="job"&&<section className="mb-4 space-y-3">{nativeJobsLoading&&<div className="feed-skeleton"/>}{nativeJobs?.map(job=><Link key={job.id} to={`/jobs/${job.id}`} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Briefcase size={14} className="text-brand-dark"/><span className="text-[11px] font-bold uppercase tracking-wide text-brand-dark">Organization job</span></div><h3 className="mt-1 font-bold">{job.title}</h3><p className="text-sm text-ink-light">{job.organizations?.name} · {job.location}</p><p className="mt-2 text-xs font-medium text-ink-faint">{job.employment_type} · {job.work_style} · {job.rank}</p></div></div></Link>)}</section>}
+
       <div className="feed-list feed-list-premium">
         {isLoading&&<div className="feed-skeleton"/>}
         {error&&<p className="rounded-2xl bg-white p-4 text-flag shadow-sm">Couldn&apos;t load the feed right now.</p>}
-        {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Be the first to share something useful in this section.</p></div>}
+        {!isLoading&&!error&&visiblePosts.length===0&&!(filter==="job"&&nativeJobs?.length)&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Be the first to share something useful in this section.</p></div>}
         {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
         {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}
         {!isLoading&&!error&&visiblePosts.length>=feedLimit&&<div className="flex justify-center pt-2"><button type="button" onClick={()=>setFeedLimit(n=>n+30)} className="rounded-xl border border-paper-dim bg-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-paper">Load older posts</button></div>}
