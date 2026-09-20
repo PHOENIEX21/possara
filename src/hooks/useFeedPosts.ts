@@ -169,7 +169,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, type = "general", categoryId, topic }: { content: string; imageFile: File | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, musicFile, feeling, type = "general", categoryId, topic }: { content: string; imageFile: File | null; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
       let mediaUrls: string[] | null = null;
       if (imageFile) {
@@ -182,6 +182,16 @@ export function useCreatePost() {
         const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
         mediaUrls = [publicUrlData.publicUrl];
       }
+      let musicPath: string | null = null; let musicTitle: string | null = null; let musicMimeType: string | null = null;
+      if (musicFile) {
+        if (!musicFile.type.match(/^audio\/(mpeg|mp4|webm|ogg|wav|x-wav)$/)) throw new Error("Use MP3, M4A/MP4, WebM, OGG or WAV audio.");
+        if (musicFile.size > 6 * 1024 * 1024) throw new Error("Music must be 6 MB or smaller.");
+        const safeMusic = musicFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        musicPath = `${userId}/${Date.now()}-${safeMusic}`;
+        const { error: musicError } = await supabase.storage.from("post-music").upload(musicPath, musicFile);
+        if (musicError) throw musicError;
+        musicTitle = musicFile.name.replace(/\.[^.]+$/, ""); musicMimeType = musicFile.type;
+      }
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
         content,
@@ -189,6 +199,10 @@ export function useCreatePost() {
         type,
         category_id: categoryId ?? null,
         topic: topic ?? null,
+        feeling: feeling ?? null,
+        music_path: musicPath,
+        music_title: musicTitle,
+        music_mime_type: musicMimeType,
         status: "published",
         visibility: "public",
       });
