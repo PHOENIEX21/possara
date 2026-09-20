@@ -27,6 +27,7 @@ export function Home(){
   const {data:posts,isLoading,error}=useFeedPosts({
     noCategoryOnly:true,
     topic:filter==="for-you"?undefined:filter,
+    limit:feedLimit,
   });
   const {data:ads}=useActiveAdvertisements();
   const visiblePosts=posts??[];
