@@ -396,6 +396,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         </div>
       </div>
 
+      {!editing&&<Link to={sharePath} aria-label="Open this post" className="absolute inset-x-16 top-0 h-16 rounded-xl" />}
+
       {editing ? (
         <div className="mt-3 rounded-xl border border-brand/20 bg-paper p-3">
           <div className="mb-2 flex items-center justify-between">
