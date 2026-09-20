@@ -30,7 +30,8 @@ export function Home(){
     topic:filter==="for-you"?undefined:filter,
     limit:feedLimit,
   });
-  const {data:ads}=useActiveAdvertisements();\n  const {data:nativeJobs,isLoading:nativeJobsLoading}=useHiringJobs();
+  const {data:ads}=useActiveAdvertisements();
+  const {data:nativeJobs,isLoading:nativeJobsLoading}=useHiringJobs();
   const visiblePosts=posts??[];
   const activeAds=ads??[];
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
