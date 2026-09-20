@@ -57,7 +57,8 @@ function useMarkAllNotificationsRead(userId: string | null) {
 export function Notifications() {
   const { userId } = useAuth();
   const { data: notifications, isLoading } = useNotifications(userId);
-  const markAllRead = useMarkAllNotificationsRead(userId);\n  const { data: suggestedMembers } = useSuggestedMembers(userId);
+  const markAllRead = useMarkAllNotificationsRead(userId);
+  const { data: suggestedMembers } = useSuggestedMembers(userId);
   const navigate = useNavigate();
 
   const hasUnread = !!notifications?.some((notification) => !notification.read);
