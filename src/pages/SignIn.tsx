@@ -49,15 +49,29 @@ export function SignIn() {
     setLoading(true);
 
     if (mode === "forgot") {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { data: recovery, error: recoveryError } = await supabase.functions.invoke(
+        "password-recovery",
+        {
+          body: {
+            email: email.trim().toLowerCase(),
+            redirectTo: `${window.location.origin}/reset-password`,
+          },
+        },
+      );
       setLoading(false);
-      if (resetError) {
-        setError(friendlyAuthError(resetError.message));
+      if (recoveryError || !recovery?.ok) {
+        setError(
+          typeof recovery?.error === "string"
+            ? recovery.error
+            : "Password reset email is temporarily unavailable. Please try again later.",
+        );
         return;
       }
-      setMessage("Check your email for a secure reset link.");
+      setMessage(
+        typeof recovery?.message === "string"
+          ? recovery.message
+          : "If an account exists for that email, POSSARA will send a password reset link.",
+      );
       return;
     }
 
@@ -138,9 +152,12 @@ export function SignIn() {
       }
 
       queryClient.clear();
-      sessionStorage.setItem("possara-transition","signup");
       setLoading(false);
-      window.location.replace("/profile/me");
+      window.location.replace(
+        directSignup.emailSent
+          ? "/verify-email?sent=1"
+          : "/verify-email?delivery=retry",
+      );
       return;
     }
 
