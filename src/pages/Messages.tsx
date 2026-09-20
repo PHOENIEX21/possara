@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { AtSign, Check, CheckCheck, ChevronLeft, Copy, Forward, Image as ImageIcon, MessageCircle, Mic, MoreHorizontal, Pencil, Reply, Search, Send, Share2, Square, Trash2, X } from "lucide-react";
 import {
-  useConversations,\n  useMessageRequests,\n  useDeclineMessageRequest,
+  useConversations,
+  useMessageRequests,
+  useDeclineMessageRequest,
   useDeleteMessageForMe,
   useEditMessage,
   useForwardMessage,
@@ -19,7 +21,8 @@ import type { MessageDirectoryMember } from "../hooks/useMessageDirectory";
 import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { useProfileById } from "../hooks/useProfile";
-import { useUserPresence } from "../hooks/useSocialPrivacy";\nimport { useTypingIndicator } from "../hooks/useTypingIndicator";
+import { useUserPresence } from "../hooks/useSocialPrivacy";
+import { useTypingIndicator } from "../hooks/useTypingIndicator";
 
 const MESSAGE_REACTIONS: { type: MessageReactionType; emoji: string; label: string }[] = [
   { type: "spark", emoji: "✨", label: "Spark" },
@@ -64,7 +67,9 @@ function ConversationList({ conversations, isLoading, activeUserId }: { conversa
   const [search,setSearch]=useState("");
   const searching=!!search.trim();
   const {data:directory,isLoading:directoryLoading,error:directoryError}=useMessageDirectory(search);
-  const {data:onlineCount}=useOnlineMemberCount();\n  const {data:requests}=useMessageRequests();\n  const declineRequest=useDeclineMessageRequest();
+  const {data:onlineCount}=useOnlineMemberCount();
+  const {data:requests}=useMessageRequests();
+  const declineRequest=useDeclineMessageRequest();
   const onlineMembers=(directory??[]).filter(member=>member.online).slice(0,8);
 
   return <aside className={`${activeUserId?"hidden sm:block":"block"} w-full shrink-0 sm:w-[310px] sm:border-r sm:border-paper-dim sm:pr-4`}>
@@ -82,7 +87,8 @@ function ConversationList({ conversations, isLoading, activeUserId }: { conversa
         {directoryLoading?<p className="mt-3 text-xs text-ink-light">Checking who&apos;s online…</p>:onlineMembers.length>0?<div className="mt-3 space-y-1">{onlineMembers.map(member=><DirectoryMemberRow key={member.id} member={member} activeUserId={activeUserId} onPhoto={(src,name)=>setPhoto({src,name})}/>)}</div>:<p className="mt-3 text-xs text-ink-faint">No one is showing as online right now.</p>}
       </section>
 
-      {requests&&requests.length>0&&<section className="mb-4"><div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Message requests</p><span className="text-[11px] text-ink-faint">{requests.length}</span></div><div className="space-y-1">{requests.map((r:any)=><div key={r.senderId} className="flex items-center gap-2 rounded-xl bg-paper p-2.5"><Link to={`/messages/${r.senderId}`} className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{r.profile?.full_name??r.profile?.username??"Member"}</p><p className="truncate text-xs text-ink-faint">{r.message.content||"New message"}</p></Link><button type="button" onClick={()=>declineRequest.mutate(r.senderId)} className="rounded-lg px-2 py-1 text-xs font-semibold text-flag">Decline</button></div>)}</div></section>}\n      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Recent chats</p><span className="text-[11px] text-ink-faint">{conversations?.length??0}</span></div>
+      {requests&&requests.length>0&&<section className="mb-4"><div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Message requests</p><span className="text-[11px] text-ink-faint">{requests.length}</span></div><div className="space-y-1">{requests.map((r:any)=><div key={r.senderId} className="flex items-center gap-2 rounded-xl bg-paper p-2.5"><Link to={`/messages/${r.senderId}`} className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{r.profile?.full_name??r.profile?.username??"Member"}</p><p className="truncate text-xs text-ink-faint">{r.message.content||"New message"}</p></Link><button type="button" onClick={()=>declineRequest.mutate(r.senderId)} className="rounded-lg px-2 py-1 text-xs font-semibold text-flag">Decline</button></div>)}</div></section>}
+      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Recent chats</p><span className="text-[11px] text-ink-faint">{conversations?.length??0}</span></div>
       {isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
       {!isLoading&&conversations?.length===0&&<p className="rounded-xl bg-paper p-4 text-sm leading-5 text-ink-light">No conversations yet. Search for any POSSARA member above and start one.</p>}
       <div className="space-y-1">{(conversations??[]).map((c)=>{
@@ -120,7 +126,8 @@ type VoiceDraft={blob:Blob;url:string;duration:number;mimeType:string};
 function Thread({ otherUserId, conversations }: { otherUserId: string; conversations: ConversationPreview[] }) {
   const { userId }=useAuth();
   const {data:profile}=useProfileById(otherUserId);
-  const {data:presence}=useUserPresence(otherUserId);\n  const {otherTyping,broadcast}=useTypingIndicator(otherUserId);
+  const {data:presence}=useUserPresence(otherUserId);
+  const {otherTyping,broadcast}=useTypingIndicator(otherUserId);
   const {data:messages,isLoading}=useThread(otherUserId);
   const sendMessage=useSendMessage(otherUserId);
   const sendPhoto=useSendPhotoMessage(otherUserId);
@@ -278,7 +285,8 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
       {photoPreview&&<div className="mb-2 flex items-center gap-3 rounded-xl bg-paper p-2"><img src={photoPreview} alt="Selected" className="h-14 w-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Photo ready to send</p><p className="truncate text-[11px] text-ink-faint">{photoFile?.name}</p></div><button type="button" onClick={clearPhoto} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div>}
       {recording&&<div className="mb-2 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2"><div className="flex items-center gap-2 text-sm font-medium text-flag"><span className="h-2 w-2 animate-pulse rounded-full bg-flag"/>Recording · {recordingSeconds}s / 90s</div><button type="button" onClick={stopRecording} className="inline-flex items-center gap-1.5 rounded-full bg-flag px-3 py-1.5 text-xs font-semibold text-white"><Square size={12} fill="currentColor"/>Stop</button></div>}
       {voiceDraft&&!recording&&<div className="mb-2 rounded-xl bg-paper p-2"><div className="flex items-center gap-2"><audio src={voiceDraft.url} controls className="h-9 min-w-0 flex-1"/><button type="button" onClick={clearVoice} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div><div className="mt-2 flex justify-end"><button type="button" onClick={sendVoiceDraft} disabled={sendVoice.isPending} className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{sendVoice.isPending?"Sending…":`Send voice · ${voiceDraft.duration}s`}</button></div></div>}
-      {otherTyping&&<p className="px-3 pb-1 text-xs font-medium text-ink-faint">Typing…</p>}\n      <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
+      {otherTyping&&<p className="px-3 pb-1 text-xs font-medium text-ink-faint">Typing…</p>}
+      <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
         <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="hidden"/>
         {!editingMessage&&<button type="button" onClick={()=>photoInputRef.current?.click()} disabled={recording||sendPhoto.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-light hover:bg-paper-dim disabled:opacity-40" aria-label="Send a photo"><ImageIcon size={19}/></button>}
         {!editingMessage&&<button type="button" onClick={recording?stopRecording:startRecording} disabled={sendVoice.isPending||!!voiceDraft} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-40 ${recording?"bg-red-50 text-flag":"text-ink-light hover:bg-paper-dim"}`} aria-label={recording?"Stop voice recording":"Record voice note"}><Mic size={19}/></button>}
