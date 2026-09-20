@@ -17,7 +17,8 @@ export function JobApply(){
   if(j?.application_document_required!==false&&!document){setLocalError((j?.application_document_label||"Application document")+" is required.");return;}
   if(document&&document.size>10*1024*1024){setLocalError("Application document must be 10MB or smaller.");return;}
   if(document&&document.type&&!allowed.includes(document.type)){setLocalError("That file type is not accepted for this role.");return;}
-  if(j?.cover_letter_required&&!cover.trim()){setLocalError("Cover letter is required for this role.");return;}\n  if(j?.passport_photo_required&&!photo){setLocalError("Passport photo is required for this role.");return;}
+  if(j?.cover_letter_required&&!cover.trim()){setLocalError("Cover letter is required for this role.");return;}
+  if(j?.passport_photo_required&&!photo){setLocalError("Passport photo is required for this role.");return;}
   if(photo&&!["image/jpeg","image/png","image/webp"].includes(photo.type)){setLocalError("Passport photo must be JPG, PNG or WebP.");return;}
   if(photo&&photo.size>5*1024*1024){setLocalError("Passport photo must be 5MB or smaller.");return;}
   setUploading(true);const uploaded:string[]=[];try{
