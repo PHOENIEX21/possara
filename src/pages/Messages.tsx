@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { AtSign, Check, CheckCheck, ChevronLeft, Copy, Forward, Image as ImageIcon, MessageCircle, Mic, MoreHorizontal, Pencil, Reply, Search, Send, Share2, Square, Trash2, X } from "lucide-react";
 import {
-  useConversations,
+  useConversations,\n  useMessageRequests,\n  useDeclineMessageRequest,
   useDeleteMessageForMe,
   useEditMessage,
   useForwardMessage,
@@ -64,7 +64,7 @@ function ConversationList({ conversations, isLoading, activeUserId }: { conversa
   const [search,setSearch]=useState("");
   const searching=!!search.trim();
   const {data:directory,isLoading:directoryLoading,error:directoryError}=useMessageDirectory(search);
-  const {data:onlineCount}=useOnlineMemberCount();
+  const {data:onlineCount}=useOnlineMemberCount();\n  const {data:requests}=useMessageRequests();\n  const declineRequest=useDeclineMessageRequest();
   const onlineMembers=(directory??[]).filter(member=>member.online).slice(0,8);
 
   return <aside className={`${activeUserId?"hidden sm:block":"block"} w-full shrink-0 sm:w-[310px] sm:border-r sm:border-paper-dim sm:pr-4`}>
@@ -82,7 +82,7 @@ function ConversationList({ conversations, isLoading, activeUserId }: { conversa
         {directoryLoading?<p className="mt-3 text-xs text-ink-light">Checking who&apos;s online…</p>:onlineMembers.length>0?<div className="mt-3 space-y-1">{onlineMembers.map(member=><DirectoryMemberRow key={member.id} member={member} activeUserId={activeUserId} onPhoto={(src,name)=>setPhoto({src,name})}/>)}</div>:<p className="mt-3 text-xs text-ink-faint">No one is showing as online right now.</p>}
       </section>
 
-      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Recent chats</p><span className="text-[11px] text-ink-faint">{conversations?.length??0}</span></div>
+      {requests&&requests.length>0&&<section className="mb-4"><div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Message requests</p><span className="text-[11px] text-ink-faint">{requests.length}</span></div><div className="space-y-1">{requests.map((r:any)=><div key={r.senderId} className="flex items-center gap-2 rounded-xl bg-paper p-2.5"><Link to={`/messages/${r.senderId}`} className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{r.profile?.full_name??r.profile?.username??"Member"}</p><p className="truncate text-xs text-ink-faint">{r.message.content||"New message"}</p></Link><button type="button" onClick={()=>declineRequest.mutate(r.senderId)} className="rounded-lg px-2 py-1 text-xs font-semibold text-flag">Decline</button></div>)}</div></section>}\n      <div className="mb-2 flex items-center justify-between px-1"><p className="text-xs font-semibold uppercase tracking-[.12em] text-ink-faint">Recent chats</p><span className="text-[11px] text-ink-faint">{conversations?.length??0}</span></div>
       {isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
       {!isLoading&&conversations?.length===0&&<p className="rounded-xl bg-paper p-4 text-sm leading-5 text-ink-light">No conversations yet. Search for any POSSARA member above and start one.</p>}
       <div className="space-y-1">{(conversations??[]).map((c)=>{
