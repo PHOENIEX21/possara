@@ -436,7 +436,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         </div>;
       })()}
 
-      {!post.shared_from_post && post.media_urls?.[0] && <img src={post.media_urls[0]} alt="" className="mt-3 w-full rounded-lg object-cover" style={{ maxHeight: "480px" }} />}
+      {!post.shared_from_post && post.media_urls?.[0] && <button type="button" onClick={()=>setMediaOpen(post.media_urls![0])} className="mt-3 block w-full overflow-hidden rounded-xl bg-paper" aria-label="View post image"><img src={post.media_urls[0]} alt="" className="max-h-[480px] w-full object-cover" /></button>}{musicUrl&&<div className="mt-3 rounded-xl bg-paper p-3"><p className="mb-2 truncate text-xs font-semibold text-ink-light">🎵 {postExtras.music_title||"Music"}</p><audio controls preload="metadata" src={musicUrl} className="w-full"/></div>}
 
       {confirmingDelete && (
         <div className="mt-3 rounded-xl border border-flag/20 bg-red-50 p-3 text-sm">
