@@ -20,7 +20,7 @@ const AD_INTERVAL = 5;
 type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 
 export function Home(){
-  const [filter,setFilter]=useState<HomeFilter>("for-you");
+  const [filter,setFilter]=useState<HomeFilter>("for-you");\n  const [feedLimit,setFeedLimit]=useState(30);
   const {data:posts,isLoading,error}=useFeedPosts({
     postType:"general",
     noCategoryOnly:true,
@@ -56,7 +56,7 @@ export function Home(){
         {error&&<p className="rounded-2xl bg-white p-4 text-flag shadow-sm">Couldn&apos;t load the feed right now.</p>}
         {!isLoading&&!error&&visiblePosts.length===0&&<div className="empty-state"><h2>{filter==="for-you"?"No community posts yet":`No ${filter} posts yet`}</h2><p>Share something encouraging, useful or uplifting.</p></div>}
         {visiblePosts.map((post,index)=><div key={post.id}><PostCard post={post}/>{(index+1)%AD_INTERVAL===0&&activeAds.length?<AdvertisementCard ad={activeAds[Math.floor(index/AD_INTERVAL)%activeAds.length]}/>:null}</div>)}
-        {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}
+        {showSmallFeedAd&&<AdvertisementCard ad={activeAds[0]}/>}\n        {!isLoading&&!error&&visiblePosts.length>=feedLimit&&<div className="flex justify-center pt-2"><button type="button" onClick={()=>setFeedLimit(n=>n+30)} className="rounded-xl border border-paper-dim bg-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-paper">Load older posts</button></div>}
       </div>
     </div>
 
