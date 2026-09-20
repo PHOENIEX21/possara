@@ -5,7 +5,7 @@ import { useOpportunityCategories } from "./CategoryChips";
 import { useOwnProfile } from "../hooks/useProfile";
 import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
-import { MentionSuggestions } from "./MentionSuggestions";
+import { MentionSuggestions } from "./MentionSuggestions";\nimport { supabase } from "../lib/supabase";
 
 interface PostComposerProps {
   postType?: "general" | "resource" | "opportunity" | "event";
@@ -16,11 +16,11 @@ interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
-  { value: "insight", label: "Insight", help: "Educative ideas, useful knowledge, lessons, motivation and uplifting experiences." },
-  { value: "job", label: "Job", help: "A job shared manually by a community member. Add deadline and application details in the post when relevant." },
-  { value: "scholarship", label: "Scholarship", help: "A scholarship shared manually by a community member. Add eligibility, deadline and link when available." },
-  { value: "competition", label: "Competition", help: "Competitions, challenges, quizzes or contests shared by the community." },
-  { value: "talent", label: "Talent", help: "Talent opportunities, showcases, auditions and calls for participation." },
+  { value: "insight", label: "Insight", help: "Motivation, encouragement, useful stories, knowledge, education, practical advice and lessons. Not random status updates, gossip or unrelated celebrity posts." },
+  { value: "job", label: "Job", help: "A genuine vacancy or employment opportunity. Include the role, employer/source, location or work style, requirements and how to apply when known." },
+  { value: "scholarship", label: "Scholarship", help: "Real education funding, bursary or scholarship information. Include eligibility, study level, deadline, funding and application source when available." },
+  { value: "competition", label: "Competition", help: "A real contest, challenge, quiz or competition. Include who can enter, deadline, prize or purpose and entry details when known." },
+  { value: "talent", label: "Talent", help: "Auditions, casting, showcases and genuine opportunities for people to present or develop a talent." },
 ] as const;
 const FEELINGS = [
  {value:"happy",label:"😊 Happy"},{value:"grateful",label:"🙏 Grateful"},{value:"excited",label:"🤩 Excited"},
@@ -49,7 +49,7 @@ export function PostComposer({
   const [feeling,setFeeling]=useState("");
   const [showFeelings,setShowFeelings]=useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);\n  const [classificationError,setClassificationError]=useState<string|null>(null);
 
   if (!userId) {
     return <div className="rounded-2xl border border-paper-dim bg-white px-5 py-4 text-sm text-ink-light shadow-sm">Sign in to share something useful, inspiring or worth seeing.</div>;
@@ -75,7 +75,7 @@ export function PostComposer({
   }
 
   function reset() {
-    setContent("");
+    setContent("");\n    setClassificationError(null);
     setCategoryId("");
     setTopic(defaultTopic);
     clearImage();
@@ -158,18 +158,18 @@ export function PostComposer({
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setTopic(topic === item.value ? "" : item.value)}
+                onClick={() => {setTopic(item.value);setClassificationError(null)}}
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${topic===item.value ? "border-brand bg-brand-light text-brand-dark" : "border-ink-faint/20 bg-white text-ink-light hover:bg-paper-dim"}`}
               >
                 {item.label}
               </button>
             ))}
           </div>
-          {selectedTopic && <p className="mt-2 text-xs text-ink-light">{selectedTopic.help}</p>}
+          {selectedTopic && <div className="mt-2 rounded-xl bg-paper p-3"><p className="text-xs font-semibold text-ink">{selectedTopic.label} means:</p><p className="mt-1 text-xs leading-5 text-ink-light">{selectedTopic.help}</p></div>}
         </div>
       )}
 
-      {!categoryId&&<div className="mb-4"><p className="mb-2 text-sm font-semibold text-ink">What are you sharing?</p><div className="flex flex-wrap gap-2">{([{value:"general",label:"Community"},{value:"resource",label:"Resource"},{value:"event",label:"Event"}] as const).map(item=><button key={item.value} type="button" onClick={()=>setSelectedPostType(item.value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${selectedPostType===item.value?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/20 bg-white text-ink-light"}`}>{item.label}</button>)}</div></div>}
+      {!showHomeTopicPicker&&!categoryId&&<div className="mb-4"><p className="mb-2 text-sm font-semibold text-ink">What are you sharing?</p><div className="flex flex-wrap gap-2">{([{value:"general",label:"Community"},{value:"resource",label:"Resource"},{value:"event",label:"Event"}] as const).map(item=><button key={item.value} type="button" onClick={()=>setSelectedPostType(item.value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${selectedPostType===item.value?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/20 bg-white text-ink-light"}`}>{item.label}</button>)}</div></div>}
 
       {feeling&&<div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-light px-3 py-1.5 text-sm font-medium text-brand-dark">{FEELINGS.find(x=>x.value===feeling)?.label}<button type="button" onClick={()=>setFeeling("")} aria-label="Remove feeling"><X size={13}/></button></div>}
       <div className="relative">
@@ -208,7 +208,7 @@ export function PostComposer({
           </button>
         </div>
       </div>
-      {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
+      {classificationError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{classificationError}</div>}\n      {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
     </form>
     {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
   </>;
