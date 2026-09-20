@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
 import { AppLayout } from "./layouts/AppLayout";
@@ -8,6 +8,7 @@ import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
 import { ResetPassword } from "./pages/ResetPassword";
+import { VerifyEmail } from "./pages/VerifyEmail";
 import { Discover } from "./pages/Discover";
 import { Connect } from "./pages/Connect";
 import { Contribute } from "./pages/Contribute";
@@ -57,6 +58,19 @@ import { Places } from "./pages/Places";
 
 const queryClient = new QueryClient();
 
+function AccountEmailGate() {
+  const { userId, emailVerified, loading } = useAuth();
+  const location = useLocation();
+  const allowedWhileUnverified =
+    location.pathname === "/verify-email" || location.pathname === "/reset-password";
+
+  if (loading) return <div className="text-ink-light">Loading…</div>;
+  if (userId && !emailVerified && !allowedWhileUnverified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+  return <AppLayout />;
+}
+
 export default function App() {
   useEffect(() => {
     const unsubscribe = useAuth.getState().init();
@@ -68,10 +82,11 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route element={<AppLayout />}>
+            <Route element={<AccountEmailGate />}>
               <Route path="/" element={<Home />} />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/discover" element={<Discover />} />
               <Route path="/places" element={<Places />} />
               <Route path="/learn" element={<Study />} />
