@@ -2,6 +2,7 @@ import { ArrowLeft, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { PostCard } from "../components/PostCard";
+import { InterestingPlaces } from "../components/InterestingPlaces";
 
 export function Places() {
   const { data: posts, isLoading, error } = useFeedPosts({
@@ -25,6 +26,8 @@ export function Places() {
           </div>
         </div>
       </section>
+
+      <InterestingPlaces/>
 
       <div className="feed-list feed-list-premium overflow-hidden sm:overflow-visible">
         {isLoading && <div className="feed-skeleton"/>}
