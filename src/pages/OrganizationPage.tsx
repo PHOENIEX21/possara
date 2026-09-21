@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase";
 import { useOpportunities } from "../hooks/useOpportunities";
 import { OpportunityCard } from "../components/OpportunityCard";
 import { TrustBadge } from "../components/TrustBadge";
-import { useMyOrganizations, useOrganizationJobs } from "../hooks/useHiring";
+import { useCanManageOrganization, useOrganizationJobs } from "../hooks/useHiring";
 import { useAuth } from "../store/auth";
 import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 import { useOrganizationFollow } from "../hooks/useOrganizationFollow";
@@ -38,7 +38,7 @@ export function OrganizationPage(){
   const [section,setSection]=useState<"posts"|"about"|"media">("posts");
   const {slug}=useParams<{slug:string}>();
   const {userId}=useAuth();
-  const {data:myOrganizations}=useMyOrganizations();
+  const {data:canManageOrganization}=useCanManageOrganization(org?.id);
   const {data:org,isLoading,error}=useOrganization(slug);
   const {data:allOpportunities}=useOpportunities({limit:100});
   const orgOpportunities=allOpportunities?.filter(o=>o.organization_id===org?.id);
@@ -51,9 +51,7 @@ export function OrganizationPage(){
   });
 
   const openNativeJobs=(nativeJobs??[]).filter(j=>j.status==="open");
-  const membership=(myOrganizations??[]).find((row:any)=>row.organizations?.id===org?.id);
-  const isMember=!!userId&&!!membership;
-  const canManage=isMember&&["owner","recruiter"].includes((membership as any).role);
+  const canManage=!!userId&&canManageOrganization===true;
   const visibleJobs=canManage?(nativeJobs??[]):openNativeJobs;
   const media=(organizationPosts??[]).flatMap(post=>(post.media_urls??[]).map((src,index)=>({src,id:`${post.id}-${index}`,postId:post.id})));
 
@@ -80,8 +78,8 @@ export function OrganizationPage(){
         {org.description&&<p className="mt-5 max-w-3xl whitespace-pre-line leading-7 text-ink-light">{String(org.description).replace(/\\n/g,"\n")}</p>}
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          {isMember
-            ? <span className="rounded-full bg-brand-light px-4 py-2 text-sm font-semibold text-brand-dark">{canManage?"You manage this organization":"You are a member"}</span>
+          {canManage
+            ? <span className="rounded-full bg-brand-light px-4 py-2 text-sm font-semibold text-brand-dark">You manage this organization</span>
             : <OrganizationFollowButton organizationId={org.id}/>}
           <span className="text-sm text-ink-light"><strong className="text-ink">{followState?.followers??0}</strong> {(followState?.followers??0)===1?"follower":"followers"}</span>
         </div>
