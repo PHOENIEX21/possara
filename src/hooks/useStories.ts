@@ -233,41 +233,24 @@ export function usePostStory() {
         }
 
         const baseCreatedAt = Date.now();
-        const storyRows = uploadedImagePaths.length
-          ? uploadedImagePaths.map((imagePath,index) => ({
-              author_id: userId,
-              storage_path: imagePath,
-              media_url: null,
-              caption: null,
-              story_type: "image",
-              text_body: textBody || null,
-              background_style: input.backgroundStyle ?? "midnight",
-              music_path: musicPath,
-              music_mime_type: musicFile ? musicMime : null,
-              music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
-              music_track_key: input.musicTrackKey ?? null,
-              music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
-              music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
-              audience: input.audience ?? "public",
-              created_at: new Date(baseCreatedAt + index).toISOString(),
-            }))
-          : [{
-              author_id: userId,
-              storage_path: null,
-              media_url: null,
-              caption: null,
-              story_type: "text",
-              text_body: textBody || null,
-              background_style: input.backgroundStyle ?? "midnight",
-              music_path: musicPath,
-              music_mime_type: musicFile ? musicMime : null,
-              music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
-              music_track_key: input.musicTrackKey ?? null,
-              music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
-              music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
-              audience: input.audience ?? "public",
-              created_at: new Date(baseCreatedAt).toISOString(),
-            }];
+        const sequencePaths: Array<string | null> = uploadedImagePaths.length ? [...uploadedImagePaths] : [null];
+        const storyRows = sequencePaths.map((imagePath,index) => ({
+          author_id: userId,
+          storage_path: imagePath,
+          media_url: null,
+          caption: null,
+          story_type: imagePath ? "image" : "text",
+          text_body: textBody || null,
+          background_style: input.backgroundStyle ?? "midnight",
+          music_path: musicPath,
+          music_mime_type: musicFile ? musicMime : null,
+          music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
+          music_track_key: input.musicTrackKey ?? null,
+          music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
+          music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
+          audience: input.audience ?? "public",
+          created_at: new Date(baseCreatedAt + index).toISOString(),
+        }));
 
         const { data, error } = await supabase
           .from("stories")
