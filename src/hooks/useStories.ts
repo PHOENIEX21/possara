@@ -210,6 +210,7 @@ export function usePostStory() {
       if (!sessionData.session) throw new Error("Your session expired. Sign in again before posting a Moment.");
 
       const uploadedImagePaths: string[] = [];
+      const createdStoryIds: string[] = [];
       let musicPath: string | null = null;
 
       try {
@@ -274,12 +275,14 @@ export function usePostStory() {
 
         if (error) throw new Error(`Moment could not be published: ${error.message}`);
         if (!data?.length) throw new Error("Moment publish returned no created items.");
+        createdStoryIds.push(...data.map((row) => row.id as string));
         if (imageFiles.length && data.length !== imageFiles.length) throw new Error("Not every selected photo became a Moment.");
         if (musicFile && data.some((row) => row.music_path !== musicPath)) throw new Error("Moment music uploaded but was not attached to every Moment.");
         if (input.musicTrackKey && data.some((row) => row.music_track_key !== input.musicTrackKey)) throw new Error("The selected POSSARA Music track was not attached to every Moment.");
 
-        return data.map((row) => row.id as string);
+        return createdStoryIds;
       } catch (error) {
+        if (createdStoryIds.length) await supabase.from("stories").delete().in("id", createdStoryIds).eq("author_id", userId);
         if (uploadedImagePaths.length) await supabase.storage.from("moments").remove(uploadedImagePaths);
         if (musicPath) await supabase.storage.from("moment-music").remove([musicPath]);
         throw error;
