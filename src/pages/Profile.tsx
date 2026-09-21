@@ -8,6 +8,7 @@ import { useOpportunityCategories } from "../components/CategoryChips";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { useCoverUpload } from "../hooks/useCoverUpload";
 import { useFeedPosts } from "../hooks/useFeedPosts";
+import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { ProfileSharePresence } from "../components/ProfileSharePresence";
@@ -324,5 +325,6 @@ export function Profile(){
   return <p className="text-ink-light">No profile specified.</p>;
 }
 
-function PublicProfile({username}:{username:string}){const {data:profile,isLoading,error}=useProfileByUsername(username);if(isLoading)return <p className="text-ink-light">Loading…</p>;if(error||!profile)return <p className="text-flag">This profile couldn&apos;t be found.</p>;return <div className="space-y-5"><ProfileView profile={profile}/><ProfilePosts profileId={profile.id}/></div>;}
+function PublicProfile({username}:{username:string}){const {data:profile,isLoading,error}=useProfileByUsername(username);if(isLoading)return <p className="text-ink-light">Loading…</p>;if(error||!profile)return <p className="text-flag">This profile couldn&apos;t be found.</p>;return <div className="space-y-5"><ProfileView profile={profile}/>{own&&<div className="max-w-3xl"><PostComposer showHomeTopicPicker placeholder="Share an insight, lesson or useful experience…"/></div>}
+      <ProfilePosts profileId={profile.id}/></div>;}
 function PublicProfileById({id}:{id:string}){const {data:profile,isLoading,error}=useProfileById(id);if(isLoading)return <p className="text-ink-light">Loading…</p>;if(error||!profile)return <p className="text-flag">This profile couldn&apos;t be found.</p>;return <div className="space-y-5"><ProfileView profile={profile}/><ProfilePosts profileId={profile.id}/></div>;}
