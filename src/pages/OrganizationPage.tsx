@@ -120,7 +120,7 @@ export function OrganizationPage(){
       </div>
     </section>}
 
-    {section==="posts"&&<div className="space-y-4">
+    {section==="posts"&&<div className="grid items-start gap-5 lg:grid-cols-[minmax(250px,.78fr)_minmax(0,1.35fr)]"><aside className="space-y-4 lg:sticky lg:top-20"><section className="rounded-3xl border border-paper-dim bg-white p-5 shadow-sm"><h2 className="font-semibold">About</h2><p className="mt-2 text-sm leading-6 text-ink-light">{org.description||org.industry||"Organization profile"}</p>{org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="mt-3 block break-all text-sm font-semibold text-trust-dark">{org.website.replace(/^https?:\/\//,"")}</a>}</section>{media.length>0&&<section className="rounded-3xl border border-paper-dim bg-white p-3 shadow-sm"><div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Photos</h2><button type="button" onClick={()=>setSection("media")} className="text-xs font-semibold text-brand-dark">See all</button></div><div className="grid grid-cols-3 gap-1">{media.slice(0,6).map(item=><img key={item.id} src={item.src} alt="" className="aspect-square w-full rounded-lg object-cover"/>)}</div></section>}</aside><main className="min-w-0 space-y-4">
 {canManage&&<section className="rounded-2xl border border-brand/15 bg-brand-light/35 p-4">
       <p className="eyebrow">Organization workspace</p>
       <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -145,7 +145,7 @@ export function OrganizationPage(){
       {!organizationPostsLoading&&!organizationPosts?.length&&<div className="rounded-2xl border border-paper-dim bg-white p-5"><p className="font-medium">No organization updates yet.</p><p className="mt-1 text-sm text-ink-light">{canManage?"Publish the first update above.":"Follow this organization to be notified when it shares updates or begins hiring."}</p></div>}
       <div className="space-y-3">{organizationPosts?.map(post=><PostCard key={post.id} post={post}/>)}</div>
     </section>
-    </div>}
+    </main></div>}
 
     {section==="about"&&<section className="rounded-3xl border border-paper-dim bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-center gap-2"><Info size={18}/><h2 className="text-xl font-semibold">About {org.name}</h2></div>
