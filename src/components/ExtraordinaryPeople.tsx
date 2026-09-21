@@ -134,7 +134,7 @@ export function ExtraordinaryPeople() {
   const [active, setActive] = useState(()=>{if(typeof window==="undefined")return 0;const saved=Number(window.sessionStorage.getItem("possara-extraordinary-active"));return Number.isFinite(saved)&&saved>=0&&saved<PEOPLE.length?saved:0;});
   const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const [catalogueReady, setCatalogueReady] = useState(false);
+  const [catalogueReady, setCatalogueReady] = useState(() => Object.keys(readCachedImages()).length > 0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(()=>{try{window.sessionStorage.setItem("possara-extraordinary-active",String(active));}catch{/* session storage can be unavailable */}},[active]);
@@ -142,12 +142,14 @@ export function ExtraordinaryPeople() {
   useEffect(() => {
     let cancelled = false;
     async function loadCatalogue() {
+      // Never make the Home spotlight wait on a third-party image catalogue.
+      // Direct-image entries and any cached Wikipedia thumbnails can render immediately.
+      setCatalogueReady(true);
       const fetched = await fetchWikiImageCatalogue(PEOPLE);
       if (cancelled) return;
       const merged = { ...readCachedImages(), ...fetched };
       setImages(merged);
       writeCachedImages(merged);
-      setCatalogueReady(true);
     }
     void loadCatalogue();
     return () => { cancelled = true; };
@@ -201,6 +203,10 @@ export function ExtraordinaryPeople() {
 
   function handleImageError() {
     setFailedImages((current) => ({ ...current, [person.name]: true }));
+    window.setTimeout(() => {
+      const position = availableIndexes.indexOf(active);
+      if (availableIndexes.length > 1) setActive(availableIndexes[position < 0 ? 0 : (position + 1) % availableIndexes.length]);
+    }, 0);
   }
 
   function handleTouchStart(event: React.TouchEvent<HTMLElement>) {
