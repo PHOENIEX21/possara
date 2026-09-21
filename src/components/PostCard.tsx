@@ -95,7 +95,8 @@ function CommentTrustBadge({ userId }: { userId: string | null }) {
 }
 
 function CommentThread({ postId }: { postId: string }) {
-  const { userId, profile: viewerProfile } = useAuth();
+  const { userId } = useAuth();
+  const { data: viewerProfile } = useQuery({queryKey:["discussion-viewer-profile",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("profiles").select("full_name,username").eq("id",userId as string).maybeSingle();if(error)throw error;return data;}});
   const actingOrganization = useActiveOrganizationIdentity();
   const { data: comments, isLoading, error: commentsError } = useComments(postId, true, actingOrganization?.id ?? null);
   const createComment = useCreateComment(postId, actingOrganization?.id ?? null);
