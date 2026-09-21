@@ -8,6 +8,7 @@ import { useOpportunityCategories } from "../components/CategoryChips";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { useCoverUpload } from "../hooks/useCoverUpload";
 import { useFeedPosts } from "../hooks/useFeedPosts";
+import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { ProfilePhotoViewer } from "../components/ProfilePhotoViewer";
 import { ProfileSharePresence } from "../components/ProfileSharePresence";
@@ -318,7 +319,7 @@ export function Profile(){
   const coverBusy=coverUpload.isPending||updateOwnProfile.isPending;
   async function changeOwnCover(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await coverUpload.mutateAsync(file);setCoverStatus("Cover photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}
   async function removeOwnCover(){if(!ownProfile?.cover_url)return;setCoverStatus(null);try{await updateOwnProfile.mutateAsync({cover_url:null});setCoverStatus("Cover photo removed.");}catch(err){setCoverStatus((err as Error).message);}}
-  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="max-w-3xl rounded-xl bg-white px-3 py-2 text-sm text-ink-light shadow-sm">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-flex rounded-full border border-paper-dim bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-sm">Privacy, notifications & account settings</Link></div>;}
+  if(isOwn){if(!userId)return <p className="text-ink-light">Sign in to view your profile.</p>;if(isLoading||!ownProfile)return <p className="text-ink-light">Loading…</p>;if(editing)return <EditOwnProfile onDone={()=>setEditing(false)}/>;return <div className="space-y-5"><ProfileView profile={ownProfile} own onEdit={()=>setEditing(true)} onOwnCoverClick={()=>coverInputRef.current?.click()} onRemoveCover={removeOwnCover} coverUploading={coverBusy}/><div className="max-w-3xl"><PostComposer showHomeTopicPicker placeholder="Share an insight, lesson or useful experience…"/></div><input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changeOwnCover} className="hidden"/>{coverStatus&&<p className="max-w-3xl rounded-xl bg-white px-3 py-2 text-sm text-ink-light shadow-sm">{coverStatus}</p>}<ProfilePosts profileId={ownProfile.id}/><Link to="/settings" className="inline-flex rounded-full border border-paper-dim bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-sm">Privacy, notifications & account settings</Link></div>;}
   if(id)return <PublicProfileById id={id}/>;
   if(username)return <PublicProfile username={username}/>;
   return <p className="text-ink-light">No profile specified.</p>;
