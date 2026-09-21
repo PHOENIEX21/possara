@@ -7,6 +7,7 @@ import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
+import { ExtraordinaryPeople } from "../components/ExtraordinaryPeople";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
 
@@ -57,6 +58,7 @@ export function Home(){
   return <div className="feed-layout">
     <div className="feed-column">
       <section className="rounded-3xl bg-ink p-5 text-white"><p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/55">POSSARA community</p><h1 className="mt-2 text-2xl font-bold">Grow through what people share.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-white/65">Useful knowledge, education, lessons, encouragement and real experiences that help people move forward.</p></section>
+      <ExtraordinaryPeople/>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
@@ -64,7 +66,7 @@ export function Home(){
 
       <section className="home-compose-section">
         <PostComposer
-          placeholder="Share something encouraging…"
+          placeholder="Share an insight, lesson or useful experience…"
           showHomeTopicPicker
         />
       </section>
