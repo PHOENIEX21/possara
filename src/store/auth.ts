@@ -32,10 +32,8 @@ export const useAuth=create<AuthState>((set,get)=>({
       }
 
       set({userId:user.id,email:user.email??null,emailVerified:false,role:null,isVerified:false,isBanned:false,banReason:null,loading:true});
-      const [roleResult,profileResult]=await Promise.all([
-        supabase.rpc("get_my_account_state"),
-        supabase.rpc("get_my_account_state"),
-      ]);
+      const roleResult=await supabase.rpc("get_my_account_state");
+      const profileResult=roleResult;
       if(!active||version!==hydrationVersion)return;
 
       const roleRow=Array.isArray(roleResult.data)?roleResult.data[0]:roleResult.data;
