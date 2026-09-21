@@ -239,7 +239,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
           className={`inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${post.viewer_reaction ? "bg-brand-light text-brand-dark" : "text-ink-light hover:bg-paper-dim"}`}
         >
           <span className="text-base leading-none">{visibleReaction.emoji}</span>
-          <span>{visibleReaction.label}</span>
+          <span className="sr-only">{visibleReaction.label}</span>
         </button>
         {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
       </div>
