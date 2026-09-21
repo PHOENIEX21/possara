@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
+import { Building2, MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
@@ -14,6 +14,8 @@ import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import { PostReactionControl } from "./PostReactionControl";
 import { TrustRankBadge } from "./TrustRankBadge";
 import { MemberFollowButton } from "./MemberFollowButton";
+import { OrganizationFollowButton } from "./OrganizationFollowButton";
+import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 import { MentionText } from "./MentionText";
 import { MentionSuggestions } from "./MentionSuggestions";
 import { CommentReactionControl } from "./CommentReactionControl";
@@ -310,14 +312,16 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [mediaOpen,setMediaOpen]=useState<string|null>(null);
 
-  const name = post.profiles?.full_name ?? "A member of the community";
+  const organization = post.organizations;
+  const name = organization?.name ?? post.profiles?.full_name ?? "A member of the community";
   const initial = name.charAt(0).toUpperCase();
-  const displayContent = post.shared_from_post && /^Shared from /i.test(post.content) ? "" : post.content;
+  const displayContent = (post.shared_from_post && /^Shared from /i.test(post.content) ? "" : post.content).replace(/\\n/g, "\n");
   const longPost = displayContent.length > 420 || displayContent.split("\n").length > 7;
-  const path = profilePath(post.author_id, post.profiles?.username, userId);
-  const headline = post.profiles?.headline || post.profiles?.profession;
+  const path = organization ? `/organizations/${organization.slug}` : profilePath(post.author_id, post.profiles?.username, userId);
+  const headline = organization ? "Organization" : post.profiles?.headline || post.profiles?.profession;
   const topicLabel = post.topic ? post.topic.charAt(0).toUpperCase() + post.topic.slice(1) : null;
   const isOwner = userId === post.author_id;
+  const canManagePost = organization ? post.viewer_can_manage_organization : isOwner;
   const sourceText = post.shared_from_post?.content ?? displayContent;
   const sharePreview = sourceText.length > 180 ? `${sourceText.slice(0, 177)}…` : sourceText;
   const sharePath = `/post/${post.id}`;
@@ -350,7 +354,11 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
     <article className="relative rounded-2xl border border-paper-dim bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3 pr-2">
-          {post.profiles?.avatar_url ? (
+          {organization ? (
+            <Link to={path} className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-light text-brand-dark" aria-label={`Open ${name}`}>
+              {organization.logo_url ? <img src={organization.logo_url} alt="" className="h-full w-full object-cover" /> : <Building2 size={18}/>}
+            </Link>
+          ) : post.profiles?.avatar_url ? (
             <button type="button" onClick={() => setPhotoOpen(true)} className="h-10 w-10 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}>
               <img src={post.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
             </button>
@@ -360,7 +368,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Link to={path} className="truncate text-[15px] font-medium leading-tight hover:underline">{name}</Link>
-              <TrustRankBadge rank={trustRank} compact />
+              {organization ? (organization.verified ? <OrganizationVerificationBadge compact/> : null) : <TrustRankBadge rank={trustRank} compact />}
             </div>
             {headline && <Link to={path} className="block truncate text-xs text-ink-light hover:underline">{headline}</Link>}
             <div className="flex items-center gap-2 text-xs text-ink-faint">
@@ -371,21 +379,21 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <MemberFollowButton targetUserId={post.author_id} compact />
-          {(userId || isOwner) && (
+          {organization ? <OrganizationFollowButton organizationId={organization.id} isMember={post.viewer_is_organization_member} compact/> : <MemberFollowButton targetUserId={post.author_id} compact />}
+          {(userId || canManagePost) && (
             <div className="relative">
               <button type="button" onClick={() => setMenuOpen((value) => !value)} className="rounded-full p-2 text-ink-faint hover:bg-paper-dim hover:text-ink" aria-label="Post options">
                 <MoreHorizontal size={19} />
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-10 z-20 w-72 overflow-hidden rounded-xl border border-paper-dim bg-white py-1 shadow-lg">
-                  {isOwner && (
+                  {canManagePost && (
                     <>
                       <button onClick={() => { setEditing(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-paper"><Pencil size={14} />Edit post</button>
                       <button onClick={() => { setConfirmingDelete(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-flag hover:bg-paper"><Trash2 size={14} />Delete post</button>
                     </>
                   )}
-                  {!isOwner && userId && (
+                  {!canManagePost && userId && (
                     <div className="border-t border-paper-dim px-3 py-2 first:border-t-0">
                       <ReportButton postId={post.id} />
                     </div>
@@ -465,7 +473,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
       {commentsOpen && <CommentThread postId={post.id} />}
       {mediaOpen&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaOpen(null)}><button type="button" onClick={()=>setMediaOpen(null)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white" aria-label="Close image"><X size={22}/></button><img src={mediaOpen} alt="" className="max-h-full max-w-full object-contain" onClick={e=>e.stopPropagation()}/></div>}
-      {photoOpen && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
+      {photoOpen && !organization && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
       <InAppShareDialog
         open={shareOpen}
         onClose={() => setShareOpen(false)}

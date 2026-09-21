@@ -28,6 +28,9 @@ export interface SharedPostPreview {
 
 export interface PostWithAuthor extends Post {
   profiles: Pick<Profile, "full_name" | "avatar_url" | "username" | "headline" | "profession"> | null;
+  organizations: { id: string; name: string; slug: string; logo_url: string | null; verified: boolean | null; verification_status: string | null } | null;
+  viewer_is_organization_member: boolean;
+  viewer_can_manage_organization: boolean;
   shared_from_post: SharedPostPreview | null;
   spark_count: number;
   viewer_reacted: boolean;
@@ -47,14 +50,17 @@ interface UseFeedPostsOptions {
   topic?: string;
   topics?: string[];
   authorId?: string;
+  organizationId?: string;
+  enabled?: boolean;
   limit?: number;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, limit = 30 } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, enabled = true, limit = 30 } = options;
   const { userId } = useAuth();
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, limit, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId],
+    enabled,
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
@@ -76,6 +82,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       if (topic) query = query.eq("topic", topic);
       else if (topics?.length) query = query.in("topic", topics);
       if (authorId) query = query.eq("author_id", authorId);
+      if (organizationId) query = query.eq("organization_id", organizationId);
       const { data: posts, error } = await query;
       if (error) throw error;
       if (!posts?.length) return [];
@@ -83,6 +90,26 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const profileIds = [...new Set(posts.map((p) => p.author_id).filter((id): id is string => !!id))];
       const { data: feedProfiles } = await supabase.from("profiles").select("id,full_name,avatar_url,username,headline,profession").in("id", profileIds.length ? profileIds : ["00000000-0000-0000-0000-000000000000"]);
       const feedProfileById = new Map((feedProfiles ?? []).map((profile) => [profile.id, profile]));
+
+      const organizationIds = [...new Set(posts.map((p) => p.organization_id).filter((id): id is string => !!id))];
+      const { data: feedOrganizations } = organizationIds.length
+        ? await supabase.from("organizations").select("id,name,slug,logo_url,verified,verification_status").in("id", organizationIds)
+        : { data: [] as {id:string;name:string;slug:string;logo_url:string|null;verified:boolean|null;verification_status:string|null}[] };
+      const organizationById = new Map((feedOrganizations ?? []).map((organization) => [organization.id, organization]));
+      const organizationMemberIds = new Set<string>();
+      const organizationManagerIds = new Set<string>();
+      if (userId && organizationIds.length) {
+        const { data: memberships } = await supabase
+          .from("organization_members")
+          .select("organization_id,role")
+          .eq("user_id", userId)
+          .in("organization_id", organizationIds);
+        for (const membership of memberships ?? []) {
+          organizationMemberIds.add(membership.organization_id);
+          if (membership.role === "owner" || membership.role === "recruiter") organizationManagerIds.add(membership.organization_id);
+        }
+      }
+
       const sharedIds = [...new Set(posts.map((p) => p.shared_from_post_id).filter((id): id is string => !!id))];
       const { data: sharedRows } = sharedIds.length ? await supabase.from("posts").select("id,author_id,content,media_urls").in("id", sharedIds) : { data: [] as {id:string;author_id:string|null;content:string;media_urls:string[]|null}[] };
       const sharedAuthorIds = [...new Set((sharedRows ?? []).map((p) => p.author_id).filter((id): id is string => !!id))];
@@ -153,6 +180,9 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         return {
           ...p,
           profiles: p.author_id ? feedProfileById.get(p.author_id) ?? null : null,
+          organizations: p.organization_id ? organizationById.get(p.organization_id) ?? null : null,
+          viewer_is_organization_member: !!p.organization_id && organizationMemberIds.has(p.organization_id),
+          viewer_can_manage_organization: !!p.organization_id && organizationManagerIds.has(p.organization_id),
           shared_from_post: sharedFromPost,
           spark_count: counts.spark,
           viewer_reacted: viewerReaction === "spark",
@@ -172,7 +202,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, musicFile, feeling, type = "general", categoryId, topic }: { content: string; imageFile: File | null; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, musicFile, feeling, type = "general", categoryId, topic, organizationId }: { content: string; imageFile: File | null; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; organizationId?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
       let mediaUrls: string[] | null = null;
       if (imageFile) {
@@ -197,6 +227,7 @@ export function useCreatePost() {
       }
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
+        organization_id: organizationId ?? null,
         content,
         media_urls: mediaUrls,
         type,

@@ -5,6 +5,7 @@ import { ArrowRight, Briefcase, Building2, Church, ExternalLink, GraduationCap, 
 import { supabase } from "../lib/supabase";
 import type { Organization } from "../types/database";
 import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
+import { useMyOrganizations } from "../hooks/useHiring";
 
 const INDUSTRIES = [
   { label: "All organizations", value: "", icon: Building2, description: "Browse every organization currently listed on POSSARA." },
@@ -51,6 +52,7 @@ function useOrganizationOpportunityCounts(){
 export function Organizations(){
   const {data:organizations,isLoading,error}=useOrganizationDirectory();
   const {data:counts}=useOrganizationOpportunityCounts();
+  const {data:myOrganizations}=useMyOrganizations();
   const [query,setQuery]=useState("");
   const [industry,setIndustry]=useState("");
   const [country,setCountry]=useState("");
@@ -70,14 +72,24 @@ export function Organizations(){
     return [...values].sort((a,b)=>a.localeCompare(b));
   },[organizations,country]);
 
-  const filtered=useMemo(()=>organizations?.filter(org=>{
-    if(industry&&org.industry!==industry)return false;
-    if(country&&org.country!==country)return false;
-    if(state&&org.state!==state)return false;
-    if(!query.trim())return true;
-    const q=query.trim().toLowerCase();
-    return [org.name,org.description,org.industry,org.country,org.state,org.headquarters].some(value=>value?.toLowerCase().includes(q));
-  })??[],[organizations,industry,country,state,query]);
+  const membershipByOrg=useMemo(()=>new Map((myOrganizations??[]).map((row:any)=>[row.organizations?.id,row.role])),[myOrganizations]);
+  const filtered=useMemo(()=>{
+    const rows=organizations?.filter(org=>{
+      if(industry&&org.industry!==industry)return false;
+      if(country&&org.country!==country)return false;
+      if(state&&org.state!==state)return false;
+      if(!query.trim())return true;
+      const q=query.trim().toLowerCase();
+      return [org.name,org.description,org.industry,org.country,org.state,org.headquarters].some(value=>value?.toLowerCase().includes(q));
+    })??[];
+    return [...rows].sort((a,b)=>{
+      const ar=membershipByOrg.get(a.id);
+      const br=membershipByOrg.get(b.id);
+      const ap=ar==="owner"?0:ar?1:2;
+      const bp=br==="owner"?0:br?1:2;
+      return ap-bp||a.name.localeCompare(b.name);
+    });
+  },[organizations,industry,country,state,query,membershipByOrg]);
 
   const selectedIndustry=INDUSTRIES.find(item=>item.value===industry)?.label??"All organizations";
 
@@ -130,7 +142,7 @@ export function Organizations(){
       {isLoading&&<div className="feed-skeleton"/>}
       {error&&<p className="text-flag">Couldn't load organizations right now.</p>}
       {!isLoading&&!error&&filtered.length===0&&<div className="rounded-2xl border border-paper-dim bg-white p-6 text-center"><h3 className="font-semibold">No organizations found yet</h3><p className="mt-1 text-sm text-ink-light">Try another category or location. The directory is designed to keep expanding across Nigeria and internationally as organizations are added and reviewed.</p></div>}
-      <div className="grid gap-3 md:grid-cols-2">{filtered.map(org=>{const activeCount=counts?.[org.id]??0;return <article key={org.id} className="group rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><Link to={`/organizations/${org.slug}`} className="block"><div className="flex items-start gap-3">{org.logo_url?<img src={org.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover"/>:<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-paper-dim text-ink-light"><Building2 size={20}/></div>}<div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate font-semibold group-hover:underline">{org.name}</h3>{org.verified&&<OrganizationVerificationBadge compact/>}</div>{org.industry&&<p className="mt-0.5 text-xs font-medium text-brand-dark">{org.industry}</p>}<p className="mt-1 text-xs text-ink-faint">{[org.headquarters||org.state,org.state!==org.headquarters?org.state:null,org.country].filter(Boolean).join(" · ")||"Location not listed"}</p></div></div>{org.description&&<p className="mt-3 line-clamp-2 text-sm leading-5 text-ink-light">{org.description}</p>}</Link><div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-paper-dim pt-3"><span className="text-xs font-medium text-ink-light">{activeCount} active {activeCount===1?"opportunity":"opportunities"}</span><div className="flex items-center gap-3">{org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-ink-light hover:text-brand-dark">Website <ExternalLink size={13}/></a>}<Link to={`/organizations/${org.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark">View <ArrowRight size={14}/></Link></div></div></article>})}</div>
+      <div className="grid gap-3 md:grid-cols-2">{filtered.map(org=>{const activeCount=counts?.[org.id]??0;const myRole=membershipByOrg.get(org.id);return <article key={org.id} className="group rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><Link to={`/organizations/${org.slug}`} className="block"><div className="flex items-start gap-3">{org.logo_url?<img src={org.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover"/>:<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-paper-dim text-ink-light"><Building2 size={20}/></div>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-semibold group-hover:underline">{org.name}</h3>{org.verified&&<OrganizationVerificationBadge compact/>}{myRole&&<span className="rounded-full bg-brand-light px-2 py-0.5 text-[10px] font-bold text-brand-dark">{myRole==="owner"?"Your organization":"Your team"}</span>}</div>{org.industry&&<p className="mt-0.5 text-xs font-medium text-brand-dark">{org.industry}</p>}<p className="mt-1 text-xs text-ink-faint">{[org.headquarters||org.state,org.state!==org.headquarters?org.state:null,org.country].filter(Boolean).join(" · ")||"Location not listed"}</p></div></div>{org.description&&<p className="mt-3 line-clamp-2 text-sm leading-5 text-ink-light">{org.description}</p>}</Link><div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-paper-dim pt-3"><span className="text-xs font-medium text-ink-light">{activeCount} active {activeCount===1?"opportunity":"opportunities"}</span><div className="flex items-center gap-3">{org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-ink-light hover:text-brand-dark">Website <ExternalLink size={13}/></a>}<Link to={`/organizations/${org.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand-dark">View <ArrowRight size={14}/></Link></div></div></article>})}</div>
     </section>
   </div>;
 }
