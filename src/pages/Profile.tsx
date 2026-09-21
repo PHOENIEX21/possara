@@ -187,10 +187,10 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
     locationLabel?{icon:MapPin,label:locationLabel}:null,
   ].filter(Boolean) as {icon:typeof MapPin;label:string}[];
 
-  const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="relative z-20 h-24 w-24 rounded-[2rem] border-4 border-white bg-white object-cover shadow-xl sm:h-28 sm:w-28"/>:<div className="relative z-20 flex h-24 w-24 items-center justify-center rounded-[2rem] border-4 border-white bg-trust-light text-3xl font-semibold text-trust-dark shadow-xl sm:h-28 sm:w-28">{name.charAt(0).toUpperCase()}</div>;
+  const avatarContent=profile.avatar_url?<img src={profile.avatar_url} alt="" className="relative z-20 h-24 w-24 rounded-full border-4 border-white bg-white object-cover shadow-xl sm:h-28 sm:w-28"/>:<div className="relative z-20 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-trust-light text-3xl font-semibold text-trust-dark shadow-xl sm:h-28 sm:w-28">{name.charAt(0).toUpperCase()}</div>;
 
   return <>
-    <section className="max-w-3xl overflow-hidden rounded-[2rem] border border-black/[.06] bg-white shadow-card">
+    <section className="max-w-3xl overflow-hidden rounded-full border border-black/[.06] bg-white shadow-card">
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#171128] via-brand-dark to-trust-dark sm:h-56">
         {profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[.06]"/>
@@ -198,7 +198,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
 
       <div className="relative px-4 pb-6 sm:px-6">
         <div className="relative -mt-12 flex items-end justify-between gap-3 sm:-mt-14">
-          {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-[2rem] bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
+          {profile.avatar_url?<button type="button" onClick={()=>setPhotoOpen(true)} className="relative z-20 rounded-full bg-white transition hover:scale-[1.02]" aria-label={`View ${name} profile photo`} title="View profile photo">{avatarContent}</button>:avatarContent}
           <div className="relative z-20 mb-1 flex flex-wrap items-center justify-end gap-2">
             {!own&&<><MessageButton targetUserId={profile.id}/><MemberFollowButton targetUserId={profile.id}/></>}
             {own&&onEdit&&<button type="button" onClick={onEdit} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-paper"><Pencil size={14}/>Edit profile</button>}
@@ -282,7 +282,7 @@ function EditOwnProfile({onDone}:{onDone:()=>void}){
     {label:"Facebook",value:facebook,set:setFacebook,placeholder:"profile/page or full link"},
   ];
 
-  return <form onSubmit={submit} className="max-w-3xl space-y-4 rounded-[2rem] bg-white p-5 shadow-card sm:p-6">
+  return <form onSubmit={submit} className="max-w-3xl space-y-4 rounded-full bg-white p-5 shadow-card sm:p-6">
     <div className="flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.12em] text-brand-dark">Your identity</p><h1 className="mt-1 text-2xl font-bold">Edit profile</h1></div><button type="button" onClick={onDone} className="rounded-full px-3 py-2 text-sm text-ink-light hover:bg-paper">Cancel</button></div>
     <div className="flex items-center gap-4 rounded-2xl bg-paper p-3">{profile?.avatar_url?<img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-2xl object-cover"/>:<div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-trust-light text-xl text-trust-dark">{(profile?.full_name??"?").charAt(0).toUpperCase()}</div>}<div><button type="button" onClick={()=>fileRef.current?.click()} disabled={avatarUpload.isPending} className="inline-flex items-center gap-2 rounded-full border border-ink-faint/25 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"><Camera size={15}/>{avatarUpload.isPending?"Uploading…":"Change profile photo"}</button><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} className="hidden"/><p className="mt-1 text-xs text-ink-faint">JPG, PNG or WebP · max 8 MB</p></div></div>
     {photoSuccess&&<p className="text-sm text-trust-dark">Profile photo updated.</p>}
