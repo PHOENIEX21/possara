@@ -232,7 +232,10 @@ export function ExtraordinaryPeople() {
     return Array.from({ length: Math.min(7, availableIndexes.length) }, (_, offset) => start + offset);
   }, [currentPosition, availableIndexes.length]);
 
-  if (!catalogueReady || !availableIndexes.length || !image) return null;
+  if (!catalogueReady || !availableIndexes.length || !image) {
+    const fallback = PEOPLE[0];
+    return <section className="achievement-hero achievement-hero-visible-fallback" aria-label="Extraordinary achievement spotlight"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><p className="achievement-field">{fallback.field}</p><h1>{fallback.name}</h1><p className="achievement-main">{fallback.achievement}</p><p className="achievement-lesson">{fallback.lesson}</p></div><div className="achievement-controls"><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-white/60">Photo loading · story available</span></div></section>;
+  }
 
   return (
     <section className="achievement-hero" aria-label="Extraordinary achievement spotlight" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ touchAction: "pan-y" }}>
