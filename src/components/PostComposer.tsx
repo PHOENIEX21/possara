@@ -7,6 +7,8 @@ import { useAuth } from "../store/auth";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import { MentionSuggestions } from "./MentionSuggestions";
 import { supabase } from "../lib/supabase";
+import { useActiveOrganizationIdentity } from "../hooks/useActiveOrganizationIdentity";
+import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 
 interface PostComposerProps {
   postType?: "general" | "resource" | "opportunity" | "event";
@@ -46,6 +48,12 @@ export function PostComposer({
   const { data: profile } = useOwnProfile();
   const createPost = useCreatePost();
   const { data: categories } = useOpportunityCategories();
+  const activeOrganization = useActiveOrganizationIdentity();
+  const effectiveOrganizationId = organizationId ?? activeOrganization?.id;
+  const effectiveOrganizationName = organizationName ?? activeOrganization?.name;
+  const effectiveOrganizationLogoUrl = organizationId ? organizationLogoUrl : activeOrganization?.logo_url ?? organizationLogoUrl;
+  const effectiveOrganizationVerified = organizationId ? false : activeOrganization?.verified === true;
+  const postingAsOrganization = !!effectiveOrganizationId && !!effectiveOrganizationName;
   const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -125,14 +133,13 @@ export function PostComposer({
       type: categorySelected ? "opportunity" : selectedPostType,
       categoryId: categoryId || null,
       topic: categorySelected ? null : (showHomeTopicPicker || defaultTopic ? topic || null : null),
-      organizationId: organizationId ?? null,
+      organizationId: effectiveOrganizationId ?? null,
     });
     reset();
   }
 
-  const postingAsOrganization = !!organizationId && !!organizationName;
   const avatar = postingAsOrganization ? (
-    organizationLogoUrl ? <img src={organizationLogoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" /> :
+    effectiveOrganizationLogoUrl ? <img src={effectiveOrganizationLogoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" /> :
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand-dark"><Building2 size={17}/></div>
   ) : profile?.avatar_url ? (
     <button type="button" onClick={() => setPhotoOpen(true)} className="h-9 w-9 shrink-0 rounded-full" aria-label="View your profile photo">
@@ -149,7 +156,7 @@ export function PostComposer({
       <div className="flex items-center gap-3 rounded-2xl border border-paper-dim bg-white px-4 py-3 shadow-sm">
         {avatar}
         <button onClick={() => setExpanded(true)} className="min-w-0 flex-1 truncate rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">
-          {placeholder ? placeholder : postingAsOrganization ? `Share an update as ${organizationName}` : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
+          {placeholder ? placeholder : postingAsOrganization ? `Share an update as ${effectiveOrganizationName}` : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
         </button>
         <label aria-label="Add photo" className="shrink-0 cursor-pointer text-trust-dark hover:text-trust">
           <ImageIcon size={20} />
@@ -162,7 +169,7 @@ export function PostComposer({
 
   return <>
     <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
-      {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><p className="truncate text-sm font-semibold text-ink">{organizationName}</p><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. A Job post can announce hiring or an upcoming role; a formal vacancy is created separately with Post a role.</p></div></div>}
+      {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold text-ink">{effectiveOrganizationName}</p>{effectiveOrganizationVerified&&<OrganizationVerificationBadge compact/>}</div><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. A Job post can announce hiring or an upcoming role; a formal vacancy is created separately with Post a role.</p></div></div>}
       {showCategoryPicker && (
         <div className="mb-4">
           <label className="text-sm font-semibold text-ink">
