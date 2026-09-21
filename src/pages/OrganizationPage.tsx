@@ -38,8 +38,8 @@ export function OrganizationPage(){
   const [section,setSection]=useState<"posts"|"about"|"media">("posts");
   const {slug}=useParams<{slug:string}>();
   const {userId}=useAuth();
-  const {data:canManageOrganization}=useCanManageOrganization(org?.id);
   const {data:org,isLoading,error}=useOrganization(slug);
+  const {data:canManageOrganization}=useCanManageOrganization(org?.id);
   const {data:allOpportunities}=useOpportunities({limit:100});
   const orgOpportunities=allOpportunities?.filter(o=>o.organization_id===org?.id);
   const {data:nativeJobs}=useOrganizationJobs(org?.id);
