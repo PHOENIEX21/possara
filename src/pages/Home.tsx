@@ -6,7 +6,7 @@ import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
-import { CategoryChips } from "../components/CategoryChips";
+import { useOpportunityCategories } from "../components/CategoryChips";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
 
@@ -32,6 +32,7 @@ export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
   const [communityCategory,setCommunityCategory]=useState<string|undefined>(undefined);
   const [feedLimit,setFeedLimit]=useState(30);
+  const {data:opportunityCategories}=useOpportunityCategories();
   const [reshuffleSeed,setReshuffleSeed]=useState(0);
   const feedStartRef=useRef<HTMLElement>(null);
   const {data:posts,isLoading,error,refetch}=useFeedPosts({
@@ -78,7 +79,7 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
-      <section className="home-community-category-filter"><CategoryChips activeSlug={communityCategory} onSelect={(slug)=>{setCommunityCategory(slug);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}/></section>
+      <section className="home-community-category-filter" aria-label="Filter community opportunity posts"><button type="button" className={!communityCategory?"active":"" onClick={()=>setCommunityCategory(undefined)}>All</button>{["jobs","scholarships","competitions","admissions"].map(slug=>{const category=opportunityCategories?.find(item=>item.slug===slug);if(!category)return null;return <button key={slug} type="button" className={communityCategory===slug?"active":""} onClick={()=>{setCommunityCategory(slug);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{category.name}</button>})}</section>
 
 
 
