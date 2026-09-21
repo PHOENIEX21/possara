@@ -49,6 +49,7 @@ export interface PostWithAuthor extends Post {
   share_count: number;
 }
 interface UseFeedPostsOptions {
+  postId?: string;
   postType?: "general" | "resource" | "opportunity" | "event";
   categorySlug?: string;
   categorySlugs?: string[];
@@ -62,12 +63,12 @@ interface UseFeedPostsOptions {
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, enabled = true, limit = 30 } = options;
+  const { postId, postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, enabled = true, limit = 30 } = options;
   const { userId } = useAuth();
   const activeOrganization = useActiveOrganizationIdentity();
   const actingOrganizationId = activeOrganization?.id ?? null;
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId, actingOrganizationId],
+    queryKey: ["feed-posts", postId, postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId, actingOrganizationId],
     enabled,
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
@@ -84,6 +85,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         .or("classification_status.is.null,classification_status.eq.accepted")
         .order("created_at", { ascending: false })
         .limit(limit);
+      if (postId) query = query.eq("id", postId);
       if (postType) query = query.eq("type", postType);
       if (noCategoryOnly) query = query.is("category_id", null);
       else if (categoryIds) query = query.in("category_id", categoryIds);
