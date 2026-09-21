@@ -1,0 +1,5 @@
+Contact: https://github.com/PHOENIEX21/possara/security/policy
+Canonical: https://possara.pages.dev/.well-known/security.txt
+Policy: https://possara.pages.dev/security
+Preferred-Languages: en
+Expires: 2027-09-21T23:59:59Z
