@@ -67,20 +67,12 @@ function collapsedContent(content: string, maxChars = 420) {
 
 function PostMediaGrid({ urls, onOpen }: { urls: string[]; onOpen: (index: number) => void }) {
   if (!urls.length) return null;
-  if (urls.length === 1) {
-    return <button type="button" onClick={() => onOpen(0)} className="mt-3 block w-full overflow-hidden rounded-xl bg-paper" aria-label="View post image"><img src={urls[0]} alt="" className="max-h-[480px] w-full object-cover" /></button>;
-  }
-
-  const visible = urls.slice(0, 4);
-  return <div className="mt-3 grid grid-cols-2 gap-1 overflow-hidden rounded-xl bg-paper">
-    {visible.map((url,index)=>{
-      const hiddenCount=index===3?Math.max(0,urls.length-4):0;
-      return <button key={url+`-${index}`} type="button" onClick={()=>onOpen(index)} className="relative aspect-square overflow-hidden bg-paper-dim" aria-label={`View post image ${index+1} of ${urls.length}`}>
-        <img src={url} alt="" className="h-full w-full object-cover"/>
-        {hiddenCount>0&&<span className="absolute inset-0 flex items-center justify-center bg-black/55 text-2xl font-bold text-white">+{hiddenCount}</span>}
-      </button>;
-    })}
-  </div>;
+  const tile=(url:string,index:number,className:string,hiddenCount=0)=><button key={url+`-${index}`} type="button" onClick={()=>onOpen(index)} className={`relative min-h-0 overflow-hidden bg-paper-dim ${className}`} aria-label={`View post image ${index+1} of ${urls.length}`}><img src={url} alt="" loading="lazy" className="h-full w-full object-cover"/>{hiddenCount>0&&<span className="absolute inset-0 flex items-center justify-center bg-black/55 text-3xl font-bold text-white">+${hiddenCount}</span>}</button>;
+  if(urls.length===1)return <div className="mt-3 overflow-hidden rounded-xl bg-paper">{tile(urls[0],0,"block max-h-[680px] w-full [&>img]:max-h-[680px] [&>img]:object-contain")}</div>;
+  if(urls.length===2)return <div className="mt-3 grid h-[360px] grid-cols-2 gap-1 overflow-hidden rounded-xl sm:h-[460px]">{tile(urls[0],0,"h-full")}{tile(urls[1],1,"h-full")}</div>;
+  if(urls.length===3)return <div className="mt-3 grid h-[390px] grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl sm:h-[500px]">{tile(urls[0],0,"row-span-2 h-full")}{tile(urls[1],1,"h-full")}{tile(urls[2],2,"h-full")}</div>;
+  const visible=urls.slice(0,4);
+  return <div className="mt-3 grid h-[420px] grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl sm:h-[540px]">{visible.map((url,index)=>tile(url,index,"h-full",index===3?Math.max(0,urls.length-4):0))}</div>;
 }
 
 function profilePath(userId: string | null, username: string | null | undefined, currentUserId: string | null) {
