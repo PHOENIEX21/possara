@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
+import { CategoryChips } from "../components/CategoryChips";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
 
@@ -15,12 +15,6 @@ const HOME_FILTERS = [
   { key: "insight", label: "Insights" },
 ] as const;
 
-const OPPORTUNITY_FILTERS = [
-  {to:"/jobs",label:"Jobs"},
-  {to:"/scholarships",label:"Scholarships"},
-  {to:"/competitions",label:"Competitions"},
-  {to:"/admissions",label:"Admissions"},
-] as const;
 
 const AD_INTERVAL = 5;
 type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
@@ -36,13 +30,15 @@ function reshufflePosts<T extends {id:string}>(items:T[],seed:number){
 
 export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
+  const [communityCategory,setCommunityCategory]=useState<string|undefined>(undefined);
   const [feedLimit,setFeedLimit]=useState(30);
   const [reshuffleSeed,setReshuffleSeed]=useState(0);
   const feedStartRef=useRef<HTMLElement>(null);
   const {data:posts,isLoading,error,refetch}=useFeedPosts({
-    noCategoryOnly:true,
-    topic:filter==="for-you"?undefined:filter,
-    topics:filter==="for-you"?[...HOME_TOPIC_KEYS]:undefined,
+    noCategoryOnly:communityCategory?false:true,
+    categorySlug:communityCategory,
+    topic:communityCategory?undefined:(filter==="for-you"?undefined:filter),
+    topics:communityCategory?undefined:(filter==="for-you"?[...HOME_TOPIC_KEYS]:undefined),
     limit:feedLimit,
   });
   const {data:ads}=useActiveAdvertisements();
@@ -82,7 +78,7 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
-      <nav className="home-opportunity-filters" aria-label="Opportunity filters">{OPPORTUNITY_FILTERS.map(item=><Link key={item.to} to={item.to}>{item.label}</Link>)}</nav>
+      <section className="home-community-category-filter"><CategoryChips activeSlug={communityCategory} onSelect={(slug)=>{setCommunityCategory(slug);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}/></section>
 
 
 
@@ -96,10 +92,6 @@ export function Home(){
       </div>
     </div>
 
-    <aside className="feed-rail">
-      <div className="rail-card rail-card-premium"><p className="eyebrow">Your POSSARA</p><h2>Community with direction.</h2><p>People, ideas, learning and opportunities belong together when they help you move forward.</p><Link to="/connect" className="rail-link">Discover people <ArrowUpRight size={14}/></Link></div>
-      <div className="rail-card"><p className="text-sm font-semibold">Opportunity radar</p><p>Move from inspiration to action with jobs, scholarships and admissions in their own focused space.</p><Link to="/opportunities" className="rail-link">Explore opportunities <ArrowUpRight size={14}/></Link></div>
-      <div className="rail-card"><p className="text-sm font-semibold">Business community</p><p>Share useful products and services without confusing community posts with paid sponsored campaigns.</p><Link to="/advertise" className="rail-link">Open business <ArrowUpRight size={14}/></Link></div>
-    </aside>
+
   </div>;
 }
