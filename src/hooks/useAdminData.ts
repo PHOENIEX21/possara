@@ -120,7 +120,7 @@ export function useVerifyOrganization() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.from("organizations").update({ verified: true }).eq("id", id).select("id");
+      const { data, error } = await supabase.from("organizations").update({ verified: true, verification_status: "verified" }).eq("id", id).select("id");
       if (error) throw error;
       if (!data?.length) throw noRows("Organization verification");
     },

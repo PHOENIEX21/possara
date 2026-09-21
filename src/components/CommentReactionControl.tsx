@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { X } from "lucide-react";
+import { Building2, X } from "lucide-react";
 import { MemberFollowButton } from "./MemberFollowButton";
+import { OrganizationFollowButton } from "./OrganizationFollowButton";
+import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 import {
   useCommentReactionPeople,
   useToggleCommentReaction,
@@ -22,8 +24,8 @@ function compact(value: number) {
   return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-export function CommentReactionControl({ postId, comment }: { postId: string; comment: CommentWithAuthor }) {
-  const toggle = useToggleCommentReaction(postId);
+export function CommentReactionControl({ postId, comment, actingOrganizationId = null }: { postId: string; comment: CommentWithAuthor; actingOrganizationId?: string | null }) {
+  const toggle = useToggleCommentReaction(postId, actingOrganizationId);
   const [pickerOpen,setPickerOpen]=useState(false);
   const [peopleOpen,setPeopleOpen]=useState(false);
   const people=useCommentReactionPeople(comment.id,peopleOpen);
@@ -69,7 +71,7 @@ export function CommentReactionControl({ postId, comment }: { postId: string; co
         onPointerLeave={clearTimer}
         onContextMenu={(event)=>{event.preventDefault();clearTimer();setPickerOpen(true);}}
         className={`text-[12px] font-semibold ${selected?"text-brand-dark":"text-ink-faint hover:text-ink"}`}
-        title={selected? `${selected.label} · press and hold for more` : "Tap to react · press and hold for more"}
+        title={selected? `${selected.label} · press and hold for more` : actingOrganizationId ? "React as organization · press and hold for more" : "Tap to react · press and hold for more"}
       >
         {selected ? `${selected.emoji} ${selected.label}` : "React"}
       </button>
@@ -95,13 +97,14 @@ export function CommentReactionControl({ postId, comment }: { postId: string; co
           {people.isLoading&&<p className="p-4 text-sm text-ink-light">Loading reactions…</p>}
           {people.error&&<p className="p-4 text-sm text-flag">Couldn&apos;t load reactions.</p>}
           {people.data?.map((person)=>{
-            const name=person.full_name??person.username??"POSSARA member";
-            const path=person.username?`/profile/${person.username}`:`/profile/id/${person.user_id}`;
+            const org=person.organization;
+            const name=org?.name??person.full_name??person.username??"POSSARA member";
+            const path=org?"/organizations/"+org.slug:person.username?"/profile/"+person.username:"/profile/id/"+person.user_id;
             const reaction=REACTIONS.find((item)=>item.type===person.type);
-            return <Link key={person.user_id} to={path} onClick={()=>setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl p-3 hover:bg-paper">
-              {person.avatar_url?<img src={person.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>:<span className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</span>}
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{name}</span>{person.username&&<span className="block truncate text-xs text-ink-faint">@{person.username}</span>}</span>
-              <span className="flex shrink-0 items-center gap-2"><span className="rounded-full bg-paper px-2.5 py-1 text-xs">{reaction?.emoji} {reaction?.label}</span><MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/></span>
+            return <Link key={org?"org-"+org.id:"user-"+person.user_id} to={path} onClick={()=>setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl p-3 hover:bg-paper">
+              {org ? (org.logo_url?<img src={org.logo_url} alt="" className="h-10 w-10 rounded-xl object-cover"/>:<span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand-dark"><Building2 size={16}/></span>) : person.avatar_url?<img src={person.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>:<span className="flex h-10 w-10 items-center justify-center rounded-full bg-trust-light font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</span>}
+              <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="block truncate text-sm font-semibold">{name}</span>{org?.verified&&<OrganizationVerificationBadge compact/>}</span>{!org&&person.username&&<span className="block truncate text-xs text-ink-faint">@{person.username}</span>}{org&&<span className="block truncate text-xs text-ink-faint">Organization</span>}</span>
+              <span className="flex shrink-0 items-center gap-2"><span className="rounded-full bg-paper px-2.5 py-1 text-xs">{reaction?.emoji} {reaction?.label}</span>{org?<OrganizationFollowButton organizationId={org.id} compact/>:<MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/>}</span>
             </Link>;
           })}
         </div>

@@ -115,7 +115,7 @@ function ContentAdmin(){
 
     <Section title="Active Moments">
       <div className="mb-3 flex items-center gap-2 text-sm text-ink-light"><Images size={17}/>Moderate currently active Moments when something inappropriate is reported or noticed.</div>
-      <div className="space-y-2">{moments.data?.map(moment=>{const profile=Array.isArray(moment.profiles)?moment.profiles[0]:moment.profiles;return <div key={moment.id} className="flex items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div className="min-w-0"><p className="text-sm font-medium">{profile?.full_name??"Member"}</p><p className="truncate text-xs text-ink-faint">{moment.caption||"Moment without caption"}</p></div><button onClick={()=>deleteMoment.mutate({id:moment.id,storagePath:moment.storage_path})} className="rounded-full border border-flag px-3 py-1 text-xs font-medium text-flag">Remove</button></div>})}</div><ErrorText error={moments.error||deleteMoment.error}/>
+      <div className="space-y-2">{moments.data?.map(moment=>{const profile=Array.isArray(moment.profiles)?moment.profiles[0]:moment.profiles;return <div key={moment.id} className="flex items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div className="min-w-0"><p className="text-sm font-medium">{profile?.full_name??"Member"}</p><p className="truncate text-xs text-ink-faint">{moment.caption||"Moment without caption"}</p></div><button onClick={()=>deleteMoment.mutate({id:moment.id,storagePath:moment.storage_path,musicPath:moment.music_path})} className="rounded-full border border-flag px-3 py-1 text-xs font-medium text-flag">Remove</button></div>})}</div><ErrorText error={moments.error||deleteMoment.error}/>
     </Section>
   </div>;
 }

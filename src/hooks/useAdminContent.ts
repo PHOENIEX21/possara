@@ -37,7 +37,7 @@ export function useAdminActiveMoments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stories")
-        .select("id,author_id,caption,storage_path,created_at,expires_at,profiles(full_name,username)")
+        .select("id,author_id,caption,storage_path,music_path,created_at,expires_at,profiles(full_name,username)")
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false })
         .limit(30);
@@ -50,10 +50,15 @@ export function useAdminActiveMoments() {
 export function useAdminDeleteMoment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, storagePath }: { id: string; storagePath?: string | null }) => {
+    mutationFn: async ({ id, storagePath, musicPath }: { id: string; storagePath?: string | null; musicPath?: string | null }) => {
       const { error } = await supabase.from("stories").delete().eq("id", id);
       if (error) throw error;
-      if (storagePath) await supabase.storage.from("moments").remove([storagePath]);
+      const cleanup = [];
+      if (storagePath) cleanup.push(supabase.storage.from("moments").remove([storagePath]));
+      if (musicPath) cleanup.push(supabase.storage.from("moment-music").remove([musicPath]));
+      const results = await Promise.all(cleanup);
+      const cleanupError = results.find((result)=>result.error)?.error;
+      if (cleanupError) throw cleanupError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "active-moments"] });

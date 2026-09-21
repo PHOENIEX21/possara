@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, Briefcase, Building2, MapPin, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
@@ -8,6 +8,7 @@ import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
 import { useHiringJobs } from "../hooks/useHiring";
+import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 
 const HOME_TOPIC_KEYS = ["insight", "job", "scholarship", "competition", "talent"] as const;
 
@@ -23,11 +24,21 @@ const HOME_FILTERS = [
 const AD_INTERVAL = 5;
 type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 
+function reshufflePosts<T extends {id:string}>(items:T[],seed:number){
+  if(!seed||items.length<2)return items;
+  const copy=[...items];
+  let state=seed>>>0;
+  const next=()=>{state=(state*1664525+1013904223)>>>0;return state/4294967296;};
+  for(let i=copy.length-1;i>0;i--){const j=Math.floor(next()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];}
+  return copy;
+}
+
 export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
   const [feedLimit,setFeedLimit]=useState(30);
+  const [reshuffleSeed,setReshuffleSeed]=useState(0);
   const feedStartRef=useRef<HTMLElement>(null);
-  const {data:posts,isLoading,error}=useFeedPosts({
+  const {data:posts,isLoading,error,refetch}=useFeedPosts({
     noCategoryOnly:true,
     topic:filter==="for-you"?undefined:filter,
     topics:filter==="for-you"?[...HOME_TOPIC_KEYS]:undefined,
@@ -35,7 +46,18 @@ export function Home(){
   });
   const {data:ads}=useActiveAdvertisements();
   const {data:nativeJobs,isLoading:nativeJobsLoading}=useHiringJobs();
-  const visiblePosts=posts??[];
+
+  useEffect(()=>{
+    const handleHomeReshuffle=()=>{
+      setReshuffleSeed(Date.now());
+      void refetch();
+      window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));
+    };
+    window.addEventListener("possara-home-reshuffle",handleHomeReshuffle);
+    return()=>window.removeEventListener("possara-home-reshuffle",handleHomeReshuffle);
+  },[refetch]);
+
+  const visiblePosts=useMemo(()=>reshufflePosts(posts??[],reshuffleSeed),[posts,reshuffleSeed]);
   const visibleNativeJobs=filter==="job"?(nativeJobs??[]):filter==="for-you"?(nativeJobs??[]).slice(0,3):[];
   const activeAds=ads??[];
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
@@ -67,7 +89,7 @@ export function Home(){
         <ArrowRight size={18} className="home-places-cta-arrow"/>
       </Link>
 
-      {(filter==="job"||filter==="for-you")&&<section className="mb-4 space-y-3">{filter==="for-you"&&visibleNativeJobs.length>0&&<div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Hiring now</p><h2 className="text-lg font-semibold">Live roles from organizations</h2></div><button type="button" onClick={()=>setFilter("job")} className="text-xs font-semibold text-brand-dark">See all jobs</button></div>}{nativeJobsLoading&&<div className="feed-skeleton"/>}{visibleNativeJobs.map(job=><Link key={job.id} to={`/jobs/${job.id}`} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Briefcase size={14} className="text-brand-dark"/><span className="text-[11px] font-bold uppercase tracking-wide text-brand-dark">Live organization role</span></div><h3 className="mt-1 font-bold">{job.title}</h3><p className="text-sm text-ink-light">{job.organizations?.name} · {job.location}</p><p className="mt-2 text-xs font-medium text-ink-faint">{job.employment_type} · {job.work_style} · {job.rank}</p></div></div></Link>)}</section>}
+      {(filter==="job"||filter==="for-you")&&<section className="mb-4 space-y-3">{filter==="for-you"&&visibleNativeJobs.length>0&&<div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Hiring now</p><h2 className="text-lg font-semibold">Live roles from organizations</h2></div><button type="button" onClick={()=>setFilter("job")} className="text-xs font-semibold text-brand-dark">See all jobs</button></div>}{nativeJobsLoading&&<div className="feed-skeleton"/>}{visibleNativeJobs.map(job=><Link key={job.id} to={`/jobs/${job.id}`} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Briefcase size={14} className="text-brand-dark"/><span className="text-[11px] font-bold uppercase tracking-wide text-brand-dark">Live organization role</span></div><h3 className="mt-1 font-bold">{job.title}</h3><div className="mt-0.5 flex flex-wrap items-center gap-1.5"><div className="flex flex-wrap items-center gap-1.5"><p className="text-sm text-ink-light">{job.organizations?.name}</p>{(job.organizations?.verified||job.organizations?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}<span className="text-sm text-ink-faint">· {job.location}</span></div>{(job.organizations?.verified||job.organizations?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}</div><p className="mt-2 text-xs font-medium text-ink-faint">{job.employment_type} · {job.work_style} · {job.rank}</p></div></div></Link>)}</section>}
 
       <div className="feed-list feed-list-premium">
         {isLoading&&<div className="feed-skeleton"/>}

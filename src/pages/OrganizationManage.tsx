@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Briefcase, Building2, CheckCircle2, Copy, Eye, FilePenLine, PauseCircle, PlayCircle, Plus, Settings2, ShieldCheck, Users } from "lucide-react";
 import { useInterviewQuestions, useMyOrganizations, useOrganizationJobs, useRecruiterCbtQuestions, useUpdateJob } from "../hooks/useHiring";
+import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 
 const STATE_COPY = {
   draft: {
@@ -100,7 +101,7 @@ function OrgWorkspace({org}:{org:any}){
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow">Managing organization</p>
-          <h2 className="truncate text-2xl font-bold">{org.name}</h2>
+          <div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-2xl font-bold">{org.name}</h2>{(org.verified||org.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}</div>
           <p className="mt-1 text-sm leading-6 text-ink-light">{org.verification_status==="verified"||org.verified?"Verified organization":"Verification is pending. You can publish and hire normally; only the verification badge remains pending."}</p>
         </div>
       </div>
