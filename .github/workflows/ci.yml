@@ -24,3 +24,12 @@ jobs:
         run: npm run build
       - name: Lint
         run: npm run lint
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
+      - name: Capture generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: possara-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 3
