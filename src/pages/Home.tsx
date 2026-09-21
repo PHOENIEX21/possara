@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, BriefcaseBusiness, GraduationCap, MapPin, Sparkles } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
@@ -14,6 +14,13 @@ const HOME_TOPIC_KEYS = ["insight"] as const;
 const HOME_FILTERS = [
   { key: "for-you", label: "For You" },
   { key: "insight", label: "Insights" },
+] as const;
+
+const OPPORTUNITY_FILTERS = [
+  {to:"/jobs",label:"Jobs"},
+  {to:"/scholarships",label:"Scholarships"},
+  {to:"/competitions",label:"Competitions"},
+  {to:"/admissions",label:"Admissions"},
 ] as const;
 
 const AD_INTERVAL = 5;
@@ -77,11 +84,7 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
-      <nav className="home-quick-links" aria-label="Explore POSSARA">
-        <Link to="/opportunities?type=job"><BriefcaseBusiness size={17}/><span>Jobs</span></Link>
-        <Link to="/opportunities?type=scholarship"><GraduationCap size={17}/><span>Scholarships</span></Link>
-        <Link to="/places"><MapPin size={17}/><span>Places</span></Link>
-      </nav>
+      <nav className="home-opportunity-filters" aria-label="Opportunity filters">{OPPORTUNITY_FILTERS.map(item=><Link key={item.to} to={item.to}>{item.label}</Link>)}</nav>
 
 
 
