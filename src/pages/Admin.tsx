@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Building2, Plus, ShieldCheck, FileText, Images, GraduationCap } from "lucide-react";
 import {
+  useAccountDeletionRequests,
   useAdminOrganizations,
   useCreateOrganization,
   useModerateAdvertisement,
@@ -11,6 +12,7 @@ import {
   useResolveReport,
   useSetOpportunityReviewStatus,
   useSetUserRole,
+  useUpdateAccountDeletionRequest,
   useUnverifiedOrganizations,
   useVerifyOrganization,
 } from "../hooks/useAdminData";
@@ -132,7 +134,10 @@ export function Admin() {
   const moderateAd = useModerateAdvertisement();
   const members = useProfilesWithRoles();
   const setRole = useSetUserRole();
+  const deletionRequests = useAccountDeletionRequests();
+  const updateDeletionRequest = useUpdateAccountDeletionRequest();
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
+  const [deletionNotes, setDeletionNotes] = useState<Record<string, string>>({});
 
   return <div className="mx-auto max-w-4xl space-y-5 pb-10">
     <div className="flex items-start gap-3"><div className="rounded-xl bg-trust-light p-2 text-trust-dark"><ShieldCheck size={22}/></div><div><h1 className="text-2xl">Admin</h1><p className="text-sm text-ink-light">Moderation, Study oversight, organizations, verification and member-role controls.</p></div></div>
@@ -169,6 +174,24 @@ export function Admin() {
       {!ads.isLoading && ads.data?.length === 0 && <p className="text-sm text-ink-light">No advertisements waiting for review.</p>}
       <div className="space-y-3">{ads.data?.map((ad) => <div key={ad.id} className="rounded-xl border border-paper-dim p-3"><p className="font-medium">{ad.title}</p><p className="text-sm text-ink-light">{ad.organization_name}</p><div className="mt-2 flex gap-2"><button onClick={()=>moderateAd.mutate({id:ad.id,status:"active"})} className="rounded-full bg-trust px-3 py-1.5 text-sm font-medium text-white">Approve</button><button onClick={()=>moderateAd.mutate({id:ad.id,status:"rejected"})} className="rounded-full border border-flag px-3 py-1.5 text-sm font-medium text-flag">Reject</button></div></div>)}</div>
       <ErrorText error={moderateAd.error}/>
+    </Section>
+
+    <Section title="Account deletion requests">
+      {deletionRequests.isLoading&&<p className="text-sm text-ink-light">Loading…</p>}
+      {!deletionRequests.isLoading&&deletionRequests.data?.length===0&&<p className="text-sm text-ink-light">No deletion requests awaiting action.</p>}
+      <div className="space-y-3">{deletionRequests.data?.map((request)=>{
+        const name=request.profile?.full_name??request.profile?.username??"Member";
+        return <div key={request.id} className="rounded-xl border border-paper-dim p-3">
+          <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-medium">{name}</p><p className="text-xs text-ink-faint">Requested {new Date(request.requested_at).toLocaleString()} · {request.status}</p></div><span className="rounded-full bg-paper px-2 py-1 text-[10px] font-semibold uppercase tracking-wide">{request.status}</span></div>
+          <textarea value={deletionNotes[request.id]??request.admin_note??""} onChange={e=>setDeletionNotes(current=>({...current,[request.id]:e.target.value}))} rows={2} placeholder="Internal processing note" className="mt-3 w-full rounded-xl border border-ink-faint/25 px-3 py-2 text-sm"/>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {request.status==="requested"&&<button type="button" onClick={()=>updateDeletionRequest.mutate({id:request.id,status:"processing",adminNote:deletionNotes[request.id]})} className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white">Start processing</button>}
+            <button type="button" onClick={()=>updateDeletionRequest.mutate({id:request.id,status:"rejected",adminNote:deletionNotes[request.id]})} className="rounded-full border border-flag/50 px-3 py-1.5 text-xs font-semibold text-flag-dark">Reject with reason</button>
+          </div>
+        </div>;
+      })}</div>
+      <p className="mt-3 text-xs leading-5 text-ink-faint">Marking a request as processing does not erase the account automatically. Complete erasure only after linked applications, organization ownership, audit retention and legal obligations have been handled correctly.</p>
+      <ErrorText error={deletionRequests.error||updateDeletionRequest.error}/>
     </Section>
 
     <Section title="Members & roles">

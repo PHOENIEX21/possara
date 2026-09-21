@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { BrandMark } from "../components/BrandMark";
+import { BotChallenge, turnstileSiteKey } from "../components/BotChallenge";
 
 function friendlyAuthError(message: string) {
   const value = message.toLowerCase();
@@ -36,6 +37,13 @@ export function SignIn() {
     searchParams.get("confirmed") === "1" ? "Email confirmed. You can sign in now." : null,
   );
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+
+  function resetSecurityCheck() {
+    setCaptchaToken(null);
+    setCaptchaResetKey((value) => value + 1);
+  }
 
   async function clearCurrentBrowserSession() {
     await supabase.auth.signOut({ scope: "local" });
@@ -49,16 +57,23 @@ export function SignIn() {
     setLoading(true);
 
     if (mode === "forgot") {
+      if (turnstileSiteKey && !captchaToken) {
+        setLoading(false);
+        setError("Complete the security check before requesting a reset link.");
+        return;
+      }
       const { data: recovery, error: recoveryError } = await supabase.functions.invoke(
         "password-recovery",
         {
           body: {
             email: email.trim().toLowerCase(),
             redirectTo: `${window.location.origin}/reset-password`,
+            captchaToken,
           },
         },
       );
       setLoading(false);
+      resetSecurityCheck();
       if (recoveryError || !recovery?.ok) {
         setError(
           typeof recovery?.error === "string"
@@ -76,6 +91,11 @@ export function SignIn() {
     }
 
     if (mode === "signup") {
+      if (turnstileSiteKey && !captchaToken) {
+        setLoading(false);
+        setError("Complete the security check before creating your account.");
+        return;
+      }
       const clean = username.trim().toLowerCase();
       const cleanEmail = email.trim().toLowerCase();
       const cleanFullName = fullName.trim();
@@ -101,18 +121,21 @@ export function SignIn() {
             password,
             fullName: cleanFullName,
             username: clean,
+            captchaToken,
           },
         },
       );
 
       if (directSignupError) {
         setLoading(false);
+        resetSecurityCheck();
         setError("POSSARA could not create the account right now. Please try again.");
         return;
       }
 
       if (!directSignup?.ok) {
         setLoading(false);
+        resetSecurityCheck();
         setError(
           typeof directSignup?.error === "string"
             ? directSignup.error
@@ -277,6 +300,7 @@ export function SignIn() {
                 onClick={() => {
                   setMode("forgot");
                   setError(null);
+                  resetSecurityCheck();
                 }}
                 className="float-right text-xs text-brand-dark underline"
               >
@@ -293,6 +317,10 @@ export function SignIn() {
               className="mt-1 w-full rounded-lg border border-ink-faint/30 px-3 py-2 text-ink outline-none focus:border-brand"
             />
           </label>
+        )}
+
+        {(mode === "signup" || mode === "forgot") && (
+          <BotChallenge onToken={setCaptchaToken} resetKey={captchaResetKey} />
         )}
 
         {error && <p className="text-sm text-flag">{error}</p>}
@@ -322,7 +350,7 @@ export function SignIn() {
 
       <p className="mt-6 text-center text-sm text-ink-light">
         {mode === "forgot" ? (
-          <button onClick={() => setMode("signin")} className="font-medium text-brand-dark underline">
+          <button onClick={() => { setMode("signin"); resetSecurityCheck(); }} className="font-medium text-brand-dark underline">
             Back to sign in
           </button>
         ) : (
@@ -333,6 +361,7 @@ export function SignIn() {
                 setMode(mode === "signin" ? "signup" : "signin");
                 setError(null);
                 setMessage(null);
+                resetSecurityCheck();
               }}
               className="font-medium text-brand-dark underline"
             >

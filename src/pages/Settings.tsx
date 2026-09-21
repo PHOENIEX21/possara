@@ -6,6 +6,7 @@ import { useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { DEFAULT_SOCIAL_PRIVACY, useSocialPrivacy, useUpdateSocialPrivacy } from "../hooks/useSocialPrivacy";
 import type { SocialPrivacy } from "../hooks/useSocialPrivacy";
+import { useCancelAccountDeletion, useDeletionRequest, useExportMyData, useRequestAccountDeletion } from "../hooks/useAccountDataRights";
 
 function PrivacyToggle({label,description,checked,onChange,disabled}:{label:string;description:string;checked:boolean;onChange:(value:boolean)=>void;disabled?:boolean}){
   return <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-paper-dim bg-white p-4">
@@ -40,6 +41,12 @@ export function Settings(){
   const [error,setError]=useState<string|null>(null);
   const [success,setSuccess]=useState(false);
   const [loading,setLoading]=useState(false);
+  const {data:deletionRequest}=useDeletionRequest();
+  const exportMyData=useExportMyData();
+  const requestDeletion=useRequestAccountDeletion();
+  const cancelDeletion=useCancelAccountDeletion();
+  const [dataRightMessage,setDataRightMessage]=useState<string|null>(null);
+  const [dataRightError,setDataRightError]=useState<string|null>(null);
 
   useEffect(()=>{
     if(!profile)return;
@@ -132,7 +139,44 @@ export function Settings(){
       <button type="button" onClick={savePrivacy} disabled={updatePrivacy.isPending} className="mt-4 rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{updatePrivacy.isPending?"Saving…":"Save privacy"}</button>
     </section>
 
-    <section className="mt-8 border-t border-paper-dim pt-6"><h2 className="text-lg">Account</h2><p className="mt-1 text-sm text-ink-light">Signed in as {email}</p></section>
+    <section className="mt-8 border-t border-paper-dim pt-6">
+      <h2 className="text-lg">Account & data rights</h2>
+      <p className="mt-1 text-sm text-ink-light">Signed in as {email}. You can export the account-linked information POSSARA holds about you or request account deletion.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          disabled={exportMyData.isPending}
+          onClick={async()=>{setDataRightError(null);setDataRightMessage(null);try{await exportMyData.mutateAsync();setDataRightMessage("Your data export was prepared and downloaded as JSON.");}catch(err){setDataRightError((err as Error).message);}}}
+          className="rounded-2xl border border-paper-dim bg-white p-4 text-left shadow-sm disabled:opacity-50"
+        >
+          <span className="block text-sm font-semibold text-ink">{exportMyData.isPending?"Preparing export…":"Download my data"}</span>
+          <span className="mt-1 block text-xs leading-5 text-ink-light">Creates a private JSON export of account-linked POSSARA records. Passwords and security secrets are never included.</span>
+        </button>
+        {deletionRequest?.status==="requested"||deletionRequest?.status==="processing"?
+          <button
+            type="button"
+            disabled={cancelDeletion.isPending||deletionRequest.status==="processing"}
+            onClick={async()=>{setDataRightError(null);setDataRightMessage(null);try{const canceled=await cancelDeletion.mutateAsync();setDataRightMessage(canceled?"Deletion request canceled.":"This request can no longer be canceled automatically.");}catch(err){setDataRightError((err as Error).message);}}}
+            className="rounded-2xl border border-flag/20 bg-flag-light/30 p-4 text-left disabled:opacity-50"
+          >
+            <span className="block text-sm font-semibold text-flag-dark">{deletionRequest.status==="processing"?"Deletion request is being processed":"Cancel deletion request"}</span>
+            <span className="mt-1 block text-xs leading-5 text-ink-light">Requested {new Date(deletionRequest.requested_at).toLocaleDateString()}. Processing may retain limited records where security, fraud prevention, legal or audit obligations require it.</span>
+          </button>
+        :
+          <button
+            type="button"
+            disabled={requestDeletion.isPending}
+            onClick={async()=>{if(!window.confirm("Request deletion of your POSSARA account? You can cancel while the request is still pending."))return;setDataRightError(null);setDataRightMessage(null);try{await requestDeletion.mutateAsync();setDataRightMessage("Account deletion request submitted.");}catch(err){setDataRightError((err as Error).message);}}}
+            className="rounded-2xl border border-flag/20 bg-white p-4 text-left disabled:opacity-50"
+          >
+            <span className="block text-sm font-semibold text-flag-dark">{requestDeletion.isPending?"Submitting request…":"Request account deletion"}</span>
+            <span className="mt-1 block text-xs leading-5 text-ink-light">Starts a controlled deletion process so related content, applications, security records and organization responsibilities can be handled safely.</span>
+          </button>
+        }
+      </div>
+      {dataRightError&&<p className="mt-3 text-sm text-flag">{dataRightError}</p>}
+      {dataRightMessage&&<p className="mt-3 text-sm text-trust-dark">{dataRightMessage}</p>}
+    </section>
 
     <section className="mt-8 border-t border-paper-dim pt-6">
       <h2 className="text-lg">Security</h2><p className="mt-1 text-sm text-ink-light">Changing your password requires your current password.</p>
