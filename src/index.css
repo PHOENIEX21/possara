@@ -202,3 +202,7 @@ img,video,canvas,svg{max-width:100%}
 .home-community-category-filter::-webkit-scrollbar{display:none}
 .home-community-category-filter button{flex:0 0 auto;white-space:nowrap;border:1px solid rgba(27,24,39,.14);border-radius:999px;background:#fff;padding:.48rem .78rem;font-size:.76rem;font-weight:700;color:#696476}
 .home-community-category-filter button.active{border-color:#171421;background:#171421;color:#fff}
+
+/* Home filters: fixed, fully visible mobile grid. */
+.home-community-category-filter{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;overflow:visible!important;padding:.15rem 0 .5rem}
+.home-community-category-filter button{width:100%;min-width:0;white-space:normal;text-align:center}
