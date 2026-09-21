@@ -29,9 +29,13 @@ export function useActiveOrganizationIdentity() {
     if (typeof window === "undefined") return null;
     const activeId = window.localStorage.getItem("possara-active-organization");
     if (!activeId) return null;
-    const row = (data ?? []).find((item: any) => item.organizations?.id === activeId);
+    const row = (data ?? []).find((item: any) => {
+      const relation = Array.isArray(item.organizations) ? item.organizations[0] : item.organizations;
+      return relation?.id === activeId;
+    }) as any;
     if (!row || !["owner", "recruiter"].includes(row.role)) return null;
-    const org = row.organizations;
+    const org = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
+    if (!org) return null;
     return {
       id: org.id,
       name: org.name,
