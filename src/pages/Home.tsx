@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, Briefcase, Building2, MapPin, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
@@ -23,11 +23,21 @@ const HOME_FILTERS = [
 const AD_INTERVAL = 5;
 type HomeFilter = (typeof HOME_FILTERS)[number]["key"];
 
+function reshufflePosts<T extends {id:string}>(items:T[],seed:number){
+  if(!seed||items.length<2)return items;
+  const copy=[...items];
+  let state=seed>>>0;
+  const next=()=>{state=(state*1664525+1013904223)>>>0;return state/4294967296;};
+  for(let i=copy.length-1;i>0;i--){const j=Math.floor(next()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]];}
+  return copy;
+}
+
 export function Home(){
   const [filter,setFilter]=useState<HomeFilter>("for-you");
   const [feedLimit,setFeedLimit]=useState(30);
+  const [reshuffleSeed,setReshuffleSeed]=useState(0);
   const feedStartRef=useRef<HTMLElement>(null);
-  const {data:posts,isLoading,error}=useFeedPosts({
+  const {data:posts,isLoading,error,refetch}=useFeedPosts({
     noCategoryOnly:true,
     topic:filter==="for-you"?undefined:filter,
     topics:filter==="for-you"?[...HOME_TOPIC_KEYS]:undefined,
@@ -35,7 +45,18 @@ export function Home(){
   });
   const {data:ads}=useActiveAdvertisements();
   const {data:nativeJobs,isLoading:nativeJobsLoading}=useHiringJobs();
-  const visiblePosts=posts??[];
+
+  useEffect(()=>{
+    const handleHomeReshuffle=()=>{
+      setReshuffleSeed(Date.now());
+      void refetch();
+      window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));
+    };
+    window.addEventListener("possara-home-reshuffle",handleHomeReshuffle);
+    return()=>window.removeEventListener("possara-home-reshuffle",handleHomeReshuffle);
+  },[refetch]);
+
+  const visiblePosts=useMemo(()=>reshufflePosts(posts??[],reshuffleSeed),[posts,reshuffleSeed]);
   const visibleNativeJobs=filter==="job"?(nativeJobs??[]):filter==="for-you"?(nativeJobs??[]).slice(0,3):[];
   const activeAds=ads??[];
   const showSmallFeedAd=!isLoading&&!error&&visiblePosts.length<AD_INTERVAL&&activeAds.length>0;
