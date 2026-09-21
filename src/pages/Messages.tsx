@@ -156,6 +156,8 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const recorderStreamRef=useRef<MediaStream|null>(null);
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStartedAtRef=useRef(0);
+  const photoPreviewsRef=useRef<string[]>([]);
+  const voiceDraftRef=useRef<VoiceDraft|null>(null);
 
   const messageById=useMemo(()=>new Map((messages??[]).map(message=>[message.id,message])),[messages]);
   const shownMessages=useMemo(()=>{
@@ -167,7 +169,9 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const unreadIncoming=(messages??[]).some(message=>message.sender_id===otherUserId&&!message.read);
   useEffect(()=>{if(unreadIncoming)markRead.mutate();},[otherUserId,unreadIncoming,messages?.length]);
   useEffect(()=>{if(messageSearch)return;const el=messageListRef.current;if(!el)return;window.requestAnimationFrame(()=>el.scrollTo({top:el.scrollHeight,behavior:"smooth"}));},[messages?.length,messageSearch]);
-  useEffect(()=>()=>{photoPreviews.forEach((preview)=>URL.revokeObjectURL(preview));if(voiceDraft)URL.revokeObjectURL(voiceDraft.url);recorderStreamRef.current?.getTracks().forEach(track=>track.stop());},[photoPreviews,voiceDraft]);
+  useEffect(()=>{photoPreviewsRef.current=photoPreviews;},[photoPreviews]);
+  useEffect(()=>{voiceDraftRef.current=voiceDraft;},[voiceDraft]);
+  useEffect(()=>()=>{photoPreviewsRef.current.forEach((preview)=>URL.revokeObjectURL(preview));if(voiceDraftRef.current)URL.revokeObjectURL(voiceDraftRef.current.url);recorderStreamRef.current?.getTracks().forEach(track=>track.stop());},[]);
   useEffect(()=>{if(!recording)return;const timer=window.setInterval(()=>{const seconds=Math.min(90,Math.max(0,Math.round((Date.now()-recorderStartedAtRef.current)/1000)));setRecordingSeconds(seconds);if(seconds>=90&&recorderRef.current?.state==="recording")recorderRef.current.stop();},500);return()=>window.clearInterval(timer);},[recording]);
 
   const mentionCandidate=profile?.username&&/@[a-zA-Z0-9_]*$/.test(text)?profile.username:null;
