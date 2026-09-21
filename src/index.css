@@ -33,6 +33,10 @@
  .home-feed-heading{@apply mb-2 mt-1 flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between}
  .home-feed-heading h2{@apply text-lg font-bold}.home-feed-heading p{@apply mt-0.5 text-xs text-ink-faint}
  .home-filter-row{@apply flex gap-1.5 overflow-x-auto pb-1}.home-filter-row button{@apply shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-faint transition hover:bg-white}.home-filter-row button.active{@apply bg-ink text-white shadow-sm}
+ .home-places-entry{@apply mb-4 flex w-full items-center gap-3 rounded-2xl border border-black/[.06] bg-white p-3.5 shadow-card transition hover:-translate-y-0.5 hover:border-black/[.10]}
+ .home-places-icon{@apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand-dark}
+ .home-places-copy{@apply min-w-0 flex-1}.home-places-copy strong{@apply block text-sm font-bold text-ink}.home-places-copy small{@apply mt-0.5 block text-xs leading-5 text-ink-faint}
+ .home-places-arrow{@apply shrink-0 text-ink-faint}
 }
 @keyframes achievementEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes welcomeDrift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-34px,22px,0) scale(1.12)}}
@@ -101,8 +105,12 @@ img,video,canvas,svg{max-width:100%}
   .opportunity-tile p{line-height:1.25rem}
   .home-moments-card{padding:.85rem}
   .home-compose-section{margin-left:0;margin-right:0}
-  .home-filter-row{width:100%;scroll-snap-type:x proximity}
+  .home-filter-row{width:100%;scroll-snap-type:x proximity;padding-bottom:.15rem}
   .home-filter-row button{scroll-snap-align:start}
+  .home-places-entry{margin-top:.65rem;margin-bottom:1rem;padding:.8rem;border-radius:1rem}
+  .home-places-icon{width:2.35rem;height:2.35rem;border-radius:.75rem}
+  .home-places-copy strong{font-size:.85rem;line-height:1.15rem}
+  .home-places-copy small{font-size:.72rem;line-height:1.1rem}
   .feed-list article{border-radius:1rem;padding:1rem}
   .post-engagement-summary{gap:.45rem!important;padding-left:0!important;padding-right:0!important}
   .post-engagement-summary .truncate{white-space:normal;line-height:1.15rem}
