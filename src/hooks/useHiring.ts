@@ -105,7 +105,7 @@ export function useInviteOrganizationMember(organizationId:string){
 
 export function useUpdateOrganization(organizationId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{logo_url?:string|null;description?:string;location?:string;website?:string|null})=>{const {data,error}=await supabase.from("organizations").update(input).eq("id",organizationId).select("*").single();if(error)throw error;return data;},onSuccess:()=>{qc.invalidateQueries({queryKey:["my-organizations"]});qc.invalidateQueries({queryKey:["organization"]});}});
+ return useMutation({mutationFn:async(input:{logo_url?:string|null;cover_url?:string|null;description?:string;location?:string;website?:string|null})=>{const {data,error}=await supabase.from("organizations").update(input).eq("id",organizationId).select("*").single();if(error)throw error;return data;},onSuccess:()=>{qc.invalidateQueries({queryKey:["my-organizations"]});qc.invalidateQueries({queryKey:["organization"]});}});
 }
 
 export function useMemberSearch(query:string,organizationId:string|undefined){
