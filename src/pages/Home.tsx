@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, GraduationCap, MapPin, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
@@ -57,7 +57,6 @@ export function Home(){
 
   return <div className="feed-layout">
     <div className="feed-column">
-      <section className="rounded-3xl bg-ink p-5 text-white"><p className="text-[11px] font-semibold uppercase tracking-[.16em] text-white/55">POSSARA community</p><h1 className="mt-2 text-2xl font-bold">Grow through what people share.</h1><p className="mt-2 max-w-xl text-sm leading-6 text-white/65">Useful knowledge, education, lessons, encouragement and real experiences that help people move forward.</p></section>
       <ExtraordinaryPeople/>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
@@ -77,11 +76,11 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
-      <Link to="/places" className="home-places-cta" aria-label="Explore interesting places">
-        <span className="home-places-cta-icon"><MapPin size={18}/></span>
-        <span className="home-places-cta-copy"><strong>Interesting places</strong><small>Discover places worth experiencing without crowding your Home feed.</small></span>
-        <ArrowRight size={18} className="home-places-cta-arrow"/>
-      </Link>
+      <nav className="home-quick-links" aria-label="Explore POSSARA">
+        <Link to="/opportunities?type=job"><BriefcaseBusiness size={17}/><span>Jobs</span></Link>
+        <Link to="/opportunities?type=scholarship"><GraduationCap size={17}/><span>Scholarships</span></Link>
+        <Link to="/places"><MapPin size={17}/><span>Places</span></Link>
+      </nav>
 
 
 
