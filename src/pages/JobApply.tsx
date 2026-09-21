@@ -18,9 +18,10 @@ export function JobApply(){
  const accept=allowed.join(",");
  async function upload(file:File,kind:"document"|"passport"){const path=userId+"/"+id+"/"+kind+"-"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");const {error}=await supabase.storage.from("job-documents").upload(path,file,{contentType:file.type||"application/octet-stream"});if(error)throw error;return path;}
  async function submit(e:React.FormEvent){e.preventDefault();if(!id)return;setLocalError("");
-  if(j?.application_document_required!==false&&!document){setLocalError((j?.application_document_label||"Application document")+" is required.");return;}
-  if(document&&document.size>10*1024*1024){setLocalError("Application document must be 10MB or smaller.");return;}
-  if(document&&document.type&&!allowed.includes(document.type)){setLocalError("That file type is not accepted for this role.");return;}
+  const selectedDocuments=documentLabels.map(label=>documents[label]).filter((file):file is File=>!!file);
+  if(j?.application_document_required!==false&&selectedDocuments.length<documentLabels.length){setLocalError("Upload every required application document.");return;}
+  if(selectedDocuments.some(file=>file.size>10*1024*1024)){setLocalError("Each application document must be 10MB or smaller.");return;}
+  if(selectedDocuments.some(file=>file.type&&!allowed.includes(file.type))){setLocalError("One of the selected files is not accepted for this role.");return;}
   if(j?.cover_letter_required&&!cover.trim()){setLocalError("Cover letter is required for this role.");return;}
   if(j?.passport_photo_required&&!photo){setLocalError("Passport photo is required for this role.");return;}
   if(photo&&!["image/jpeg","image/png","image/webp"].includes(photo.type)){setLocalError("Passport photo must be JPG, PNG or WebP.");return;}
