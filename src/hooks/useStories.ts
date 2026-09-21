@@ -266,6 +266,7 @@ export function usePostStory() {
               music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
               music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
               audience: input.audience ?? "public",
+              created_at: new Date(baseCreatedAt).toISOString(),
             }];
 
         const { data, error } = await supabase
