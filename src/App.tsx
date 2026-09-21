@@ -55,6 +55,7 @@ import { Applications } from "./pages/Applications";
 import { Passport } from "./pages/Passport";
 import { Insights } from "./pages/Insights";
 import { Places } from "./pages/Places";
+import { PrivacyPolicy, SecurityPage, TermsOfUse } from "./pages/TrustPolicies";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,9 @@ export default function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/impact" element={<Impact />} />
               <Route path="/plus" element={<PossaraPlus />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfUse />} />
+              <Route path="/security" element={<SecurityPage />} />
 
               <Route element={<RequireAuth />}>
                 <Route path="/notifications" element={<Notifications />} />
