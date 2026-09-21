@@ -95,7 +95,7 @@ function CommentTrustBadge({ userId }: { userId: string | null }) {
 }
 
 function CommentThread({ postId }: { postId: string }) {
-  const { userId } = useAuth();
+  const { userId, profile: viewerProfile } = useAuth();
   const actingOrganization = useActiveOrganizationIdentity();
   const { data: comments, isLoading, error: commentsError } = useComments(postId, true, actingOrganization?.id ?? null);
   const createComment = useCreateComment(postId, actingOrganization?.id ?? null);
@@ -284,8 +284,8 @@ function CommentThread({ postId }: { postId: string }) {
                 <input
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder={replyTo ? "Write a reply…" : "Write a comment…"}
-                  aria-label={replyTo ? "Write a reply" : "Write a comment"}
+                  placeholder={replyTo ? "Write a reply…" : `Discuss as ${viewerProfile?.full_name ?? viewerProfile?.username ?? "you"}…`}
+                  aria-label={replyTo ? "Write a reply" : `Discuss as ${viewerProfile?.full_name ?? viewerProfile?.username ?? "you"}`}
                   className="min-w-0 flex-1 rounded-full border border-ink-faint/30 bg-white px-3 py-2 text-sm outline-none focus:border-trust"
                 />
                 <button disabled={!text.trim() || createComment.isPending} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{createComment.isPending ? "Sending…" : "Send"}</button>
@@ -489,11 +489,11 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           <PostReactionControl post={post} />
 
           <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
-            <MessageCircle size={17} />{post.comment_count > 0 ? post.comment_count : ""} Discuss
+            <MessageCircle size={19} /><span>{post.comment_count > 0 ? post.comment_count : ""}</span><span className="sr-only">Discuss</span>
           </button>
 
           <button type="button" onClick={() => setShareOpen(true)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
-            <Share2 size={17} />{post.share_count > 0 ? post.share_count : ""} Pass on
+            <Share2 size={19} /><span>{post.share_count > 0 ? post.share_count : ""}</span><span className="sr-only">Share</span>
           </button>
         </div>
       </div>
