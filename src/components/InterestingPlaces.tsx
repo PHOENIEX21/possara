@@ -137,6 +137,11 @@ export function InterestingPlaces() {
     setActive(available[position<0?0:(position+1)%available.length]);
   }
 
+  function handleImageError(){
+    setFailed((current)=>({...current,[place.name]:true}));
+    window.setTimeout(()=>next(),0);
+  }
+
   function previous(){
     if(!available.length)return;
     const position=available.indexOf(active);
