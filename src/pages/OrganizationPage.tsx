@@ -61,12 +61,12 @@ export function OrganizationPage(){
     <Link to="/organizations" className="inline-flex items-center gap-1.5 text-sm text-ink-light"><ArrowLeft size={15}/>All organizations</Link>
 
     <section className="overflow-hidden rounded-3xl border border-paper-dim bg-white shadow-sm">
-      <div className="h-20 bg-gradient-to-r from-brand-light via-paper to-trust-light"/>
+      <div className="relative h-40 overflow-hidden bg-gradient-to-r from-brand-light via-paper to-trust-light sm:h-52">{org.cover_url&&<img src={org.cover_url} alt="" className="h-full w-full object-cover"/>}<div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5"/></div>
       <div className="p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           {org.logo_url
-            ? <img src={org.logo_url} alt="" className="-mt-9 h-18 w-18 rounded-2xl border-4 border-white bg-white object-cover shadow-sm sm:-mt-10 sm:h-20 sm:w-20"/>
-            : <div className="-mt-9 flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl border-4 border-white bg-paper-dim text-ink-light shadow-sm sm:-mt-10 sm:h-20 sm:w-20"><Building2 size={28}/></div>}
+            ? <img src={org.logo_url} alt="" className="-mt-12 h-24 w-24 rounded-3xl border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
+            : <div className="-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{org.verified&&<OrganizationVerificationBadge compact/>}</div>
             <div className="mt-2"><TrustBadge verified={org.verified??false} lastVerifiedAt={null} sponsored={org.is_sponsored}/></div>
@@ -96,6 +96,25 @@ export function OrganizationPage(){
       </div>
     </section>
 
+    {visibleJobs.length>0&&<section>
+      <div className="mb-3"><p className="eyebrow">{canManage?"Hiring activity":"Hire directly on POSSARA"}</p><h2 className="text-xl">{canManage?"Roles from "+org.name:"Open roles"}</h2><p className="mt-1 text-sm text-ink-light">{canManage?"Your team can see every state here. Other users only see live roles.":"Apply securely without leaving POSSARA."}</p></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {visibleJobs.map(job=><article key={job.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <Link to={"/jobs/"+job.id} className="min-w-0 hover:underline"><h3 className="font-bold">{job.title}</h3><p className="mt-1 text-xs text-ink-faint">{job.rank} · {job.employment_type} · {job.work_style}</p></Link>
+            <div className="flex gap-1">{canManage&&<span className="rounded-full bg-paper-dim px-2 py-1 text-[10px] font-bold uppercase text-ink-light">{JOB_STATE_LABEL[job.status]??job.status}</span>}{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-[10px] font-bold text-opportunity-dark">CBT</span>}</div>
+          </div>
+          <p className="mt-3 text-sm text-ink-light">{job.location}</p>
+          {canManage&&<div className="mt-3 grid grid-cols-2 gap-2">
+            <Link to={`/organizations/jobs/${job.id}/applicants`} className="rounded-lg bg-brand-light px-3 py-2 text-center text-xs font-semibold text-brand-dark">Applicants</Link>
+            <Link to={`/organizations/${org.id}/jobs/new`} state={{edit:job}} className="rounded-lg bg-paper px-3 py-2 text-center text-xs font-semibold">Edit role</Link>
+            {job.requires_cbt&&<Link to={`/organizations/jobs/${job.id}/cbt`} className="rounded-lg bg-opportunity-light px-3 py-2 text-center text-xs font-semibold text-opportunity-dark">CBT</Link>}
+            <Link to={`/organizations/jobs/${job.id}/interview`} className="rounded-lg bg-paper px-3 py-2 text-center text-xs font-semibold">Interview</Link>
+          </div>}
+        </article>)}
+      </div>
+    </section>}
+
     {canManage&&<section className="rounded-2xl border border-brand/15 bg-brand-light/35 p-4">
       <p className="eyebrow">Organization workspace</p>
       <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -122,24 +141,7 @@ export function OrganizationPage(){
       <div className="space-y-3">{organizationPosts?.map(post=><PostCard key={post.id} post={post}/>)}</div>
     </section>
 
-    {visibleJobs.length>0&&<section>
-      <div className="mb-3"><p className="eyebrow">{canManage?"Hiring activity":"Hire directly on POSSARA"}</p><h2 className="text-xl">{canManage?"Roles from "+org.name:"Open roles"}</h2><p className="mt-1 text-sm text-ink-light">{canManage?"Your team can see every state here. Other users only see live roles.":"Apply securely without leaving POSSARA."}</p></div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {visibleJobs.map(job=><article key={job.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">
-          <div className="flex items-start justify-between gap-2">
-            <Link to={"/jobs/"+job.id} className="min-w-0 hover:underline"><h3 className="font-bold">{job.title}</h3><p className="mt-1 text-xs text-ink-faint">{job.rank} · {job.employment_type} · {job.work_style}</p></Link>
-            <div className="flex gap-1">{canManage&&<span className="rounded-full bg-paper-dim px-2 py-1 text-[10px] font-bold uppercase text-ink-light">{JOB_STATE_LABEL[job.status]??job.status}</span>}{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-[10px] font-bold text-opportunity-dark">CBT</span>}</div>
-          </div>
-          <p className="mt-3 text-sm text-ink-light">{job.location}</p>
-          {canManage&&<div className="mt-3 grid grid-cols-2 gap-2">
-            <Link to={`/organizations/jobs/${job.id}/applicants`} className="rounded-lg bg-brand-light px-3 py-2 text-center text-xs font-semibold text-brand-dark">Applicants</Link>
-            <Link to={`/organizations/${org.id}/jobs/new`} state={{edit:job}} className="rounded-lg bg-paper px-3 py-2 text-center text-xs font-semibold">Edit role</Link>
-            {job.requires_cbt&&<Link to={`/organizations/jobs/${job.id}/cbt`} className="rounded-lg bg-opportunity-light px-3 py-2 text-center text-xs font-semibold text-opportunity-dark">CBT</Link>}
-            <Link to={`/organizations/jobs/${job.id}/interview`} className="rounded-lg bg-paper px-3 py-2 text-center text-xs font-semibold">Interview</Link>
-          </div>}
-        </article>)}
-      </div>
-    </section>}
+
 
     <section>
       <div className="mb-3 flex items-end justify-between gap-3"><div><p className="eyebrow">Openings</p><h2 className="text-xl">Other opportunities from {org.name}</h2><p className="mt-1 text-sm text-ink-light">Scholarships, admissions and other active opportunities connected to this organization appear here.</p></div><span className="inline-flex items-center gap-1 rounded-full bg-paper-dim px-3 py-1.5 text-xs font-medium text-ink-light"><Briefcase size={13}/>{orgOpportunities?.length??0} active</span></div>
