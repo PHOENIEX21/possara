@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, Building2, Globe, MapPin, Settings, Users } from "lucide-react";
+import { ArrowLeft, Briefcase, Building2, Globe, Image as ImageIcon, Info, MapPin, Settings, Users } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useOpportunities } from "../hooks/useOpportunities";
 import { OpportunityCard } from "../components/OpportunityCard";
@@ -34,6 +35,7 @@ const JOB_STATE_LABEL:Record<string,string>={
 };
 
 export function OrganizationPage(){
+  const [section,setSection]=useState<"posts"|"about"|"media">("posts");
   const {slug}=useParams<{slug:string}>();
   const {userId}=useAuth();
   const {data:myOrganizations}=useMyOrganizations();
@@ -53,6 +55,7 @@ export function OrganizationPage(){
   const isMember=!!userId&&!!membership;
   const canManage=isMember&&["owner","recruiter"].includes((membership as any).role);
   const visibleJobs=canManage?(nativeJobs??[]):openNativeJobs;
+  const media=useMemo(()=>(organizationPosts??[]).flatMap(post=>(post.media_urls??[]).map((src:string,index:number)=>({src,id:`${post.id}-${index}`,postId:post.id}))),[organizationPosts]);
 
   if(isLoading)return <p className="text-ink-light">Loading…</p>;
   if(error||!org)return <div><p className="text-flag">This organization couldn&apos;t be found.</p><Link to="/organizations" className="mt-3 inline-block text-sm text-trust-dark underline">Back to organizations</Link></div>;
@@ -96,6 +99,10 @@ export function OrganizationPage(){
       </div>
     </section>
 
+    <nav className="sticky top-[60px] z-20 -mx-1 flex gap-1 overflow-x-auto border-b border-paper-dim bg-paper/95 px-1 py-2 backdrop-blur sm:static sm:rounded-2xl sm:border sm:bg-white sm:px-2" aria-label="Organization profile sections">
+      {(["posts","about","media"] as const).map(item=><button key={item} type="button" onClick={()=>setSection(item)} className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold capitalize ${section===item?"bg-brand-light text-brand-dark":"text-ink-light hover:bg-paper"}`}>{item}{item==="media"&&media.length?` · ${media.length}`:""}</button>)}
+    </nav>
+
     {visibleJobs.length>0&&<section>
       <div className="mb-3"><p className="eyebrow">{canManage?"Hiring activity":"Hire directly on POSSARA"}</p><h2 className="text-xl">{canManage?"Roles from "+org.name:"Open roles"}</h2><p className="mt-1 text-sm text-ink-light">{canManage?"Your team can see every state here. Other users only see live roles.":"Apply securely without leaving POSSARA."}</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -115,7 +122,8 @@ export function OrganizationPage(){
       </div>
     </section>}
 
-    {canManage&&<section className="rounded-2xl border border-brand/15 bg-brand-light/35 p-4">
+    {section==="posts"&&<div className="space-y-4">
+{canManage&&<section className="rounded-2xl border border-brand/15 bg-brand-light/35 p-4">
       <p className="eyebrow">Organization workspace</p>
       <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 className="text-lg font-semibold">Manage {org.name}</h2><p className="mt-1 text-sm text-ink-light">Publish organization updates here. Use Post a role for a formal vacancy with applicants, CBT and interviews.</p></div>
@@ -133,15 +141,28 @@ export function OrganizationPage(){
         placeholder={`Share an update as ${org.name}…`}
       />
     </section>}
-
-    <section>
+<section>
       <div className="mb-3"><p className="eyebrow">Organization feed</p><h2 className="text-xl">Updates from {org.name}</h2></div>
       {organizationPostsLoading&&<div className="feed-skeleton"/>}
       {!organizationPostsLoading&&!organizationPosts?.length&&<div className="rounded-2xl border border-paper-dim bg-white p-5"><p className="font-medium">No organization updates yet.</p><p className="mt-1 text-sm text-ink-light">{canManage?"Publish the first update above.":"Follow this organization to be notified when it shares updates or begins hiring."}</p></div>}
       <div className="space-y-3">{organizationPosts?.map(post=><PostCard key={post.id} post={post}/>)}</div>
     </section>
+    </div>}
 
+    {section==="about"&&<section className="rounded-3xl border border-paper-dim bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex items-center gap-2"><Info size={18}/><h2 className="text-xl font-semibold">About {org.name}</h2></div>
+      {org.description?<p className="mt-4 whitespace-pre-line leading-7 text-ink-light">{String(org.description).replace(/\\n/g,"\n")}</p>:<p className="mt-4 text-sm text-ink-faint">No organization description has been added yet.</p>}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {org.industry&&<div className="rounded-2xl bg-paper p-4"><p className="text-xs font-semibold uppercase tracking-wider text-ink-faint">Industry</p><p className="mt-1 font-medium">{org.industry}</p></div>}
+        {(org.headquarters||org.state||org.country)&&<div className="rounded-2xl bg-paper p-4"><p className="text-xs font-semibold uppercase tracking-wider text-ink-faint">Location</p><p className="mt-1 font-medium">{[org.headquarters||org.state,org.country].filter(Boolean).join(" · ")}</p></div>}
+        {org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="rounded-2xl bg-paper p-4 hover:bg-paper-dim"><p className="text-xs font-semibold uppercase tracking-wider text-ink-faint">Website</p><p className="mt-1 break-all font-medium text-trust-dark">{org.website.replace(/^https?:\/\//,"")}</p></a>}
+      </div>
+    </section>}
 
+    {section==="media"&&<section className="rounded-3xl border border-paper-dim bg-white p-3 shadow-sm sm:p-5">
+      <div className="mb-4 flex items-center gap-2"><ImageIcon size={18}/><h2 className="text-xl font-semibold">Media</h2></div>
+      {!media.length?<div className="py-10 text-center text-sm text-ink-faint">No organization media yet.</div>:<div className="grid grid-cols-3 gap-1 sm:gap-2">{media.map(item=><Link key={item.id} to={`/?post=${item.postId}`} className="aspect-square overflow-hidden rounded-xl bg-paper-dim"><img src={item.src} alt="" loading="lazy" className="h-full w-full object-cover"/></Link>)}</div>}
+    </section>}
 
     <section>
       <div className="mb-3 flex items-end justify-between gap-3"><div><p className="eyebrow">Openings</p><h2 className="text-xl">Other opportunities from {org.name}</h2><p className="mt-1 text-sm text-ink-light">Scholarships, admissions and other active opportunities connected to this organization appear here.</p></div><span className="inline-flex items-center gap-1 rounded-full bg-paper-dim px-3 py-1.5 text-xs font-medium text-ink-light"><Briefcase size={13}/>{orgOpportunities?.length??0} active</span></div>
