@@ -18,6 +18,7 @@ import { OrganizationFollowButton } from "./OrganizationFollowButton";
 import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 import { MentionText } from "./MentionText";
 import { MentionSuggestions } from "./MentionSuggestions";
+import { useActiveOrganizationIdentity } from "../hooks/useActiveOrganizationIdentity";
 import { CommentReactionControl } from "./CommentReactionControl";
 import type { PostWithAuthor } from "../hooks/useFeedPosts";
 
@@ -77,8 +78,9 @@ function CommentTrustBadge({ userId }: { userId: string | null }) {
 
 function CommentThread({ postId }: { postId: string }) {
   const { userId } = useAuth();
-  const { data: comments, isLoading, error: commentsError } = useComments(postId, true);
-  const createComment = useCreateComment(postId);
+  const actingOrganization = useActiveOrganizationIdentity();
+  const { data: comments, isLoading, error: commentsError } = useComments(postId, true, actingOrganization?.id ?? null);
+  const createComment = useCreateComment(postId, actingOrganization?.id ?? null);
   const editComment = useEditComment(postId);
   const deleteComment = useDeleteComment(postId);
   const [text, setText] = useState("");
@@ -105,8 +107,9 @@ function CommentThread({ postId }: { postId: string }) {
   }
 
   function chooseReply(comment: NonNullable<typeof comments>[number], rootId: string) {
-    const username = comment.profiles?.username ?? null;
-    const name = comment.profiles?.full_name ?? username ?? "member";
+    const organization = comment.organizations;
+    const username = organization ? null : comment.profiles?.username ?? null;
+    const name = organization?.name ?? comment.profiles?.full_name ?? username ?? "member";
     setReplyTo({ parentId: rootId, name, username });
     setText(username ? `@${username} ` : "");
   }
@@ -150,13 +153,18 @@ function CommentThread({ postId }: { postId: string }) {
   });
 
   function CommentRow({ comment, rootId, isReply = false }: { comment: (typeof rows)[number]; rootId: string; isReply?: boolean }) {
-    const name = comment.profiles?.full_name ?? "A member of the community";
-    const path = profilePath(comment.author_id, comment.profiles?.username, userId);
-    const mine = userId === comment.author_id;
+    const commentOrganization = comment.organizations;
+    const name = commentOrganization?.name ?? comment.profiles?.full_name ?? "A member of the community";
+    const path = commentOrganization ? `/organizations/${commentOrganization.slug}` : profilePath(comment.author_id, comment.profiles?.username, userId);
+    const mine = userId === comment.author_id || (!!actingOrganization && comment.organization_id === actingOrganization.id);
 
     return (
       <div className={`flex gap-2.5 ${isReply ? "ml-8 sm:ml-10" : ""}`}>
-        {comment.profiles?.avatar_url ? (
+        {commentOrganization ? (
+          <Link to={path} className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-light text-brand-dark" aria-label={`Open ${name}`}>
+            {commentOrganization.logo_url ? <img src={commentOrganization.logo_url} alt="" className="h-full w-full object-cover"/> : <Building2 size={14}/>}
+          </Link>
+        ) : comment.profiles?.avatar_url ? (
           <button type="button" onClick={() => setPhoto({ src: comment.profiles!.avatar_url!, name })} className="h-8 w-8 shrink-0 rounded-full" aria-label={`View ${name} profile photo`}>
             <img src={comment.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
           </button>
@@ -182,7 +190,7 @@ function CommentThread({ postId }: { postId: string }) {
           >
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Link to={path} className="truncate text-[14px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
-              <CommentTrustBadge userId={comment.author_id} />
+              {commentOrganization ? (commentOrganization.verified ? <OrganizationVerificationBadge compact/> : null) : <CommentTrustBadge userId={comment.author_id} />}
               <span className="text-[10px] text-ink-faint">{timeAgo(comment.created_at)}</span>
             </div>
 
@@ -205,7 +213,7 @@ function CommentThread({ postId }: { postId: string }) {
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-3 px-2">
-            <CommentReactionControl postId={postId} comment={comment}/>
+            <CommentReactionControl postId={postId} comment={comment} actingOrganizationId={actingOrganization?.id ?? null}/>
             {userId && (
               <button type="button" onClick={() => chooseReply(comment, rootId)} className="text-[12px] font-semibold text-ink-faint hover:text-ink">Reply</button>
             )}
@@ -245,6 +253,7 @@ function CommentThread({ postId }: { postId: string }) {
       <div className="sticky bottom-0 mt-3 bg-white pt-1">
         {userId ? (
           <form onSubmit={handleSubmit} className="space-y-2 border-t border-paper-dim pt-3">
+            {actingOrganization&&<div className="flex items-center gap-2 rounded-xl bg-brand-light px-3 py-2 text-xs font-semibold text-brand-dark"><Building2 size={14}/><span className="truncate">Commenting as {actingOrganization.name}</span>{actingOrganization.verified&&<OrganizationVerificationBadge compact/>}</div>}
             {replyTo && (
               <div className="flex items-center justify-between rounded-xl bg-brand-light px-3 py-2 text-xs text-brand-dark">
                 <span>Replying to {replyTo.username ? `@${replyTo.username}` : replyTo.name}</span>
