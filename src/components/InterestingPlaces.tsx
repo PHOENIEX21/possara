@@ -98,19 +98,19 @@ function daySeed() {
 export function InterestingPlaces() {
   const [images,setImages]=useState<Record<string,string>>(()=>readCache());
   const [failed,setFailed]=useState<Record<string,boolean>>({});
-  const [ready,setReady]=useState(false);
+  const [ready,setReady]=useState(()=>Object.keys(readCache()).length>0);
   const [active,setActive]=useState(0);
   const seeded=useRef(false);
   const touchStart=useRef<{x:number;y:number}|null>(null);
 
   useEffect(()=>{
     let cancelled=false;
+    setReady(true);
     void fetchImages().then((fetched)=>{
       if(cancelled)return;
       const merged={...readCache(),...fetched};
       setImages(merged);
       writeCache(merged);
-      setReady(true);
     });
     return()=>{cancelled=true;};
   },[]);
@@ -167,14 +167,15 @@ export function InterestingPlaces() {
 
   const place=PLACES[active];
   const image=images[place.name]&&!failed[place.name]?images[place.name]:null;
-  if(!ready||!image)return null;
+  if(!ready)return <section className="min-h-[300px] rounded-[1.75rem] bg-slate-950"/>;
+  if(!image)return <section className="relative min-h-[300px] overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 p-6 text-white shadow-xl"><div className="absolute inset-x-0 bottom-0 p-6"><p className="text-xs font-semibold uppercase tracking-[.16em] text-white/60">Places worth experiencing</p><h2 className="mt-2 text-2xl font-bold">Discover somewhere remarkable</h2><p className="mt-2 text-sm text-white/70">Place photos are reconnecting. This page remains available while the image catalogue loads.</p></div></section>;
 
   const source=`https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikiTitle).replaceAll("%2F","/")}`;
 
   return (
     <section className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 shadow-xl" aria-label="Places worth experiencing" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{touchAction:"pan-y"}}>
       <div className="relative min-h-[300px] sm:min-h-[360px]">
-        <img src={image} alt={`${place.name}, ${place.location}`} className="absolute inset-0 h-full w-full object-cover" style={{objectPosition:place.position??"center"}} loading="eager" decoding="async" referrerPolicy="no-referrer" onError={()=>setFailed((current)=>({...current,[place.name]:true}))}/>
+        <img src={image} alt={`${place.name}, ${place.location}`} className="absolute inset-0 h-full w-full object-cover" style={{objectPosition:place.position??"center"}} loading="eager" decoding="async" referrerPolicy="no-referrer" onError={()=>{setFailed((current)=>({...current,[place.name]:true}));window.setTimeout(next,0)}}}/>
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10"/>
         <div className="absolute inset-x-0 bottom-0 z-10 p-5 text-white sm:p-7">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-white/75">
