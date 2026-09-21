@@ -27,6 +27,40 @@ async function sha256(value: string) {
     .join("");
 }
 
+function requestIp(req: Request) {
+  const forwarded = req.headers.get("cf-connecting-ip")
+    ?? req.headers.get("x-real-ip")
+    ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+  return forwarded.slice(0, 128);
+}
+
+async function consumeRateLimit(
+  admin: ReturnType<typeof createClient>,
+  serviceRoleKey: string,
+  action: string,
+  rawKey: string,
+  limit: number,
+  windowSeconds: number,
+) {
+  const keyHash = await sha256(`${action}:${rawKey}:${serviceRoleKey}`);
+  const { data, error } = await admin.rpc("consume_auth_abuse_limit", {
+    p_action: action,
+    p_key_hash: keyHash,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) {
+    console.error("auth rate-limit check failed", action, error);
+    return { allowed: false, retryAfterSeconds: 60 };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    allowed: row?.allowed === true,
+    retryAfterSeconds: Number(row?.retry_after_seconds ?? 0),
+  };
+}
+
 function brevoConfig() {
   return {
     apiKey: Deno.env.get("BREVO_API_KEY") ?? Deno.env.get("SENDINBLUE_API_KEY"),
@@ -128,6 +162,25 @@ Deno.serve(async (req) => {
     body = {};
   }
   const action = body.action ?? "status";
+
+  if (action === "verify" || action === "resend") {
+    const limit = await consumeRateLimit(
+      admin,
+      serviceRoleKey,
+      action === "verify" ? "email_verify_ip" : "email_resend_ip",
+      requestIp(req),
+      action === "verify" ? 60 : 20,
+      3600,
+    );
+    if (!limit.allowed) {
+      return json({
+        ok: false,
+        verified: false,
+        retryAfterSeconds: limit.retryAfterSeconds,
+        error: "Too many verification requests from this network. Try again later.",
+      }, 429);
+    }
+  }
 
   if (action === "status") {
     const { data: challenge } = await admin

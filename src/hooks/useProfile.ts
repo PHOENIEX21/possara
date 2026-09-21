@@ -3,6 +3,8 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import type { Profile } from "../types/database";
 
+const PUBLIC_PROFILE_SELECT = "id,full_name,avatar_url,bio,location,website,instagram_url,x_url,tiktok_url,linkedin_url,youtube_url,facebook_url,country,created_at,education_level,skills,goal_categories,username,headline,profession,workplace,school,cover_url,interests";
+
 function normalizeProfileLocation(profile: Profile | null): Profile | null {
   if (!profile) return profile;
   const location = profile.location?.trim() ?? "";
@@ -20,16 +22,16 @@ function normalizeProfileLocation(profile: Profile | null): Profile | null {
 }
 
 export function useProfileByUsername(username: string | undefined) {
-  return useQuery({ queryKey: ["profile-by-username", username], enabled: !!username, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.from("profiles").select("*").eq("username", username as string).single(); if (error) throw error; return normalizeProfileLocation(data as Profile); } });
+  return useQuery({ queryKey: ["profile-by-username", username], enabled: !!username, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.from("profiles").select(PUBLIC_PROFILE_SELECT).eq("username", username as string).single(); if (error) throw error; return normalizeProfileLocation(data as Profile); } });
 }
 
 export function useProfileById(id: string | undefined) {
-  return useQuery({ queryKey: ["profile-by-id", id], enabled: !!id, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.from("profiles").select("*").eq("id", id as string).single(); if (error) throw error; return normalizeProfileLocation(data as Profile); } });
+  return useQuery({ queryKey: ["profile-by-id", id], enabled: !!id, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.from("profiles").select(PUBLIC_PROFILE_SELECT).eq("id", id as string).single(); if (error) throw error; return normalizeProfileLocation(data as Profile); } });
 }
 
 export function useOwnProfile() {
   const { userId } = useAuth();
-  return useQuery({ queryKey: ["own-profile", userId], enabled: !!userId, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.from("profiles").select("*").eq("id", userId as string).single(); if (error) throw error; return normalizeProfileLocation(data as Profile); } });
+  return useQuery({ queryKey: ["own-profile", userId], enabled: !!userId, queryFn: async (): Promise<Profile | null> => { const { data, error } = await supabase.rpc("get_my_profile"); if (error) throw error; return normalizeProfileLocation((data ?? null) as Profile | null); } });
 }
 
 export function useUpdateOwnProfile() {
