@@ -7,7 +7,6 @@ import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
-import { ExtraordinaryPeople } from "../components/ExtraordinaryPeople";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
 
@@ -65,7 +64,6 @@ export function Home(){
   return <div className="feed-layout">
     <div className="feed-column">
       <section className="home-welcome-strip"><span className="home-welcome-icon"><Sparkles size={16}/></span><div><p className="eyebrow">Welcome to POSSARA</p><h1>See what is possible. Find what moves you forward.</h1></div></section>
-      <ExtraordinaryPeople/>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
