@@ -59,11 +59,12 @@ export function PostComposer({
   const [categoryId, setCategoryId] = useState<string>("");
   const [topic, setTopic] = useState<string>(defaultTopic);
   const [selectedPostType,setSelectedPostType]=useState<"general"|"resource"|"opportunity"|"event">(postType);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [musicFile,setMusicFile]=useState<File|null>(null);
   const [feeling,setFeeling]=useState("");
   const [showFeelings,setShowFeelings]=useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [mediaError,setMediaError]=useState<string|null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [classificationError,setClassificationError]=useState<string|null>(null);
 
@@ -75,19 +76,41 @@ export function PostComposer({
   const selectedTopic = HOME_TOPICS.find((item) => item.value === topic);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setExpanded(true);
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
+    if (!picked.length) return;
+
+    const allowed = picked.filter((file) => file.type.match(/^image\/(jpeg|png|webp)$/) && file.size <= 8 * 1024 * 1024);
+    const rejected = picked.length - allowed.length;
+    const remaining = Math.max(0, 10 - mediaFiles.length);
+    const accepted = allowed.slice(0, remaining);
+
+    if (accepted.length) {
+      setMediaFiles((current) => [...current, ...accepted]);
+      setMediaPreviews((current) => [...current, ...accepted.map((file) => URL.createObjectURL(file))]);
+      setExpanded(true);
+    }
+
+    if (rejected) setMediaError("Some files were skipped. Use JPG, PNG or WebP images up to 8 MB each.");
+    else if (allowed.length > remaining) setMediaError("A post can include up to 10 images.");
+    else setMediaError(null);
   }
 
-  function clearImage() {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview(null);
+  function removeMedia(index: number) {
+    setMediaPreviews((current) => {
+      const preview = current[index];
+      if (preview) URL.revokeObjectURL(preview);
+      return current.filter((_, itemIndex) => itemIndex !== index);
+    });
+    setMediaFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setMediaError(null);
+  }
+
+  function clearMedia() {
+    mediaPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setMediaFiles([]);
+    setMediaPreviews([]);
+    setMediaError(null);
   }
 
   function reset() {
@@ -95,7 +118,7 @@ export function PostComposer({
     setClassificationError(null);
     setCategoryId("");
     setTopic(defaultTopic);
-    clearImage();
+    clearMedia();
     setMusicFile(null); setFeeling(""); setShowFeelings(false);
     setExpanded(false);
   }
@@ -127,7 +150,7 @@ export function PostComposer({
     const categorySelected = !!categoryId;
     await createPost.mutateAsync({
       content: content.trim(),
-      imageFile,
+      mediaFiles,
       musicFile,
       feeling:feeling||null,
       type: categorySelected ? "opportunity" : selectedPostType,
@@ -160,7 +183,7 @@ export function PostComposer({
         </button>
         <label aria-label="Add photo" className="shrink-0 cursor-pointer text-trust-dark hover:text-trust">
           <ImageIcon size={20} />
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
       </div>
       {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
@@ -230,17 +253,19 @@ export function PostComposer({
 
       {showFeelings&&<div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-paper p-3">{FEELINGS.map(item=><button key={item.value} type="button" onClick={()=>{setFeeling(item.value);setShowFeelings(false);}} className="rounded-full bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-brand-light">{item.label}</button>)}</div>}
       {musicFile&&<div className="mt-3 flex items-center justify-between rounded-xl border border-paper-dim bg-paper px-3 py-2 text-sm"><span className="min-w-0 truncate">🎵 {musicFile.name}</span><button type="button" onClick={()=>setMusicFile(null)} aria-label="Remove music"><X size={15}/></button></div>}
-      {imagePreview && (
-        <div className="relative mt-3 inline-block">
-          <img src={imagePreview} alt="" className="max-h-64 rounded-lg object-cover" />
-          <button type="button" onClick={clearImage} className="absolute right-2 top-2 rounded-full bg-ink/70 p-1 text-paper hover:bg-ink" aria-label="Remove image"><X size={14} /></button>
+      {mediaPreviews.length>0 && (
+        <div className="mt-3">
+          <div className="mb-2 flex items-center justify-between gap-3"><p className="text-xs font-semibold text-ink-light">{mediaPreviews.length} {mediaPreviews.length===1?"image":"images"} selected</p><span className="text-[11px] text-ink-faint">Up to 10</span></div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {mediaPreviews.map((preview,index)=><div key={preview} className="relative aspect-square overflow-hidden rounded-xl bg-paper"><img src={preview} alt="" className="h-full w-full object-cover"/><button type="button" onClick={()=>removeMedia(index)} className="absolute right-2 top-2 rounded-full bg-ink/75 p-1.5 text-white" aria-label={`Remove image ${index+1}`}><X size={14}/></button><span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">{index+1}</span></div>)}
+          </div>
         </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-paper-dim pt-3">
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim">
-          <ImageIcon size={16} /> Photo
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
+          <ImageIcon size={16} /> {mediaFiles.length ? "Add photos" : "Photos"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Music<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setExpanded(true);}e.target.value="";}} className="hidden"/></label>
         <button type="button" onClick={()=>setShowFeelings(v=>!v)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><SmilePlus size={16}/> Feeling</button>
@@ -251,6 +276,7 @@ export function PostComposer({
           </button>
         </div>
       </div>
+      {mediaError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{mediaError}</div>}
       {classificationError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{classificationError}</div>}
       {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
     </form>
