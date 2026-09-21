@@ -81,13 +81,20 @@ function AccountEmailGate() {
   // connections.
   if (loading) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-paper pt-[60px] sm:pt-16">
+        <header className="app-header">
+          <div className="app-header-inner">
+            <div className="brand-lockup" aria-label="POSSARA">
+              <span>POSSARA</span>
+            </div>
+          </div>
+        </header>
         {showSlowSession ? (
-          <div className="session-restore-note" role="status" aria-live="polite">
+          <div className="mx-auto max-w-[820px] px-4 py-6 text-sm text-ink-faint" role="status" aria-live="polite">
             Restoring your session…
           </div>
         ) : null}
-      </AppLayout>
+      </div>
     );
   }
   if (userId && !emailVerified && !allowedWhileUnverified) {
