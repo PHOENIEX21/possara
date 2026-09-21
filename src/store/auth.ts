@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
-import type { UserRole, UserRoleRow } from "../types/database";
+import type { UserRole } from "../types/database";
 
 interface AuthState {
   userId:string|null;
@@ -32,33 +32,28 @@ export const useAuth=create<AuthState>((set,get)=>({
       }
 
       set({userId:user.id,email:user.email??null,emailVerified:false,role:null,isVerified:false,isBanned:false,banReason:null,loading:true});
-      const [roleResult,profileResult]=await Promise.all([
-        supabase
-          .from("user_roles")
-          .select("role,is_verified,is_banned,ban_reason")
-          .eq("user_id",user.id)
-          .single(),
-        supabase
-          .from("profiles")
-          .select("email_verified_at")
-          .eq("id",user.id)
-          .single(),
-      ]);
+      const {data:accountState,error:accountStateError}=await supabase.rpc("get_my_account_state");
       if(!active||version!==hydrationVersion)return;
 
-      const roleData=roleResult.data as Pick<UserRoleRow,"role"|"is_verified"|"is_banned"|"ban_reason">|null;
-      const emailVerified=!profileResult.error&&Boolean((profileResult.data as {email_verified_at?:string|null}|null)?.email_verified_at);
+      const accountRow=(Array.isArray(accountState)?accountState[0]:accountState) as {
+        role?:UserRole|null;
+        is_verified?:boolean|null;
+        is_banned?:boolean|null;
+        ban_reason?:string|null;
+        email_verified_at?:string|null;
+      }|null;
+      const emailVerified=!accountStateError&&Boolean(accountRow?.email_verified_at);
 
-      if(roleData?.is_banned){
-        set({isBanned:true,banReason:roleData.ban_reason,role:roleData.role??"user",isVerified:roleData.is_verified??false,emailVerified,loading:false});
+      if(accountRow?.is_banned){
+        set({isBanned:true,banReason:accountRow.ban_reason??null,role:accountRow.role??"user",isVerified:accountRow.is_verified??false,emailVerified,loading:false});
         await supabase.auth.signOut({scope:"local"});
         if(active&&version===hydrationVersion)set({userId:null,email:null,emailVerified:false,loading:false});
         return;
       }
 
       set({
-        role:!roleResult.error&&roleData?.role?roleData.role:"user",
-        isVerified:!roleResult.error&&(roleData?.is_verified??false),
+        role:!accountStateError&&accountRow?.role?accountRow.role:"user",
+        isVerified:!accountStateError&&(accountRow?.is_verified??false),
         emailVerified,
         isBanned:false,
         banReason:null,
@@ -82,12 +77,9 @@ export const useAuth=create<AuthState>((set,get)=>({
       set({emailVerified:false});
       return false;
     }
-    const {data,error}=await supabase
-      .from("profiles")
-      .select("email_verified_at")
-      .eq("id",userId)
-      .single();
-    const verified=!error&&Boolean((data as {email_verified_at?:string|null}|null)?.email_verified_at);
+    const {data,error}=await supabase.rpc("get_my_account_state");
+    const row=(Array.isArray(data)?data[0]:data) as {email_verified_at?:string|null}|null;
+    const verified=!error&&Boolean(row?.email_verified_at);
     set({emailVerified:verified});
     return verified;
   },
