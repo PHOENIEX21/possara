@@ -19,7 +19,7 @@ function matchesWorkStyle(location: string | null, tags: string[] | null, style:
 
 export function Jobs() {
   const { data: opportunities, isLoading, error } = useOpportunities({ limit: 100, categorySlug: "jobs" });
-  const { data: communityPosts } = useFeedPosts({ categorySlug: "jobs" });
+  const { data: communityPosts } = useFeedPosts({ noCategoryOnly: true, topic: "job" });
   const { data: nativeJobs, isLoading: nativeLoading, error: nativeError } = useHiringJobs();
   const [locationQuery, setLocationQuery] = useState("");
   const [workStyle, setWorkStyle] = useState<WorkStyle>("all");
@@ -89,7 +89,7 @@ export function Jobs() {
 
       {communityPosts && communityPosts.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-ink-faint">Shared by the community</h2>
+          <h2 className="mb-1 text-sm font-semibold text-ink">Job updates & hiring awareness</h2><p className="mb-3 text-xs text-ink-faint">Community and organization updates can announce hiring or upcoming roles. Formal live vacancies are listed above.</p>
           <div className="space-y-4">{communityPosts.map((post) => <PostCard key={post.id} post={post}/>)}</div>
         </section>
       )}
