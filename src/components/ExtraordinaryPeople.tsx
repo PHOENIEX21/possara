@@ -170,7 +170,6 @@ export function ExtraordinaryPeople() {
   const person = PEOPLE[active];
   const image = failedImages[person.name] ? null : person.image ?? images[person.name] ?? null;
   const fallbackPerson = PEOPLE.find((item) => (item.image ?? images[item.name]) && !failedImages[item.name]);
-  const fallbackImage = fallbackPerson ? (fallbackPerson.image ?? images[fallbackPerson.name] ?? null) : null;
 
   function next() {
     if (!availableIndexes.length) return;
