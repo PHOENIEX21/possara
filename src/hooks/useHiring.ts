@@ -35,7 +35,7 @@ export function useCreateJob(){
 }
 export function useApplyToJob(jobId:string){
  const {userId}=useAuth();const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{cvUrl:string;photoUrl?:string;coverLetter:string;answers:{questionId:string;value:string}[]})=>{if(!userId)throw new Error("Sign in first.");const {data,error}=await supabase.rpc("submit_job_application",{p_job_id:jobId,p_cv_url:input.cvUrl,p_cover_letter:input.coverLetter,p_answers:input.answers,p_photo_url:input.photoUrl??null});if(error)throw error;return {id:String(data)};},onSuccess:()=>qc.invalidateQueries({queryKey:["my-job-applications"]})});
+ return useMutation({mutationFn:async(input:{cvUrl:string;documentUrls?:string[];photoUrl?:string;coverLetter:string;answers:{questionId:string;value:string}[]})=>{if(!userId)throw new Error("Sign in first.");const {data,error}=await supabase.rpc("submit_job_application",{p_job_id:jobId,p_cv_url:input.cvUrl,p_cover_letter:input.coverLetter,p_answers:input.answers,p_photo_url:input.photoUrl??null,p_document_urls:input.documentUrls??[]});if(error)throw error;return {id:String(data)};},onSuccess:()=>qc.invalidateQueries({queryKey:["my-job-applications"]})});
 }
 export function useMyJobApplications(){
  const {userId}=useAuth();
