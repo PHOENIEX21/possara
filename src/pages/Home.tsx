@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Briefcase, Building2, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Briefcase, Building2, MapPin, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
@@ -58,8 +58,14 @@ export function Home(){
 
       <section ref={feedStartRef} id="home-posts" className="home-feed-heading home-feed-heading-premium">
         <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Insights, knowledge, encouragement, jobs, scholarships, competitions and talent shared by people in the POSSARA community.</p></div>
-        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}<Link to="/places" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50">Explore Places <ArrowUpRight size={13}/></Link></div>
+        <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
+
+      <Link to="/places" className="home-places-cta" aria-label="Explore interesting places">
+        <span className="home-places-cta-icon"><MapPin size={18}/></span>
+        <span className="home-places-cta-copy"><strong>Interesting places</strong><small>Discover places worth experiencing without crowding your Home feed.</small></span>
+        <ArrowRight size={18} className="home-places-cta-arrow"/>
+      </Link>
 
       {(filter==="job"||filter==="for-you")&&<section className="mb-4 space-y-3">{filter==="for-you"&&visibleNativeJobs.length>0&&<div className="flex items-end justify-between gap-3"><div><p className="eyebrow">Hiring now</p><h2 className="text-lg font-semibold">Live roles from organizations</h2></div><button type="button" onClick={()=>setFilter("job")} className="text-xs font-semibold text-brand-dark">See all jobs</button></div>}{nativeJobsLoading&&<div className="feed-skeleton"/>}{visibleNativeJobs.map(job=><Link key={job.id} to={`/jobs/${job.id}`} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm transition hover:-translate-y-0.5"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Briefcase size={14} className="text-brand-dark"/><span className="text-[11px] font-bold uppercase tracking-wide text-brand-dark">Live organization role</span></div><h3 className="mt-1 font-bold">{job.title}</h3><p className="text-sm text-ink-light">{job.organizations?.name} · {job.location}</p><p className="mt-2 text-xs font-medium text-ink-faint">{job.employment_type} · {job.work_style} · {job.rank}</p></div></div></Link>)}</section>}
 
