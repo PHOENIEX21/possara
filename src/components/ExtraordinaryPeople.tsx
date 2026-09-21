@@ -14,9 +14,9 @@ type Person = {
 };
 
 const PEOPLE: Person[] = [
-  { name:"Francis Olusegun", field:"Academic excellence · Mathematics", achievement:"University of Ilorin 2025/2026 overall best graduating student, celebrated for a perfect 5.00/5.00 CGPA in Mathematics.", lesson:"Excellence can be built one course, one decision and one disciplined day at a time.", image:"https://unavatar.io/twitter/francis_themath", source:"https://www.linkedin.com/posts/risingafricaorg_academicexcellence-uniloringrad-mathematics-activity-7503055789784326144-f8Fl", position:"center 22%", badge:"5.00 / 5.00" },
-  { name:"Chukwuzubelu Benedict Umeozo", field:"Academic excellence · Business Administration", achievement:"UNILAG's 2025 overall best graduating student, finishing Business Administration with a perfect 5.00 CGPA.", lesson:"Consistency across years can turn ordinary study days into an extraordinary finish.", image:"https://cdn.legit.ng/images/1200x675/efab9dfd918a0c97.jpeg?v=1", source:"https://unilag.edu.ng/unilag-56th-convocation-ceremonies-4-626-bag-first-degrees-at-day-2/", position:"center 30%" },
-  { name:"Rev. Sr. Mary Natalia Ene Agbochini", field:"Academic excellence · Computer Science", achievement:"Overall best graduating student at Claretian University's maiden convocation, graduating with a flawless 5.00 CGPA.", lesson:"Purpose, discipline and a strong learning community can reinforce one another.", image:"https://sjgssn.com/home/assets/images/sister.jpg", source:"https://claretianuniversity.edu.ng/news/readnews/28/cun-maiden-convocation-rev-sr-mary-natalia-ene-agbochini-emerges-overall-best-graduating-student", position:"center 25%" },
+  { name:"Francis Olusegun", field:"Academic excellence · Mathematics", achievement:"University of Ilorin 2025/2026 overall best graduating student, celebrated for a perfect 5.00/5.00 CGPA in Mathematics.", lesson:"Excellence can be built one course, one decision and one disciplined day at a time.", source:"https://www.linkedin.com/posts/risingafricaorg_academicexcellence-uniloringrad-mathematics-activity-7503055789784326144-f8Fl", position:"center 22%", badge:"5.00 / 5.00" },
+  { name:"Chukwuzubelu Benedict Umeozo", field:"Academic excellence · Business Administration", achievement:"UNILAG's 2025 overall best graduating student, finishing Business Administration with a perfect 5.00 CGPA.", lesson:"Consistency across years can turn ordinary study days into an extraordinary finish.", source:"https://unilag.edu.ng/unilag-56th-convocation-ceremonies-4-626-bag-first-degrees-at-day-2/", position:"center 30%" },
+  { name:"Rev. Sr. Mary Natalia Ene Agbochini", field:"Academic excellence · Computer Science", achievement:"Overall best graduating student at Claretian University's maiden convocation, graduating with a flawless 5.00 CGPA.", lesson:"Purpose, discipline and a strong learning community can reinforce one another.", source:"https://claretianuniversity.edu.ng/news/readnews/28/cun-maiden-convocation-rev-sr-mary-natalia-ene-agbochini-emerges-overall-best-graduating-student", position:"center 25%" },
   { name:"Hilda Baci", field:"Culinary achievement", achievement:"Her 93 hour 11 minute cooking marathon was recognized by Guinness World Records in 2023.", lesson:"Ambition becomes visible when preparation, consistency and endurance meet.", wikiTitle:"Hilda_Baci", position:"center 15%" },
   { name:"Tobi Amusan", field:"Athletics", achievement:"Set the women's 100m hurdles world record of 12.12 seconds at the 2022 World Championships.", lesson:"Breakthroughs are often built quietly, long before the world sees the result.", wikiTitle:"Tobi_Amusan", position:"center 22%" },
   { name:"Wole Soyinka", field:"Literature", achievement:"Awarded the Nobel Prize in Literature in 1986, becoming the first sub-Saharan African laureate in the category.", lesson:"Original thought and deep craft can carry a voice far beyond its origin.", wikiTitle:"Wole_Soyinka" },
@@ -131,7 +131,7 @@ function preloadImage(url: string) {
 }
 
 export function ExtraordinaryPeople() {
-  const [active, setActive] = useState(()=>{if(typeof window==="undefined")return 0;const saved=Number(window.sessionStorage.getItem("possara-extraordinary-active"));return Number.isFinite(saved)&&saved>=0&&saved<PEOPLE.length?saved:0;});
+  const [active, setActive] = useState(()=>{if(typeof window==="undefined")return 3;const saved=Number(window.sessionStorage.getItem("possara-extraordinary-active"));return Number.isFinite(saved)&&saved>=3&&saved<PEOPLE.length?saved:3;});
   const [images, setImages] = useState<Record<string, string>>(() => readCachedImages());
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [catalogueReady, setCatalogueReady] = useState(() => Object.keys(readCachedImages()).length > 0);
@@ -232,10 +232,7 @@ export function ExtraordinaryPeople() {
     return Array.from({ length: Math.min(7, availableIndexes.length) }, (_, offset) => start + offset);
   }, [currentPosition, availableIndexes.length]);
 
-  if (!catalogueReady || !availableIndexes.length || !image) {
-    const fallback = PEOPLE[0];
-    return <section className="achievement-hero achievement-hero-visible-fallback" aria-label="Extraordinary achievement spotlight"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><p className="achievement-field">{fallback.field}</p><h1>{fallback.name}</h1><p className="achievement-main">{fallback.achievement}</p><p className="achievement-lesson">{fallback.lesson}</p></div><div className="achievement-controls"><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-white/60">Photo loading · story available</span></div></section>;
-  }
+  if (!catalogueReady || !availableIndexes.length || !image) return <section className="achievement-carousel-shell" aria-label="Loading extraordinary people"><div className="achievement-carousel-loading"><span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"/><span>Loading extraordinary people…</span></div></section>;
 
   return (
     <section className="achievement-hero" aria-label="Extraordinary achievement spotlight" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ touchAction: "pan-y" }}>
