@@ -217,3 +217,47 @@ export function useSetUserRole() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "profiles-with-roles"] }),
   });
 }
+
+
+export function useAccountDeletionRequests() {
+  return useQuery({
+    queryKey: ["admin", "account-deletion-requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("account_deletion_requests")
+        .select("id,user_id,status,requested_at,canceled_at,processed_at,admin_note")
+        .in("status", ["requested", "processing"])
+        .order("requested_at", { ascending: true });
+      if (error) throw error;
+      const userIds = [...new Set((data ?? []).map((row) => row.user_id).filter(Boolean))] as string[];
+      const { data: profiles, error: profileError } = userIds.length
+        ? await supabase.from("profiles").select("id,full_name,username").in("id", userIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
+      const byId = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      return (data ?? []).map((row) => ({ ...row, profile: row.user_id ? byId.get(row.user_id) ?? null : null }));
+    },
+  });
+}
+
+export function useUpdateAccountDeletionRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status, adminNote }: { id: string; status: "processing" | "rejected"; adminNote?: string }) => {
+      const patch = {
+        status,
+        admin_note: adminNote?.trim() || null,
+        processed_at: status === "rejected" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from("account_deletion_requests")
+        .update(patch)
+        .eq("id", id)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw noRows("Deletion-request update");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "account-deletion-requests"] }),
+  });
+}
