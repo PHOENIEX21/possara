@@ -51,14 +51,16 @@ interface UseFeedPostsOptions {
   topics?: string[];
   authorId?: string;
   organizationId?: string;
+  enabled?: boolean;
   limit?: number;
 }
 
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
-  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit = 30 } = options;
+  const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, enabled = true, limit = 30 } = options;
   const { userId } = useAuth();
   return useQuery({
     queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId],
+    enabled,
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
