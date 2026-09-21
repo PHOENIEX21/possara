@@ -230,45 +230,65 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, musicFile, feeling, type = "general", categoryId, topic, organizationId }: { content: string; imageFile: File | null; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; organizationId?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, mediaFiles, musicFile, feeling, type = "general", categoryId, topic, organizationId }: { content: string; imageFile?: File | null; mediaFiles?: File[]; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; organizationId?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
-      let mediaUrls: string[] | null = null;
-      if (imageFile) {
-        if (!imageFile.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use a JPG, PNG, or WebP image.");
-        if (imageFile.size > 8 * 1024 * 1024) throw new Error("Image must be 8 MB or smaller.");
-        const safe = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        const path = `${userId}/${Date.now()}-${safe}`;
-        const { error: uploadError } = await supabase.storage.from("opportunity-media").upload(path, imageFile);
-        if (uploadError) throw uploadError;
-        const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
-        mediaUrls = [publicUrlData.publicUrl];
+
+      const files = mediaFiles?.length ? mediaFiles : imageFile ? [imageFile] : [];
+      if (files.length > 10) throw new Error("A post can include up to 10 images.");
+      for (const file of files) {
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use JPG, PNG, or WebP images.");
+        if (file.size > 8 * 1024 * 1024) throw new Error(`${file.name} is larger than 8 MB.`);
       }
-      let musicPath: string | null = null; let musicTitle: string | null = null; let musicMimeType: string | null = null;
-      if (musicFile) {
-        if (!musicFile.type.match(/^audio\/(mpeg|mp4|webm|ogg|wav|x-wav)$/)) throw new Error("Use MP3, M4A/MP4, WebM, OGG or WAV audio.");
-        if (musicFile.size > 6 * 1024 * 1024) throw new Error("Music must be 6 MB or smaller.");
-        const safeMusic = musicFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        musicPath = `${userId}/${Date.now()}-${safeMusic}`;
-        const { error: musicError } = await supabase.storage.from("post-music").upload(musicPath, musicFile);
-        if (musicError) throw musicError;
-        musicTitle = musicFile.name.replace(/\.[^.]+$/, ""); musicMimeType = musicFile.type;
+
+      const uploadedMediaPaths: string[] = [];
+      let musicPath: string | null = null;
+      let musicTitle: string | null = null;
+      let musicMimeType: string | null = null;
+
+      try {
+        const mediaUrls: string[] = [];
+        for (const [index, file] of files.entries()) {
+          const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const path = `${userId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+          const { error: uploadError } = await supabase.storage.from("opportunity-media").upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+          if (uploadError) throw new Error(`Could not upload ${file.name}: ${uploadError.message}`);
+          uploadedMediaPaths.push(path);
+          const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
+          mediaUrls.push(publicUrlData.publicUrl);
+        }
+
+        if (musicFile) {
+          if (!musicFile.type.match(/^audio\/(mpeg|mp4|webm|ogg|wav|x-wav)$/)) throw new Error("Use MP3, M4A/MP4, WebM, OGG or WAV audio.");
+          if (musicFile.size > 6 * 1024 * 1024) throw new Error("Music must be 6 MB or smaller.");
+          const safeMusic = musicFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+          musicPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeMusic}`;
+          const { error: musicError } = await supabase.storage.from("post-music").upload(musicPath, musicFile);
+          if (musicError) throw new Error(`Music upload failed: ${musicError.message}`);
+          musicTitle = musicFile.name.replace(/\.[^.]+$/, "");
+          musicMimeType = musicFile.type;
+        }
+
+        const { error } = await supabase.from("posts").insert({
+          author_id: userId,
+          organization_id: organizationId ?? null,
+          content,
+          media_urls: mediaUrls.length ? mediaUrls : null,
+          type,
+          category_id: categoryId ?? null,
+          topic: topic ?? null,
+          feeling: feeling ?? null,
+          music_path: musicPath,
+          music_title: musicTitle,
+          music_mime_type: musicMimeType,
+          status: "published",
+          visibility: "public",
+        });
+        if (error) throw error;
+      } catch (error) {
+        if (uploadedMediaPaths.length) await supabase.storage.from("opportunity-media").remove(uploadedMediaPaths);
+        if (musicPath) await supabase.storage.from("post-music").remove([musicPath]);
+        throw error;
       }
-      const { error } = await supabase.from("posts").insert({
-        author_id: userId,
-        organization_id: organizationId ?? null,
-        content,
-        media_urls: mediaUrls,
-        type,
-        category_id: categoryId ?? null,
-        topic: topic ?? null,
-        feeling: feeling ?? null,
-        music_path: musicPath,
-        music_title: musicTitle,
-        music_mime_type: musicMimeType,
-        status: "published",
-        visibility: "public",
-      });
-      if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); },
   });

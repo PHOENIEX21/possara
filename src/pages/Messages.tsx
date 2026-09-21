@@ -143,8 +143,8 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const [actionsFor,setActionsFor]=useState<string|null>(null);
   const [searchOpen,setSearchOpen]=useState(false);
   const [messageSearch,setMessageSearch]=useState("");
-  const [photoFile,setPhotoFile]=useState<File|null>(null);
-  const [photoPreview,setPhotoPreview]=useState<string|null>(null);
+  const [photoFiles,setPhotoFiles]=useState<File[]>([]);
+  const [photoPreviews,setPhotoPreviews]=useState<string[]>([]);
   const [viewPhoto,setViewPhoto]=useState<{src:string;name:string}|null>(null);
   const [recording,setRecording]=useState(false);
   const [recordingSeconds,setRecordingSeconds]=useState(0);
@@ -156,6 +156,8 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const recorderStreamRef=useRef<MediaStream|null>(null);
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStartedAtRef=useRef(0);
+  const photoPreviewsRef=useRef<string[]>([]);
+  const voiceDraftRef=useRef<VoiceDraft|null>(null);
 
   const messageById=useMemo(()=>new Map((messages??[]).map(message=>[message.id,message])),[messages]);
   const shownMessages=useMemo(()=>{
@@ -167,22 +169,25 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const unreadIncoming=(messages??[]).some(message=>message.sender_id===otherUserId&&!message.read);
   useEffect(()=>{if(unreadIncoming)markRead.mutate();},[otherUserId,unreadIncoming,messages?.length]);
   useEffect(()=>{if(messageSearch)return;const el=messageListRef.current;if(!el)return;window.requestAnimationFrame(()=>el.scrollTo({top:el.scrollHeight,behavior:"smooth"}));},[messages?.length,messageSearch]);
-  useEffect(()=>()=>{if(photoPreview)URL.revokeObjectURL(photoPreview);if(voiceDraft)URL.revokeObjectURL(voiceDraft.url);recorderStreamRef.current?.getTracks().forEach(track=>track.stop());},[photoPreview,voiceDraft]);
+  useEffect(()=>{photoPreviewsRef.current=photoPreviews;},[photoPreviews]);
+  useEffect(()=>{voiceDraftRef.current=voiceDraft;},[voiceDraft]);
+  useEffect(()=>()=>{photoPreviewsRef.current.forEach((preview)=>URL.revokeObjectURL(preview));if(voiceDraftRef.current)URL.revokeObjectURL(voiceDraftRef.current.url);recorderStreamRef.current?.getTracks().forEach(track=>track.stop());},[]);
   useEffect(()=>{if(!recording)return;const timer=window.setInterval(()=>{const seconds=Math.min(90,Math.max(0,Math.round((Date.now()-recorderStartedAtRef.current)/1000)));setRecordingSeconds(seconds);if(seconds>=90&&recorderRef.current?.state==="recording")recorderRef.current.stop();},500);return()=>window.clearInterval(timer);},[recording]);
 
   const mentionCandidate=profile?.username&&/@[a-zA-Z0-9_]*$/.test(text)?profile.username:null;
   const profilePath=profile?.username?`/profile/${profile.username}`:`/profile/id/${otherUserId}`;
   const presenceText=presence?.visible?(presence.online?"Online":formatLastSeen(presence.lastSeenAt)):"Activity hidden";
 
-  function clearPhoto(){if(photoPreview)URL.revokeObjectURL(photoPreview);setPhotoPreview(null);setPhotoFile(null);}
-  function choosePhoto(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];event.target.value="";if(!file)return;clearPhoto();setPhotoFile(file);setPhotoPreview(URL.createObjectURL(file));setEditingMessage(null);setNotice(null);}
+  function clearPhoto(){photoPreviews.forEach((preview)=>URL.revokeObjectURL(preview));setPhotoPreviews([]);setPhotoFiles([]);}
+  function removePhoto(index:number){setPhotoPreviews((current)=>{const preview=current[index];if(preview)URL.revokeObjectURL(preview);return current.filter((_,itemIndex)=>itemIndex!==index);});setPhotoFiles((current)=>current.filter((_,itemIndex)=>itemIndex!==index));}
+  function choosePhoto(event:React.ChangeEvent<HTMLInputElement>){const picked=Array.from(event.target.files??[]);event.target.value="";if(!picked.length)return;const valid=picked.filter((file)=>["image/jpeg","image/png","image/webp"].includes(file.type)&&file.size<=8*1024*1024);const remaining=Math.max(0,10-photoFiles.length);const accepted=valid.slice(0,remaining);if(accepted.length){setPhotoFiles((current)=>[...current,...accepted]);setPhotoPreviews((current)=>[...current,...accepted.map((file)=>URL.createObjectURL(file))]);}if(valid.length!==picked.length)setNotice("Some photos were skipped. Use JPG, PNG or WebP files up to 8 MB each.");else if(valid.length>remaining)setNotice("You can send up to 10 photos at once.");else setNotice(null);setEditingMessage(null);}
   function clearVoice(){if(voiceDraft)URL.revokeObjectURL(voiceDraft.url);setVoiceDraft(null);}
 
   async function handleSend(e:React.FormEvent){
     e.preventDefault();
     const clean=text.trim();
     if(editingMessage){if(!clean)return;await editMessage.mutateAsync({messageId:editingMessage.id,content:clean});setEditingMessage(null);setText("");return;}
-    if(photoFile){await sendPhoto.mutateAsync({file:photoFile,caption:clean,replyToId:replyingTo?.id??null});clearPhoto();setText("");setReplyingTo(null);return;}
+    if(photoFiles.length){await sendPhoto.mutateAsync({files:photoFiles,caption:clean,replyToId:replyingTo?.id??null});clearPhoto();setText("");setReplyingTo(null);return;}
     if(!clean)return;
     await sendMessage.mutateAsync({content:clean,replyToId:replyingTo?.id??null});
     setText("");setReplyingTo(null);
@@ -282,16 +287,16 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
     <div className="shrink-0 border-t border-paper-dim bg-white pt-2">
       {(replyingTo||editingMessage)&&<div className="mb-2 flex items-start gap-2 rounded-xl border border-paper-dim bg-paper px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-brand-dark">{editingMessage?"Editing message":"Replying to message"}</p><p className="truncate text-xs text-ink-light">{editingMessage?.content??(replyingTo?.image_path?"Photo":replyingTo?.audio_path?"Voice note":replyingTo?.content)}</p></div><button onClick={()=>{setReplyingTo(null);setEditingMessage(null);if(editingMessage)setText("");}} className="rounded-full p-1 text-ink-faint"><X size={14}/></button></div>}
       {mentionCandidate&&<button type="button" onClick={insertMention} className="mb-2 flex w-full items-center gap-2 rounded-xl border border-brand/15 bg-brand-light px-3 py-2 text-left text-sm text-brand-dark"><AtSign size={14}/><span>Tag @{mentionCandidate}</span></button>}
-      {photoPreview&&<div className="mb-2 flex items-center gap-3 rounded-xl bg-paper p-2"><img src={photoPreview} alt="Selected" className="h-14 w-14 rounded-lg object-cover"/><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Photo ready to send</p><p className="truncate text-[11px] text-ink-faint">{photoFile?.name}</p></div><button type="button" onClick={clearPhoto} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div>}
+      {photoPreviews.length>0&&<div className="mb-2 rounded-xl bg-paper p-2"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold">{photoPreviews.length} {photoPreviews.length===1?"photo":"photos"} ready to send</p><p className="text-[11px] text-ink-faint">You can send up to 10 at once.</p></div><button type="button" onClick={clearPhoto} className="rounded-full p-2 text-ink-faint" aria-label="Remove all selected photos"><X size={16}/></button></div><div className="scrollbar-none flex gap-2 overflow-x-auto pb-1">{photoPreviews.map((preview,index)=><div key={preview} className="relative shrink-0"><img src={preview} alt="" className="h-16 w-16 rounded-lg object-cover"/><button type="button" onClick={()=>removePhoto(index)} className="absolute -right-1.5 -top-1.5 rounded-full bg-ink p-1 text-white" aria-label={`Remove photo ${index+1}`}><X size={11}/></button></div>)}</div></div>}
       {recording&&<div className="mb-2 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2"><div className="flex items-center gap-2 text-sm font-medium text-flag"><span className="h-2 w-2 animate-pulse rounded-full bg-flag"/>Recording · {recordingSeconds}s / 90s</div><button type="button" onClick={stopRecording} className="inline-flex items-center gap-1.5 rounded-full bg-flag px-3 py-1.5 text-xs font-semibold text-white"><Square size={12} fill="currentColor"/>Stop</button></div>}
       {voiceDraft&&!recording&&<div className="mb-2 rounded-xl bg-paper p-2"><div className="flex items-center gap-2"><audio src={voiceDraft.url} controls className="h-9 min-w-0 flex-1"/><button type="button" onClick={clearVoice} className="rounded-full p-2 text-ink-faint"><X size={16}/></button></div><div className="mt-2 flex justify-end"><button type="button" onClick={sendVoiceDraft} disabled={sendVoice.isPending} className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{sendVoice.isPending?"Sending…":`Send voice · ${voiceDraft.duration}s`}</button></div></div>}
       {otherTyping&&<p className="px-3 pb-1 text-xs font-medium text-ink-faint">Typing…</p>}
       <form onSubmit={handleSend} className="flex items-end gap-1.5 bg-white pb-1 pt-1">
-        <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="hidden"/>
-        {!editingMessage&&<button type="button" onClick={()=>photoInputRef.current?.click()} disabled={recording||sendPhoto.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-light hover:bg-paper-dim disabled:opacity-40" aria-label="Send a photo"><ImageIcon size={19}/></button>}
+        <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={choosePhoto} className="hidden"/>
+        {!editingMessage&&<button type="button" onClick={()=>photoInputRef.current?.click()} disabled={recording||sendPhoto.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-light hover:bg-paper-dim disabled:opacity-40" aria-label="Send photos"><ImageIcon size={19}/></button>}
         {!editingMessage&&<button type="button" onClick={recording?stopRecording:startRecording} disabled={sendVoice.isPending||!!voiceDraft} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full disabled:opacity-40 ${recording?"bg-red-50 text-flag":"text-ink-light hover:bg-paper-dim"}`} aria-label={recording?"Stop voice recording":"Record voice note"}><Mic size={19}/></button>}
-        <textarea rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);broadcast(!!e.target.value.trim());}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":photoFile?"Add a caption…":"Write a message…"} className="max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-3 py-2.5 text-sm outline-none focus:border-brand"/>
-        <button type="submit" disabled={recording||!!voiceDraft||(!text.trim()&&!photoFile)||sendMessage.isPending||sendPhoto.isPending||editMessage.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={editingMessage?"Save edit":"Send"}>{editingMessage?<Check size={16}/>:<Send size={16}/>}</button>
+        <textarea rows={1} maxLength={4000} value={text} onChange={e=>{setText(e.target.value);broadcast(!!e.target.value.trim());}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={editingMessage?"Edit your message…":photoFiles.length?"Add a caption…":"Write a message…"} className="max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-ink-faint/30 px-3 py-2.5 text-sm outline-none focus:border-brand"/>
+        <button type="submit" disabled={recording||!!voiceDraft||(!text.trim()&&!photoFiles.length)||sendMessage.isPending||sendPhoto.isPending||editMessage.isPending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40" aria-label={editingMessage?"Save edit":"Send"}>{editingMessage?<Check size={16}/>:<Send size={16}/>}</button>
       </form>
       {(notice||sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error)&&<p className={`pb-1 text-xs ${notice?"text-ink-faint":"text-flag"}`}>{notice??((sendMessage.error||sendPhoto.error||sendVoice.error||editMessage.error||deleteMessage.error) as Error).message}</p>}
     </div>

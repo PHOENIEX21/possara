@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
@@ -63,6 +63,24 @@ function collapsedContent(content: string, maxChars = 420) {
   const slice = content.slice(0, maxChars);
   const lastSpace = slice.lastIndexOf(" ");
   return `${slice.slice(0, lastSpace > 280 ? lastSpace : maxChars).trimEnd()}…`;
+}
+
+function PostMediaGrid({ urls, onOpen }: { urls: string[]; onOpen: (index: number) => void }) {
+  if (!urls.length) return null;
+  if (urls.length === 1) {
+    return <button type="button" onClick={() => onOpen(0)} className="mt-3 block w-full overflow-hidden rounded-xl bg-paper" aria-label="View post image"><img src={urls[0]} alt="" className="max-h-[480px] w-full object-cover" /></button>;
+  }
+
+  const visible = urls.slice(0, 4);
+  return <div className="mt-3 grid grid-cols-2 gap-1 overflow-hidden rounded-xl bg-paper">
+    {visible.map((url,index)=>{
+      const hiddenCount=index===3?Math.max(0,urls.length-4):0;
+      return <button key={url+`-${index}`} type="button" onClick={()=>onOpen(index)} className="relative aspect-square overflow-hidden bg-paper-dim" aria-label={`View post image ${index+1} of ${urls.length}`}>
+        <img src={url} alt="" className="h-full w-full object-cover"/>
+        {hiddenCount>0&&<span className="absolute inset-0 flex items-center justify-center bg-black/55 text-2xl font-bold text-white">+{hiddenCount}</span>}
+      </button>;
+    })}
+  </div>;
 }
 
 function profilePath(userId: string | null, username: string | null | undefined, currentUserId: string | null) {
@@ -319,7 +337,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
   const [shareOpen, setShareOpen] = useState(false);
-  const [mediaOpen,setMediaOpen]=useState<string|null>(null);
+  const [mediaViewer,setMediaViewer]=useState<{urls:string[];index:number}|null>(null);
 
   const organization = post.organizations;
   const name = organization?.name ?? post.profiles?.full_name ?? "A member of the community";
@@ -448,12 +466,12 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             </div>
           </div>
           {original.content && <p className="px-3 py-3 text-sm leading-6 text-ink"><MentionText text={collapsedContent(original.content, 300)}/></p>}
-          {original.media_urls?.[0] && <img src={original.media_urls[0]} alt="" className="max-h-[420px] w-full object-cover"/>}
+          {original.media_urls?.length ? <PostMediaGrid urls={original.media_urls} onOpen={(index)=>setMediaViewer({urls:original.media_urls!,index})}/> : null}
           <Link to={`/post/${original.id}`} className="block border-t border-paper-dim px-3 py-2 text-xs font-semibold text-brand-dark hover:bg-white">Open original post →</Link>
         </div>;
       })()}
 
-      {!post.shared_from_post && post.media_urls?.[0] && <button type="button" onClick={()=>setMediaOpen(post.media_urls![0])} className="mt-3 block w-full overflow-hidden rounded-xl bg-paper" aria-label="View post image"><img src={post.media_urls[0]} alt="" className="max-h-[480px] w-full object-cover" /></button>}{musicUrl&&<div className="mt-3 rounded-xl bg-paper p-3"><p className="mb-2 truncate text-xs font-semibold text-ink-light">🎵 {postExtras.music_title||"Music"}</p><audio controls preload="metadata" src={musicUrl} className="w-full"/></div>}
+      {!post.shared_from_post && post.media_urls?.length ? <PostMediaGrid urls={post.media_urls} onOpen={(index)=>setMediaViewer({urls:post.media_urls!,index})}/> : null}{musicUrl&&<div className="mt-3 rounded-xl bg-paper p-3"><p className="mb-2 truncate text-xs font-semibold text-ink-light">🎵 {postExtras.music_title||"Music"}</p><audio controls preload="metadata" src={musicUrl} className="w-full"/></div>}
 
       {confirmingDelete && (
         <div className="mt-3 rounded-xl border border-flag/20 bg-red-50 p-3 text-sm">
@@ -481,7 +499,13 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       </div>
 
       {commentsOpen && <CommentThread postId={post.id} />}
-      {mediaOpen&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaOpen(null)}><button type="button" onClick={()=>setMediaOpen(null)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white" aria-label="Close image"><X size={22}/></button><img src={mediaOpen} alt="" className="max-h-full max-w-full object-contain" onClick={e=>e.stopPropagation()}/></div>}
+      {mediaViewer&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaViewer(null)}>
+        <button type="button" onClick={()=>setMediaViewer(null)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white" aria-label="Close image"><X size={22}/></button>
+        {mediaViewer.urls.length>1&&<div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-xs font-semibold text-white">{mediaViewer.index+1} / {mediaViewer.urls.length}</div>}
+        {mediaViewer.index>0&&<button type="button" onClick={(event)=>{event.stopPropagation();setMediaViewer((current)=>current?{...current,index:current.index-1}:current);}} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white" aria-label="Previous image"><ChevronLeft size={26}/></button>}
+        {mediaViewer.index<mediaViewer.urls.length-1&&<button type="button" onClick={(event)=>{event.stopPropagation();setMediaViewer((current)=>current?{...current,index:current.index+1}:current);}} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white" aria-label="Next image"><ChevronRight size={26}/></button>}
+        <img src={mediaViewer.urls[mediaViewer.index]} alt="" className="max-h-full max-w-full object-contain" onClick={e=>e.stopPropagation()}/>
+      </div>}
       {photoOpen && !organization && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
       <InAppShareDialog
         open={shareOpen}

@@ -36,6 +36,7 @@ export interface AuthorWithStories {
 
 export type PostStoryInput = {
   imageFile?: File | null;
+  imageFiles?: File[];
   textBody?: string;
   caption?: string;
   musicFile?: File | null;
@@ -137,7 +138,10 @@ export function useActiveStories() {
         if (!byAuthor.has(story.author_id)) byAuthor.set(story.author_id, { authorId: story.author_id, author: story.profiles, stories: [] });
         byAuthor.get(story.author_id)!.stories.push(story);
       });
-      return [...byAuthor.values()];
+      const groups = [...byAuthor.values()];
+      groups.forEach((group) => group.stories.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+      groups.sort((a,b) => new Date(b.stories[b.stories.length-1]?.created_at ?? 0).getTime() - new Date(a.stories[a.stories.length-1]?.created_at ?? 0).getTime());
+      return groups;
     },
   });
 }
@@ -163,7 +167,8 @@ export function useMyStories() {
         .maybeSingle();
       if (profileError) throw profileError;
       const hydrated = ((data ?? []) as Omit<StoryWithAuthor, "profiles">[]).map((story) => ({ ...story, profiles: profile ?? null })) as StoryWithAuthor[];
-      return attachSignedUrls(hydrated);
+      const rows = await attachSignedUrls(hydrated);
+      return rows.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     },
   });
 }
@@ -176,16 +181,18 @@ export function usePostStory() {
     mutationFn: async (input: PostStoryInput) => {
       if (!userId) throw new Error("Sign in to post a Moment.");
 
-      const imageFile = input.imageFile ?? null;
+      const imageFiles = input.imageFiles?.length ? input.imageFiles : input.imageFile ? [input.imageFile] : [];
       const useLibraryTrack = !!input.musicTrackKey;
       const musicFile = useLibraryTrack ? null : input.musicFile ?? null;
       const textBody = (input.textBody ?? input.caption ?? "").trim();
-      if (!imageFile && !textBody) throw new Error("Add a photo or write something for your Moment.");
+
+      if (imageFiles.length > 10) throw new Error("You can publish up to 10 photos in one Moment batch.");
+      if (!imageFiles.length && !textBody) throw new Error("Add photos or write something for your Moment.");
       if (textBody.length > 700) throw new Error("Moment text can be up to 700 characters.");
 
-      if (imageFile) {
-        if (!imageFile.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use a JPG, PNG, or WebP image.");
-        if (imageFile.size > 8 * 1024 * 1024) throw new Error("Moment image must be 8 MB or smaller.");
+      for (const file of imageFiles) {
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Use JPG, PNG, or WebP images.");
+        if (file.size > 8 * 1024 * 1024) throw new Error(`${file.name} is larger than 8 MB.`);
       }
 
       const musicMime = musicFile ? resolveMusicMime(musicFile) : "";
@@ -202,17 +209,18 @@ export function usePostStory() {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) throw new Error("Your session expired. Sign in again before posting a Moment.");
 
-      let imagePath: string | null = null;
+      const uploadedImagePaths: string[] = [];
+      const createdStoryIds: string[] = [];
       let musicPath: string | null = null;
 
       try {
-        if (imageFile) {
-          const ext = imageFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-          const requestedPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-          const { data: uploadedImage, error } = await supabase.storage.from("moments").upload(requestedPath, imageFile, { contentType: imageFile.type, cacheControl: "3600", upsert: false });
-          if (error) throw new Error(`Moment image upload failed: ${error.message}`);
+        for (const [index,file] of imageFiles.entries()) {
+          const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          const requestedPath = `${userId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { data: uploadedImage, error } = await supabase.storage.from("moments").upload(requestedPath, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+          if (error) throw new Error(`Moment image upload failed for ${file.name}: ${error.message}`);
           if (!uploadedImage?.path) throw new Error("Moment image upload did not return a cloud storage path.");
-          imagePath = uploadedImage.path;
+          uploadedImagePaths.push(uploadedImage.path);
         }
 
         if (musicFile) {
@@ -224,34 +232,42 @@ export function usePostStory() {
           musicPath = uploadedMusic.path;
         }
 
+        const baseCreatedAt = Date.now();
+        const sequencePaths: Array<string | null> = uploadedImagePaths.length ? [...uploadedImagePaths] : [null];
+        const storyRows = sequencePaths.map((imagePath,index) => ({
+          author_id: userId,
+          storage_path: imagePath,
+          media_url: null,
+          caption: null,
+          story_type: imagePath ? "image" : "text",
+          text_body: textBody || null,
+          background_style: input.backgroundStyle ?? "midnight",
+          music_path: musicPath,
+          music_mime_type: musicFile ? musicMime : null,
+          music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
+          music_track_key: input.musicTrackKey ?? null,
+          music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
+          music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
+          audience: input.audience ?? "public",
+          created_at: new Date(baseCreatedAt + index).toISOString(),
+        }));
+
         const { data, error } = await supabase
           .from("stories")
-          .insert({
-            author_id: userId,
-            storage_path: imagePath,
-            media_url: null,
-            caption: null,
-            story_type: imageFile ? "image" : "text",
-            text_body: textBody || null,
-            background_style: input.backgroundStyle ?? "midnight",
-            music_path: musicPath,
-            music_mime_type: musicFile ? musicMime : null,
-            music_title: (input.musicTitle || musicFile?.name || "").trim().slice(0, 120) || null,
-            music_track_key: input.musicTrackKey ?? null,
-            music_creator: input.musicTrackCreator?.trim().slice(0, 120) || null,
-            music_clip_start_seconds: Math.max(0, input.musicClipStartSeconds ?? 0),
-            audience: input.audience ?? "public",
-          })
-          .select("id, music_path, storage_path, music_track_key")
-          .single();
+          .insert(storyRows)
+          .select("id,music_path,storage_path,music_track_key");
 
         if (error) throw new Error(`Moment could not be published: ${error.message}`);
-        if (musicFile && (!musicPath || data.music_path !== musicPath)) throw new Error("Moment music uploaded but was not attached to the published Moment.");
-        if (input.musicTrackKey && data.music_track_key !== input.musicTrackKey) throw new Error("The selected POSSARA Music track was not attached to the published Moment.");
-        if (imageFile && (!imagePath || data.storage_path !== imagePath)) throw new Error("Moment photo uploaded but was not attached to the published Moment.");
-        return data.id as string;
+        if (!data?.length) throw new Error("Moment publish returned no created items.");
+        createdStoryIds.push(...data.map((row) => row.id as string));
+        if (imageFiles.length && data.length !== imageFiles.length) throw new Error("Not every selected photo became a Moment.");
+        if (musicFile && data.some((row) => row.music_path !== musicPath)) throw new Error("Moment music uploaded but was not attached to every Moment.");
+        if (input.musicTrackKey && data.some((row) => row.music_track_key !== input.musicTrackKey)) throw new Error("The selected POSSARA Music track was not attached to every Moment.");
+
+        return createdStoryIds;
       } catch (error) {
-        if (imagePath) await supabase.storage.from("moments").remove([imagePath]);
+        if (createdStoryIds.length) await supabase.from("stories").delete().in("id", createdStoryIds).eq("author_id", userId);
+        if (uploadedImagePaths.length) await supabase.storage.from("moments").remove(uploadedImagePaths);
         if (musicPath) await supabase.storage.from("moment-music").remove([musicPath]);
         throw error;
       }
@@ -277,7 +293,14 @@ export function useDeleteStory() {
       if (deleteRowError) throw new Error(`Moment could not be deleted: ${deleteRowError.message}`);
       const cleanup: Promise<unknown>[] = [];
       if (story.storage_path) cleanup.push(supabase.storage.from("moments").remove([story.storage_path]));
-      if (story.music_path) cleanup.push(supabase.storage.from("moment-music").remove([story.music_path]));
+      if (story.music_path) {
+        const { count } = await supabase
+          .from("stories")
+          .select("id", { count: "exact", head: true })
+          .eq("author_id", userId)
+          .eq("music_path", story.music_path);
+        if (!count) cleanup.push(supabase.storage.from("moment-music").remove([story.music_path]));
+      }
       if (cleanup.length) await Promise.allSettled(cleanup);
     },
     onSuccess: async () => {

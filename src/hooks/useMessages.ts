@@ -207,28 +207,41 @@ export function useSendPhotoMessage(otherUserId: string) {
   const { userId } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ file, caption = "", replyToId = null }: { file: File; caption?: string; replyToId?: string | null }) => {
+    mutationFn: async ({ file, files, caption = "", replyToId = null }: { file?: File; files?: File[]; caption?: string; replyToId?: string | null }) => {
       if (!userId) throw new Error("Sign in to send photos.");
-      if (!IMAGE_TYPES.has(file.type)) throw new Error("Use a JPG, PNG or WebP photo.");
-      if (file.size > 8 * 1024 * 1024) throw new Error("Message photos must be 8 MB or smaller.");
+      const selected = files?.length ? files : file ? [file] : [];
+      if (!selected.length) throw new Error("Choose at least one photo.");
+      if (selected.length > 10) throw new Error("You can send up to 10 photos at once.");
+      for (const item of selected) {
+        if (!IMAGE_TYPES.has(item.type)) throw new Error("Use JPG, PNG or WebP photos.");
+        if (item.size > 8 * 1024 * 1024) throw new Error(`${item.name} is larger than 8 MB.`);
+      }
       const cleanCaption = caption.trim();
       if (cleanCaption.length > 4000) throw new Error("Captions can be up to 4000 characters.");
-      const name = safeFileName(file.name);
-      const path = `${userId}/${otherUserId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`;
-      const { error: uploadError } = await supabase.storage.from("message-media").upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: false });
-      if (uploadError) throw new Error(`Photo upload failed: ${uploadError.message}`);
-      const { error: messageError } = await supabase.from("messages").insert({
-        sender_id: userId,
-        recipient_id: otherUserId,
-        content: cleanCaption,
-        reply_to_id: replyToId,
-        image_path: path,
-        image_mime_type: file.type,
-        image_name: name,
-      });
-      if (messageError) {
-        await supabase.storage.from("message-media").remove([path]);
-        throw messageError;
+
+      const uploaded: { path: string; name: string; type: string }[] = [];
+      try {
+        for (const [index,item] of selected.entries()) {
+          const name = safeFileName(item.name);
+          const path = `${userId}/${otherUserId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}-${name}`;
+          const { error: uploadError } = await supabase.storage.from("message-media").upload(path, item, { contentType: item.type, cacheControl: "3600", upsert: false });
+          if (uploadError) throw new Error(`Photo upload failed for ${item.name}: ${uploadError.message}`);
+          uploaded.push({ path, name, type: item.type });
+        }
+
+        const { error: messageError } = await supabase.from("messages").insert(uploaded.map((item,index) => ({
+          sender_id: userId,
+          recipient_id: otherUserId,
+          content: index === uploaded.length - 1 ? cleanCaption : "",
+          reply_to_id: index === 0 ? replyToId : null,
+          image_path: item.path,
+          image_mime_type: item.type,
+          image_name: item.name,
+        })));
+        if (messageError) throw messageError;
+      } catch (error) {
+        if (uploaded.length) await supabase.storage.from("message-media").remove(uploaded.map((item) => item.path));
+        throw error;
       }
     },
     onSuccess: () => invalidateMessaging(queryClient, userId, otherUserId),
