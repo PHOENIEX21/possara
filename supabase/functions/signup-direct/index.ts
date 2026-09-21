@@ -27,6 +27,65 @@ async function sha256(value: string) {
     .join("");
 }
 
+function requestIp(req: Request) {
+  const forwarded = req.headers.get("cf-connecting-ip")
+    ?? req.headers.get("x-real-ip")
+    ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+  return forwarded.slice(0, 128);
+}
+
+async function consumeRateLimit(
+  admin: ReturnType<typeof createClient>,
+  serviceRoleKey: string,
+  action: string,
+  rawKey: string,
+  limit: number,
+  windowSeconds: number,
+) {
+  const keyHash = await sha256(`${action}:${rawKey}:${serviceRoleKey}`);
+  const { data, error } = await admin.rpc("consume_auth_abuse_limit", {
+    p_action: action,
+    p_key_hash: keyHash,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) {
+    console.error("auth rate-limit check failed", action, error);
+    return { allowed: false, retryAfterSeconds: 60 };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    allowed: row?.allowed === true,
+    retryAfterSeconds: Number(row?.retry_after_seconds ?? 0),
+  };
+}
+
+async function verifyTurnstile(req: Request, token: string) {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY")?.trim();
+  if (!secret) return { ok: true, configured: false };
+  if (!token) return { ok: false, configured: true };
+
+  const form = new FormData();
+  form.set("secret", secret);
+  form.set("response", token);
+  const ip = requestIp(req);
+  if (ip !== "unknown") form.set("remoteip", ip);
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) return { ok: false, configured: true };
+    const result = await response.json();
+    return { ok: result?.success === true, configured: true };
+  } catch (error) {
+    console.error("Turnstile verification failed", error);
+    return { ok: false, configured: true };
+  }
+}
+
 function brevoConfig() {
   return {
     apiKey: Deno.env.get("BREVO_API_KEY") ?? Deno.env.get("SENDINBLUE_API_KEY"),
@@ -98,6 +157,7 @@ Deno.serve(async (req) => {
     const password = String(payload?.password ?? "");
     const fullName = String(payload?.fullName ?? "").trim();
     const username = String(payload?.username ?? "").trim().toLowerCase();
+    const captchaToken = String(payload?.captchaToken ?? "").trim();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       return json({ ok: false, error: "Enter a valid email address." });
@@ -121,6 +181,29 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
     });
+
+    const ipLimit = await consumeRateLimit(admin, serviceRoleKey, "signup_ip", requestIp(req), 8, 3600);
+    if (!ipLimit.allowed) {
+      return json({
+        ok: false,
+        error: "Too many account creation attempts from this network. Try again later.",
+        retryAfterSeconds: ipLimit.retryAfterSeconds,
+      }, 429);
+    }
+
+    const emailLimit = await consumeRateLimit(admin, serviceRoleKey, "signup_email", email, 5, 3600);
+    if (!emailLimit.allowed) {
+      return json({
+        ok: false,
+        error: "Too many account creation attempts for this email. Try again later.",
+        retryAfterSeconds: emailLimit.retryAfterSeconds,
+      }, 429);
+    }
+
+    const botCheck = await verifyTurnstile(req, captchaToken);
+    if (!botCheck.ok) {
+      return json({ ok: false, error: "Complete the security check and try again." }, 400);
+    }
 
     const { data: existingUsername, error: usernameError } = await admin
       .from("profiles")
