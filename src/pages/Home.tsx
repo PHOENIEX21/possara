@@ -9,7 +9,6 @@ import { AdvertisementCard } from "../components/AdvertisementCard";
 import { StoriesBar } from "../components/StoriesBar";
 import { useHiringJobs } from "../hooks/useHiring";
 import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
-import { OrganizationVerificationBadge } from "../components/OrganizationVerificationBadge";
 
 const HOME_TOPIC_KEYS = ["insight", "job", "scholarship", "competition", "talent"] as const;
 
