@@ -65,8 +65,8 @@ export function OrganizationPage(){
       <div className="p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           {org.logo_url
-            ? <img src={org.logo_url} alt="" className="-mt-12 h-24 w-24 rounded-3xl border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
-            : <div className="-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
+            ? <img src={org.logo_url} alt="" className="-mt-12 h-24 w-24 rounded-full border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
+            : <div className="-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{org.verified&&<OrganizationVerificationBadge compact/>}</div>
             <div className="mt-2"><TrustBadge verified={org.verified??false} lastVerifiedAt={null} sponsored={org.is_sponsored}/></div>
@@ -124,7 +124,7 @@ export function OrganizationPage(){
     </section>}
 
     {canManage&&<section>
-      <div className="mb-3"><p className="eyebrow">Publish as {org.name}</p><h2 className="text-xl">Organization update</h2><p className="mt-1 text-sm text-ink-light">Share insight, a hiring announcement, scholarship, competition or talent update. A Job-category post may simply announce “hiring soon”; a formal vacancy is created with Post a role.</p></div>
+      <div className="mb-3"><p className="eyebrow">Publish as {org.name}</p><h2 className="text-xl">Organization update</h2><p className="mt-1 text-sm text-ink-light">Share an organization insight, update, lesson or useful story here. Formal vacancies stay in the hiring tools at the top.</p></div>
       <PostComposer
         organizationId={org.id}
         organizationName={org.name}
