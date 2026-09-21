@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image as ImageIcon, Music2, SmilePlus, X } from "lucide-react";
+import { Building2, Image as ImageIcon, Music2, SmilePlus, X } from "lucide-react";
 import { useCreatePost } from "../hooks/useFeedPosts";
 import { useOpportunityCategories } from "./CategoryChips";
 import { useOwnProfile } from "../hooks/useProfile";
@@ -14,6 +14,9 @@ interface PostComposerProps {
   showCategoryPicker?: boolean;
   showHomeTopicPicker?: boolean;
   defaultTopic?: string;
+  organizationId?: string;
+  organizationName?: string;
+  organizationLogoUrl?: string | null;
 }
 
 const HOME_TOPICS = [
@@ -35,6 +38,9 @@ export function PostComposer({
   showCategoryPicker = false,
   showHomeTopicPicker = false,
   defaultTopic = "",
+  organizationId,
+  organizationName,
+  organizationLogoUrl,
 }: PostComposerProps) {
   const { userId } = useAuth();
   const { data: profile } = useOwnProfile();
@@ -117,11 +123,16 @@ export function PostComposer({
       type: categorySelected ? "opportunity" : selectedPostType,
       categoryId: categoryId || null,
       topic: categorySelected ? null : (showHomeTopicPicker || defaultTopic ? topic || null : null),
+      organizationId: organizationId ?? null,
     });
     reset();
   }
 
-  const avatar = profile?.avatar_url ? (
+  const postingAsOrganization = !!organizationId && !!organizationName;
+  const avatar = postingAsOrganization ? (
+    organizationLogoUrl ? <img src={organizationLogoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" /> :
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand-dark"><Building2 size={17}/></div>
+  ) : profile?.avatar_url ? (
     <button type="button" onClick={() => setPhotoOpen(true)} className="h-9 w-9 shrink-0 rounded-full" aria-label="View your profile photo">
       <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
     </button>
@@ -136,7 +147,7 @@ export function PostComposer({
       <div className="flex items-center gap-3 rounded-2xl border border-paper-dim bg-white px-4 py-3 shadow-sm">
         {avatar}
         <button onClick={() => setExpanded(true)} className="min-w-0 flex-1 truncate rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">
-          {placeholder ? placeholder : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
+          {placeholder ? placeholder : postingAsOrganization ? `Share an update as ${organizationName}` : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
         </button>
         <label aria-label="Add photo" className="shrink-0 cursor-pointer text-trust-dark hover:text-trust">
           <ImageIcon size={20} />
@@ -148,7 +159,8 @@ export function PostComposer({
   }
 
   return <>
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white px-5 py-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
+      {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><p className="truncate text-sm font-semibold text-ink">{organizationName}</p><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. A Job post can announce hiring or an upcoming role; a formal vacancy is created separately with Post a role.</p></div></div>}
       {showCategoryPicker && (
         <div className="mb-4">
           <label className="text-sm font-semibold text-ink">
