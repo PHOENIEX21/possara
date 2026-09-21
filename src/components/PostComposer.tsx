@@ -23,10 +23,6 @@ interface PostComposerProps {
 
 const HOME_TOPICS = [
   { value: "insight", label: "Insight", help: "Motivation, encouragement, useful stories, knowledge, education, practical advice and lessons. Not random status updates, gossip or unrelated celebrity posts." },
-  { value: "job", label: "Job", help: "A genuine vacancy or employment opportunity. Include the role, employer/source, location or work style, requirements and how to apply when known." },
-  { value: "scholarship", label: "Scholarship", help: "Real education funding, bursary or scholarship information. Include eligibility, study level, deadline, funding and application source when available." },
-  { value: "competition", label: "Competition", help: "A real contest, challenge, quiz or competition. Include who can enter, deadline, prize or purpose and entry details when known." },
-  { value: "talent", label: "Talent", help: "Auditions, casting, showcases and genuine opportunities for people to present or develop a talent." },
 ] as const;
 const FEELINGS = [
  {value:"happy",label:"😊 Happy"},{value:"grateful",label:"🙏 Grateful"},{value:"excited",label:"🤩 Excited"},
@@ -131,7 +127,7 @@ export function PostComposer({
         setClassificationError("Choose the section that accurately describes this post before publishing.");
         return;
       }
-      if (!(postingAsOrganization && topic === "job")) {
+      {
         const { data: verdict, error: classificationRequestError } = await supabase.rpc("classify_home_post", {
           p_content: content.trim(),
           p_topic: topic,
@@ -192,7 +188,7 @@ export function PostComposer({
 
   return <>
     <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
-      {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold text-ink">{effectiveOrganizationName}</p>{effectiveOrganizationVerified&&<OrganizationVerificationBadge compact/>}</div><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. A Job post can announce hiring or an upcoming role; a formal vacancy is created separately with Post a role.</p></div></div>}
+      {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold text-ink">{effectiveOrganizationName}</p>{effectiveOrganizationVerified&&<OrganizationVerificationBadge compact/>}</div><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. Formal vacancies belong in the organization hiring tools; regular organization posts use the same Insight community section as personal profiles.</p></div></div>}
       {showCategoryPicker && (
         <div className="mb-4">
           <label className="text-sm font-semibold text-ink">
