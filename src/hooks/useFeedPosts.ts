@@ -1,15 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
+import { useActiveOrganizationIdentity } from "./useActiveOrganizationIdentity";
 import type { Post, Profile, UserRole } from "../types/database";
 
 export type PostReactionType = "like" | "spark" | "insightful" | "useful";
 export type PostReactionPreview = {
   user_id: string;
+  organization_id: string | null;
   type: PostReactionType;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  organization_name: string | null;
+  organization_slug: string | null;
+  organization_logo_url: string | null;
+  organization_verified: boolean;
 };
 
 const POST_REACTION_TYPES: PostReactionType[] = ["like", "spark", "insightful", "useful"];
@@ -58,8 +64,10 @@ interface UseFeedPostsOptions {
 export function useFeedPosts(options: UseFeedPostsOptions = {}) {
   const { postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, enabled = true, limit = 30 } = options;
   const { userId } = useAuth();
+  const activeOrganization = useActiveOrganizationIdentity();
+  const actingOrganizationId = activeOrganization?.id ?? null;
   return useQuery({
-    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId],
+    queryKey: ["feed-posts", postType, categorySlug, categorySlugs, noCategoryOnly, topic, topics, authorId, organizationId, limit, userId, actingOrganizationId],
     enabled,
     queryFn: async (): Promise<PostWithAuthor[]> => {
       let categoryIds: string[] | undefined;
@@ -118,7 +126,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const sharedById = new Map((sharedRows ?? []).map((shared) => [shared.id, { ...shared, profiles: shared.author_id ? sharedProfileById.get(shared.author_id) ?? null : null }]));
       const { data: reactions } = await supabase
         .from("reactions")
-        .select("post_id,user_id,type,created_at")
+        .select("post_id,user_id,organization_id,type,created_at")
         .in("post_id", postIds)
         .in("type", POST_REACTION_TYPES)
         .order("created_at", { ascending: false });
@@ -137,7 +145,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       const reactionCountsByPost = new Map<string, Record<PostReactionType, number>>();
       const reactionTotalByPost = new Map<string, number>();
       const viewerReactionByPost = new Map<string, PostReactionType>();
-      const previewRefsByPost = new Map<string, { user_id: string; type: PostReactionType }[]>();
+      const previewRefsByPost = new Map<string, { user_id: string; organization_id: string | null; type: PostReactionType }[]>();
       (reactions ?? []).forEach((r) => {
         if (!r.post_id || !POST_REACTION_TYPES.includes(r.type as PostReactionType)) return;
         const type = r.type as PostReactionType;
@@ -145,35 +153,53 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
         current[type] += 1;
         reactionCountsByPost.set(r.post_id, current);
         reactionTotalByPost.set(r.post_id, (reactionTotalByPost.get(r.post_id) ?? 0) + 1);
-        if (userId && r.user_id === userId) viewerReactionByPost.set(r.post_id, type);
+
+        const isViewerActor = actingOrganizationId
+          ? r.organization_id === actingOrganizationId
+          : !r.organization_id && !!userId && r.user_id === userId;
+        if (isViewerActor) viewerReactionByPost.set(r.post_id, type);
 
         if (r.user_id) {
           const preview = previewRefsByPost.get(r.post_id) ?? [];
-          if (preview.length < 2 && !preview.some((item) => item.user_id === r.user_id)) {
-            preview.push({ user_id: r.user_id, type });
+          const actorKey = r.organization_id ? "org:"+r.organization_id : "user:"+r.user_id;
+          if (preview.length < 2 && !preview.some((item) => (item.organization_id ? "org:"+item.organization_id : "user:"+item.user_id) === actorKey)) {
+            preview.push({ user_id: r.user_id, organization_id: r.organization_id ?? null, type });
             previewRefsByPost.set(r.post_id, preview);
           }
         }
       });
 
-      const previewUserIds = [...new Set([...previewRefsByPost.values()].flat().map((item) => item.user_id))];
+      const previewRefs = [...previewRefsByPost.values()].flat();
+      const previewUserIds = [...new Set(previewRefs.filter((item) => !item.organization_id).map((item) => item.user_id))];
+      const previewOrganizationIds = [...new Set(previewRefs.map((item) => item.organization_id).filter((id): id is string => !!id))];
       let previewProfileById = new Map<string, { id: string; full_name: string | null; username: string | null; avatar_url: string | null }>();
+      let previewOrganizationById = new Map<string, {id:string;name:string;slug:string;logo_url:string|null;verified:boolean|null}>();
       if (previewUserIds.length) {
         const { data: previewProfiles } = await supabase.from("profiles").select("id,full_name,username,avatar_url").in("id", previewUserIds);
         previewProfileById = new Map((previewProfiles ?? []).map((profile) => [profile.id, profile]));
+      }
+      if (previewOrganizationIds.length) {
+        const { data: previewOrganizations } = await supabase.from("organizations").select("id,name,slug,logo_url,verified").in("id", previewOrganizationIds);
+        previewOrganizationById = new Map((previewOrganizations ?? []).map((organization) => [organization.id, organization]));
       }
 
       return posts.map((p) => {
         const counts = reactionCountsByPost.get(p.id) ?? emptyReactionCounts();
         const viewerReaction = viewerReactionByPost.get(p.id) ?? null;
         const reactionPreview: PostReactionPreview[] = (previewRefsByPost.get(p.id) ?? []).map((item) => {
-          const profile = previewProfileById.get(item.user_id);
+          const profile = item.organization_id ? null : previewProfileById.get(item.user_id);
+          const reactionOrganization = item.organization_id ? previewOrganizationById.get(item.organization_id) : null;
           return {
             user_id: item.user_id,
+            organization_id: item.organization_id,
             type: item.type,
             full_name: profile?.full_name ?? null,
             username: profile?.username ?? null,
             avatar_url: profile?.avatar_url ?? null,
+            organization_name: reactionOrganization?.name ?? null,
+            organization_slug: reactionOrganization?.slug ?? null,
+            organization_logo_url: reactionOrganization?.logo_url ?? null,
+            organization_verified: reactionOrganization?.verified === true,
           };
         });
         const sharedFromPost = p.shared_from_post_id ? sharedById.get(p.shared_from_post_id) ?? null : null;
@@ -249,19 +275,18 @@ export function useCreatePost() {
 export function useTogglePostReaction() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ postId, reaction, currentReaction }: { postId: string; reaction: PostReactionType; currentReaction: PostReactionType | null }) => {
+    mutationFn: async ({ postId, reaction, currentReaction, organizationId }: { postId: string; reaction: PostReactionType; currentReaction: PostReactionType | null; organizationId?: string | null }) => {
       if (!userId) throw new Error("Sign in to react to posts.");
 
-      const { error: deleteError } = await supabase
-        .from("reactions")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", userId)
-        .in("type", POST_REACTION_TYPES);
+      let deleteQuery = supabase.from("reactions").delete().eq("post_id", postId);
+      deleteQuery = organizationId
+        ? deleteQuery.eq("organization_id", organizationId)
+        : deleteQuery.eq("user_id", userId).is("organization_id", null);
+      const { error: deleteError } = await deleteQuery;
       if (deleteError) throw deleteError;
 
       if (currentReaction !== reaction) {
-        const { error: insertError } = await supabase.from("reactions").insert({ post_id: postId, user_id: userId, type: reaction });
+        const { error: insertError } = await supabase.from("reactions").insert({ post_id: postId, user_id: userId, organization_id: organizationId ?? null, type: reaction });
         if (insertError) throw insertError;
       }
     },
