@@ -156,3 +156,16 @@ img,video,canvas,svg{max-width:100%}
 }
 
 @media(max-width:639px){.mobile-message-main{padding:0!important;overflow:hidden}.mobile-message-main>div{height:calc(100dvh - 60px)}}
+
+/* Home is intentionally feed-first: one spotlight, Moments, composer, compact discovery, then posts. */
+.home-quick-links{display:flex;gap:.5rem;margin:.25rem 0 1rem;overflow-x:auto;scrollbar-width:none}
+.home-quick-links::-webkit-scrollbar{display:none}
+.home-quick-links a{display:inline-flex;flex:0 0 auto;align-items:center;gap:.45rem;border:1px solid rgba(0,0,0,.06);border-radius:999px;background:#fff;padding:.55rem .85rem;font-size:.75rem;font-weight:700;box-shadow:0 1px 2px rgba(22,15,48,.04)}
+.achievement-hero-compact{min-height:180px}
+@media(max-width:639px){
+ .achievement-hero{min-height:360px}
+ .achievement-hero-compact{min-height:170px}
+ .achievement-hero-content{padding-bottom:4rem}
+ .achievement-hero-content h1{font-size:clamp(1.65rem,8vw,2.2rem)}
+ .home-quick-links{margin-top:.15rem}
+}
