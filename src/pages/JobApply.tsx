@@ -10,7 +10,11 @@ export function JobApply(){
  const {id}=useParams();const {userId}=useAuth();const nav=useNavigate();const {data:j}=useHiringJob(id);const {data:questions}=useScreeningQuestions(id);const apply=useApplyToJob(id||"");
  const [documents,setDocuments]=useState<Record<string,File|null>>({});const [photo,setPhoto]=useState<File|null>(null);const [cover,setCover]=useState("");const [answers,setAnswers]=useState<Record<string,string>>({});const [uploading,setUploading]=useState(false);const [localError,setLocalError]=useState("");
  if(!userId)return <Navigate to="/signin" replace/>;
- const allowed=j?.application_document_accept?.length?j.application_document_accept:FALLBACK_TYPES;\n const documentLabels=(j?.application_document_labels?.length?j.application_document_labels:[j?.application_document_label||"CV / résumé"]) as string[];\n const draftKey=`possara-job-application-draft:${userId}:${id}`;\n useEffect(()=>{try{const raw=localStorage.getItem(draftKey);if(!raw)return;const d=JSON.parse(raw);setCover(d.cover||"");setAnswers(d.answers||{});}catch{}},[draftKey]);\n useEffect(()=>{const timer=window.setTimeout(()=>localStorage.setItem(draftKey,JSON.stringify({cover,answers})),250);return()=>window.clearTimeout(timer)},[draftKey,cover,answers]);
+ const allowed=j?.application_document_accept?.length?j.application_document_accept:FALLBACK_TYPES;
+ const documentLabels=(j?.application_document_labels?.length?j.application_document_labels:[j?.application_document_label||"CV / résumé"]) as string[];
+ const draftKey=`possara-job-application-draft:${userId}:${id}`;
+ useEffect(()=>{try{const raw=localStorage.getItem(draftKey);if(!raw)return;const d=JSON.parse(raw);setCover(d.cover||"");setAnswers(d.answers||{});}catch{}},[draftKey]);
+ useEffect(()=>{const timer=window.setTimeout(()=>localStorage.setItem(draftKey,JSON.stringify({cover,answers})),250);return()=>window.clearTimeout(timer)},[draftKey,cover,answers]);
  const accept=allowed.join(",");
  async function upload(file:File,kind:"document"|"passport"){const path=userId+"/"+id+"/"+kind+"-"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");const {error}=await supabase.storage.from("job-documents").upload(path,file,{contentType:file.type||"application/octet-stream"});if(error)throw error;return path;}
  async function submit(e:React.FormEvent){e.preventDefault();if(!id)return;setLocalError("");
