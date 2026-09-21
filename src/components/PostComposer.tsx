@@ -9,6 +9,8 @@ import { MentionSuggestions } from "./MentionSuggestions";
 import { supabase } from "../lib/supabase";
 import { useActiveOrganizationIdentity } from "../hooks/useActiveOrganizationIdentity";
 import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
+import { MusicPicker } from "./MusicPicker";
+import type { MusicLibraryTrack } from "../hooks/useMusicLibrary";
 
 interface PostComposerProps {
   postType?: "general" | "resource" | "opportunity" | "event";
@@ -57,6 +59,8 @@ export function PostComposer({
   const [selectedPostType,setSelectedPostType]=useState<"general"|"resource"|"opportunity"|"event">(postType);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [musicFile,setMusicFile]=useState<File|null>(null);
+  const [musicPickerOpen,setMusicPickerOpen]=useState(false);
+  const [libraryTrack,setLibraryTrack]=useState<MusicLibraryTrack|null>(null);
   const [feeling,setFeeling]=useState("");
   const [showFeelings,setShowFeelings]=useState(false);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
@@ -115,7 +119,7 @@ export function PostComposer({
     setCategoryId("");
     setTopic(defaultTopic);
     clearMedia();
-    setMusicFile(null); setFeeling(""); setShowFeelings(false);
+    setMusicFile(null); setLibraryTrack(null); setMusicPickerOpen(false); setFeeling(""); setShowFeelings(false);
     setExpanded(false);
   }
 
@@ -148,6 +152,9 @@ export function PostComposer({
       content: content.trim(),
       mediaFiles,
       musicFile,
+      musicUrl: libraryTrack?.audioUrl ?? null,
+      musicTitle: libraryTrack?.title ?? null,
+      musicCreator: libraryTrack?.creator ?? null,
       feeling:feeling||null,
       type: categorySelected ? "opportunity" : selectedPostType,
       categoryId: categoryId || null,
@@ -182,7 +189,7 @@ export function PostComposer({
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
       </div>
-      {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
+      {musicPickerOpen&&<MusicPicker selectedTrackKey={libraryTrack?.trackKey} onSelect={(track)=>{setLibraryTrack(track);setMusicFile(null);}} onClose={()=>setMusicPickerOpen(false)}/>}\n    {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
     </>;
   }
 
@@ -248,7 +255,7 @@ export function PostComposer({
       </div>
 
       {showFeelings&&<div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-paper p-3">{FEELINGS.map(item=><button key={item.value} type="button" onClick={()=>{setFeeling(item.value);setShowFeelings(false);}} className="rounded-full bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-brand-light">{item.label}</button>)}</div>}
-      {musicFile&&<div className="mt-3 flex items-center justify-between rounded-xl border border-paper-dim bg-paper px-3 py-2 text-sm"><span className="min-w-0 truncate">🎵 {musicFile.name}</span><button type="button" onClick={()=>setMusicFile(null)} aria-label="Remove music"><X size={15}/></button></div>}
+      {(musicFile||libraryTrack)&&<div className="mt-3 flex items-center justify-between rounded-xl border border-paper-dim bg-paper px-3 py-2 text-sm"><span className="min-w-0 truncate">🎵 {libraryTrack ? `${libraryTrack.title} · ${libraryTrack.creator}` : musicFile?.name}</span><button type="button" onClick={()=>{setMusicFile(null);setLibraryTrack(null)}} aria-label="Remove music"><X size={15}/></button></div>}
       {mediaPreviews.length>0 && (
         <div className="mt-3">
           <div className="mb-2 flex items-center justify-between gap-3"><p className="text-xs font-semibold text-ink-light">{mediaPreviews.length} {mediaPreviews.length===1?"image":"images"} selected</p><span className="text-[11px] text-ink-faint">Up to 10</span></div>
@@ -263,7 +270,7 @@ export function PostComposer({
           <ImageIcon size={16} /> {mediaFiles.length ? "Add photos" : "Photos"}
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Music<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setExpanded(true);}e.target.value="";}} className="hidden"/></label>
+        <button type="button" onClick={()=>setMusicPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Music</button><label className="inline-flex cursor-pointer items-center rounded-full px-2 py-1 text-xs text-ink-faint hover:bg-paper-dim">Device<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setLibraryTrack(null);setExpanded(true);}e.target.value="";}} className="hidden"/></label>
         <button type="button" onClick={()=>setShowFeelings(v=>!v)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><SmilePlus size={16}/> Feeling</button>
         <div className="ml-auto flex items-center gap-2">
           <button type="button" onClick={reset} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
