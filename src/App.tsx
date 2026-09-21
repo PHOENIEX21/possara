@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
@@ -62,10 +62,34 @@ const queryClient = new QueryClient();
 function AccountEmailGate() {
   const { userId, emailVerified, loading } = useAuth();
   const location = useLocation();
+  const [showSlowSession, setShowSlowSession] = useState(false);
   const allowedWhileUnverified =
     location.pathname === "/verify-email" || location.pathname === "/reset-password";
 
-  if (loading) return <div className="text-ink-light">Loading…</div>;
+  useEffect(() => {
+    if (!loading) {
+      setShowSlowSession(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowSlowSession(true), 900);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  // Keep the normal application frame visible while Supabase restores a saved
+  // session. This removes the white/blank refresh flash without pretending the
+  // user is signed out. The subtle message only appears on unusually slow
+  // connections.
+  if (loading) {
+    return (
+      <AppLayout>
+        {showSlowSession ? (
+          <div className="session-restore-note" role="status" aria-live="polite">
+            Restoring your session…
+          </div>
+        ) : null}
+      </AppLayout>
+    );
+  }
   if (userId && !emailVerified && !allowedWhileUnverified) {
     return <Navigate to="/verify-email" replace />;
   }
