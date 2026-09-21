@@ -232,13 +232,7 @@ export function ExtraordinaryPeople() {
     return Array.from({ length: Math.min(7, availableIndexes.length) }, (_, offset) => start + offset);
   }, [currentPosition, availableIndexes.length]);
 
-  if (!catalogueReady) {
-    return <section className="achievement-hero" aria-label="Loading extraordinary achievement spotlights"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>Loading inspiring stories…</h1><p className="achievement-lesson">Preparing the photo spotlight.</p></div></section>;
-  }
-
-  if (!availableIndexes.length || !image) {
-    return <section className="achievement-hero achievement-hero-compact" aria-label="Extraordinary achievement spotlight"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>Inspiring people</h1><p className="achievement-main">Fresh achievement stories are loading. Keep moving forward.</p></div></section>;
-  }
+  if (!catalogueReady || !availableIndexes.length || !image) return null;
 
   return (
     <section className="achievement-hero" aria-label="Extraordinary achievement spotlight" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ touchAction: "pan-y" }}>
