@@ -169,3 +169,13 @@ img,video,canvas,svg{max-width:100%}
  .achievement-hero-content h1{font-size:clamp(1.65rem,8vw,2.2rem)}
  .home-quick-links{margin-top:.15rem}
 }
+
+.home-welcome-strip{display:flex;align-items:center;gap:.75rem;border-radius:1.1rem;background:linear-gradient(110deg,#171128,#31365f);padding:.8rem 1rem;color:#fff}
+.home-welcome-strip .home-welcome-icon{display:flex;height:2.15rem;width:2.15rem;flex:0 0 auto;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.22);border-radius:.75rem;background:rgba(255,255,255,.08)}
+.home-welcome-strip .eyebrow{margin:0;color:rgba(255,255,255,.6);font-size:.58rem}
+.home-welcome-strip h1{margin:.15rem 0 0;font-size:1rem;line-height:1.25;font-weight:800}
+@media(max-width:639px){
+ .home-welcome-strip{border-radius:0;padding:.65rem .8rem}
+ .home-welcome-strip h1{font-size:.9rem}
+ .achievement-hero{min-height:320px}
+}
