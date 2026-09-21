@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
