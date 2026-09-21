@@ -16,7 +16,11 @@ export function useScreeningQuestions(jobId:string|undefined){
 }
 export function useMyOrganizations(){
  const {userId}=useAuth();
- return useQuery({queryKey:["my-organizations",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("role, organizations(*)").eq("user_id",userId as string);if(error)throw error;return data??[];}});
+ return useQuery({queryKey:["my-organizations",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("organization_members").select("role, organizations(*)").eq("user_id",userId as string).in("role",["owner","recruiter"]);if(error)throw error;return (data??[]).filter((row:any)=>row.role==="recruiter"||row.organizations?.owner_id===userId);}});
+}
+export function useCanManageOrganization(organizationId:string|undefined){
+ const {userId}=useAuth();
+ return useQuery({queryKey:["can-manage-organization",organizationId,userId],enabled:!!organizationId&&!!userId,queryFn:async()=>{const {data,error}=await supabase.rpc("is_organization_manager",{p_organization_id:organizationId as string});if(error)throw error;return data===true;}});
 }
 export function useOrganizationJobs(organizationId:string|undefined){
  return useQuery({queryKey:["organization-jobs",organizationId],enabled:!!organizationId,queryFn:async()=>{const {data,error}=await supabase.from("job_postings").select("*").eq("organization_id",organizationId as string).order("created_at",{ascending:false});if(error)throw error;return (data??[]) as JobPosting[];}});
