@@ -206,3 +206,7 @@ img,video,canvas,svg{max-width:100%}
 /* Home filters: fixed, fully visible mobile grid. */
 .home-community-category-filter{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;overflow:visible!important;padding:.15rem 0 .5rem}
 .home-community-category-filter button{width:100%;min-width:0;white-space:normal;text-align:center}
+
+.home-top-welcome{text-align:center;padding:.38rem .75rem .18rem}
+.home-top-welcome p{margin:0;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#716a7d}
+.home-top-welcome span{display:block;margin-top:.08rem;font-size:.72rem;line-height:1.25;color:#8a8492}
