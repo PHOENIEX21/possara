@@ -1,8 +1,11 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Building2, X } from "lucide-react";
 import { MemberFollowButton } from "./MemberFollowButton";
+import { OrganizationFollowButton } from "./OrganizationFollowButton";
+import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
+import { useActiveOrganizationIdentity } from "../hooks/useActiveOrganizationIdentity";
 import { supabase } from "../lib/supabase";
 import { useTogglePostReaction } from "../hooks/useFeedPosts";
 import type { PostReactionType, PostWithAuthor } from "../hooks/useFeedPosts";
@@ -19,12 +22,20 @@ const PEOPLE_PREVIEW_LIMIT = 100;
 
 type ReactionPerson = {
   user_id: string;
+  organization_id: string | null;
   type: PostReactionType;
   profile: {
     full_name: string | null;
     username: string | null;
     avatar_url: string | null;
     headline: string | null;
+  } | null;
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    logo_url: string | null;
+    verified: boolean | null;
   } | null;
 };
 
@@ -35,33 +46,42 @@ function usePostReactionPeople(postId: string, enabled: boolean) {
     queryFn: async (): Promise<ReactionPerson[]> => {
       const { data: rows, error } = await supabase
         .from("reactions")
-        .select("user_id,type,created_at")
+        .select("user_id,organization_id,type,created_at")
         .eq("post_id", postId)
         .in("type", REACTIONS.map((item) => item.type))
         .order("created_at", { ascending: false })
         .limit(PEOPLE_PREVIEW_LIMIT);
       if (error) throw error;
 
-      const ids = [...new Set((rows ?? []).map((row) => row.user_id).filter(Boolean))];
-      if (!ids.length) return [];
+      const userIds = [...new Set((rows ?? []).filter((row) => !row.organization_id).map((row) => row.user_id).filter(Boolean))];
+      const organizationIds = [...new Set((rows ?? []).map((row) => row.organization_id).filter((id): id is string => !!id))];
 
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("id,full_name,username,avatar_url,headline")
-        .in("id", ids);
+      const [{ data: profiles, error: profileError }, { data: organizations, error: organizationError }] = await Promise.all([
+        userIds.length
+          ? supabase.from("profiles").select("id,full_name,username,avatar_url,headline").in("id", userIds)
+          : Promise.resolve({ data: [] as {id:string;full_name:string|null;username:string|null;avatar_url:string|null;headline:string|null}[], error: null }),
+        organizationIds.length
+          ? supabase.from("organizations").select("id,name,slug,logo_url,verified").in("id", organizationIds)
+          : Promise.resolve({ data: [] as {id:string;name:string;slug:string;logo_url:string|null;verified:boolean|null}[], error: null }),
+      ]);
       if (profileError) throw profileError;
+      if (organizationError) throw organizationError;
 
       const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const organizationById = new Map((organizations ?? []).map((organization) => [organization.id, organization]));
       return (rows ?? []).map((row) => ({
         user_id: row.user_id,
+        organization_id: row.organization_id ?? null,
         type: row.type as PostReactionType,
-        profile: profileById.get(row.user_id) ?? null,
+        profile: row.organization_id ? null : profileById.get(row.user_id) ?? null,
+        organization: row.organization_id ? organizationById.get(row.organization_id) ?? null : null,
       }));
     },
   });
 }
 
 function profilePath(person: ReactionPerson) {
+  if (person.organization) return `/organizations/${person.organization.slug}`;
   return person.profile?.username ? `/profile/${person.profile.username}` : `/profile/id/${person.user_id}`;
 }
 
@@ -72,7 +92,7 @@ function formatCompactCount(value: number) {
 function reactionPreviewLabel(post: PostWithAuthor) {
   if (!post.reaction_count) return "";
   const names = post.reaction_preview
-    .map((person) => person.full_name ?? person.username)
+    .map((person) => person.organization_name ?? person.full_name ?? person.username)
     .filter((name): name is string => !!name)
     .slice(0, 2);
   const remaining = Math.max(0, post.reaction_count - post.reaction_preview.length);
@@ -88,6 +108,7 @@ function reactionPreviewLabel(post: PostWithAuthor) {
 
 export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const toggleReaction = useTogglePostReaction();
+  const activeOrganization = useActiveOrganizationIdentity();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [peopleOpen, setPeopleOpen] = useState(false);
   const { data: people, isLoading, error } = usePostReactionPeople(post.id, peopleOpen);
@@ -121,6 +142,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
       postId: post.id,
       reaction: visibleReaction.type,
       currentReaction: post.viewer_reaction,
+      organizationId: activeOrganization?.id ?? null,
     });
   }
 
@@ -132,7 +154,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   }
 
   function chooseReaction(reaction: PostReactionType) {
-    toggleReaction.mutate({ postId: post.id, reaction, currentReaction: post.viewer_reaction });
+    toggleReaction.mutate({ postId: post.id, reaction, currentReaction: post.viewer_reaction, organizationId: activeOrganization?.id ?? null });
     setPickerOpen(false);
   }
 
@@ -149,11 +171,13 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
             <span className="flex -space-x-1.5">
               {post.reaction_preview.map((person) => {
                 const reaction = REACTIONS.find((item) => item.type === person.type);
-                const name = person.full_name ?? person.username ?? "POSSARA member";
-                return person.avatar_url ? (
-                  <img key={person.user_id} src={person.avatar_url} alt="" title={name} className="h-6 w-6 rounded-full border-2 border-white object-cover" />
+                const name = person.organization_name ?? person.full_name ?? person.username ?? "POSSARA member";
+                const key = person.organization_id ? "org-"+person.organization_id : "user-"+person.user_id;
+                const avatar = person.organization_logo_url ?? person.avatar_url;
+                return avatar ? (
+                  <img key={key} src={avatar} alt="" title={name} className={`h-6 w-6 border-2 border-white object-cover ${person.organization_id?"rounded-lg":"rounded-full"}`} />
                 ) : (
-                  <span key={person.user_id} title={name} className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-paper-dim text-[11px]">{reaction?.emoji ?? "✨"}</span>
+                  <span key={key} title={name} className={`flex h-6 w-6 items-center justify-center border-2 border-white bg-paper-dim text-[11px] ${person.organization_id?"rounded-lg":"rounded-full"}`}>{reaction?.emoji ?? "✨"}</span>
                 );
               })}
               {post.reaction_preview.length === 0 && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light text-[11px]">✨</span>}
@@ -238,22 +262,23 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
               {error && <p className="p-4 text-sm text-flag">Couldn&apos;t load reactions.</p>}
               {people?.map((person) => {
                 const reaction = REACTIONS.find((item) => item.type === person.type);
-                const name = person.profile?.full_name ?? person.profile?.username ?? "POSSARA member";
+                const org=person.organization;
+                const name = org?.name ?? person.profile?.full_name ?? person.profile?.username ?? "POSSARA member";
                 return (
-                  <Link key={`${person.user_id}-${person.type}`} to={profilePath(person)} onClick={() => setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">
-                    {person.profile?.avatar_url ? (
+                  <Link key={org?"org-"+org.id:"user-"+person.user_id} to={profilePath(person)} onClick={() => setPeopleOpen(false)} className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-paper">
+                    {org ? (org.logo_url ? <img src={org.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-light text-brand-dark"><Building2 size={18}/></div>) : person.profile?.avatar_url ? (
                       <img src={person.profile.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover" />
                     ) : (
                       <div className="flex h-11 w-11 items-center justify-center rounded-full bg-trust-light font-serif text-base font-semibold text-trust-dark">{name.charAt(0).toUpperCase()}</div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-[17px] font-semibold text-ink">{name}</p>
-                      {person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
-                      {person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
+                      <div className="flex items-center gap-1.5"><p className="truncate font-serif text-[17px] font-semibold text-ink">{name}</p>{org?.verified&&<OrganizationVerificationBadge compact/>}</div>
+                      {org?<p className="truncate text-xs text-ink-faint">Organization</p>:person.profile?.username && <p className="truncate text-xs text-ink-faint">@{person.profile.username}</p>}
+                      {!org&&person.profile?.headline && <p className="truncate text-xs text-ink-light">{person.profile.headline}</p>}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <div className="flex items-center gap-1 rounded-full bg-paper-dim px-2.5 py-1 text-xs"><span>{reaction?.emoji}</span><span className="hidden sm:inline">{reaction?.label}</span></div>
-                      <MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/>
+                      {org?<OrganizationFollowButton organizationId={org.id} compact/>:<MemberFollowButton targetUserId={person.user_id} compact signedOutLink={false}/>}
                     </div>
                   </Link>
                 );
