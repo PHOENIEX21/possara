@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 import { useActiveOrganizationIdentity } from "./useActiveOrganizationIdentity";
+import { resolveMusicTrack } from "./useMusicLibrary";
 import type { Post, Profile, UserRole } from "../types/database";
 
 export type PostReactionType = "like" | "spark" | "insightful" | "useful";
@@ -230,7 +231,7 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
 export function useCreatePost() {
   const { userId } = useAuth(); const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ content, imageFile, mediaFiles, musicFile, feeling, type = "general", categoryId, topic, organizationId }: { content: string; imageFile?: File | null; mediaFiles?: File[]; musicFile?: File | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; organizationId?: string | null; }) => {
+    mutationFn: async ({ content, imageFile, mediaFiles, musicFile, musicTrackKey, feeling, type = "general", categoryId, topic, organizationId }: { content: string; imageFile?: File | null; mediaFiles?: File[]; musicFile?: File | null; musicTrackKey?: string | null; feeling?: string | null; type?: "general" | "resource" | "opportunity" | "event"; categoryId?: string | null; topic?: string | null; organizationId?: string | null; }) => {
       if (!userId) throw new Error("You need to be signed in to post.");
 
       const files = mediaFiles?.length ? mediaFiles : imageFile ? [imageFile] : [];
@@ -255,6 +256,21 @@ export function useCreatePost() {
           uploadedMediaPaths.push(path);
           const { data: publicUrlData } = supabase.storage.from("opportunity-media").getPublicUrl(path);
           mediaUrls.push(publicUrlData.publicUrl);
+        }
+
+        if (musicTrackKey && !musicFile) {
+          const track = await resolveMusicTrack(musicTrackKey);
+          if (!track) throw new Error("That music track is not available right now.");
+          const response = await fetch(track.audioUrl);
+          if (!response.ok) throw new Error("Could not load the selected music.");
+          const blob = await response.blob();
+          if (blob.size > 6 * 1024 * 1024) throw new Error("Selected music is too large for a post.");
+          const ext = blob.type.includes("wav") ? "wav" : blob.type.includes("ogg") ? "ogg" : blob.type.includes("webm") ? "webm" : "mp3";
+          musicPath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${musicTrackKey.replace(/[^a-zA-Z0-9_-]/g,"-")}.${ext}`;
+          const { error: libraryMusicError } = await supabase.storage.from("post-music").upload(musicPath, blob, { contentType: blob.type || "audio/mpeg", upsert: false });
+          if (libraryMusicError) throw new Error(`Music upload failed: ${libraryMusicError.message}`);
+          musicTitle = `${track.title} · ${track.creator}`;
+          musicMimeType = blob.type || "audio/mpeg";
         }
 
         if (musicFile) {
