@@ -55,7 +55,7 @@ export function OrganizationPage(){
   const isMember=!!userId&&!!membership;
   const canManage=isMember&&["owner","recruiter"].includes((membership as any).role);
   const visibleJobs=canManage?(nativeJobs??[]):openNativeJobs;
-  const media=useMemo(()=>(organizationPosts??[]).flatMap(post=>(post.media_urls??[]).map((src:string,index:number)=>({src,id:`${post.id}-${index}`,postId:post.id}))),[organizationPosts]);
+  const media=useMemo(()=>(organizationPosts??[]).flatMap(post=>(post.media_urls??[]).map((src,index)=>({src,id:`${post.id}-${index}`,postId:post.id}))),[organizationPosts]);
 
   if(isLoading)return <p className="text-ink-light">Loading…</p>;
   if(error||!org)return <div><p className="text-flag">This organization couldn&apos;t be found.</p><Link to="/organizations" className="mt-3 inline-block text-sm text-trust-dark underline">Back to organizations</Link></div>;
