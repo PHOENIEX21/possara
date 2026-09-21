@@ -169,8 +169,8 @@ export function ExtraordinaryPeople() {
   const currentPosition = Math.max(0, availableIndexes.indexOf(active));
   const person = PEOPLE[active];
   const image = failedImages[person.name] ? null : person.image ?? images[person.name] ?? null;
-  const fallbackPerson = PEOPLE.find((item) => item.image && !failedImages[item.name]);
-  const fallbackImage = fallbackPerson?.image ?? null;
+  const fallbackPerson = PEOPLE.find((item) => (item.image ?? images[item.name]) && !failedImages[item.name]);
+  const fallbackImage = fallbackPerson ? (fallbackPerson.image ?? images[fallbackPerson.name] ?? null) : null;
 
   function next() {
     if (!availableIndexes.length) return;
@@ -239,7 +239,7 @@ export function ExtraordinaryPeople() {
   }
 
   if (!availableIndexes.length || !image) {
-    return <section className="achievement-hero" aria-label="Extraordinary achievement spotlight">{fallbackImage&&<img src={fallbackImage} alt="" className="achievement-hero-image achievement-hero-image-active" loading="eager" decoding="async"/>}<div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-shade" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>{fallbackPerson?.name??"Inspiring people"}</h1><p className="achievement-main">{fallbackPerson?.achievement??"Stories of people whose work can inspire what comes next."}</p><p className="achievement-lesson">{fallbackPerson?.lesson??"Keep learning, building and moving forward."}</p></div></section>;
+    return <section className="achievement-hero achievement-hero-compact" aria-label="Extraordinary achievement spotlight"><div className="absolute inset-0 bg-gradient-to-br from-[#171128] via-[#35245a] to-[#152a45]" /><div className="achievement-hero-content"><p className="achievement-kicker">Extraordinary · POSSARA</p><h1>Inspiring people</h1><p className="achievement-main">Fresh achievement stories are loading. Keep moving forward.</p></div></section>;
   }
 
   return (
