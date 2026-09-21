@@ -79,7 +79,7 @@ export function Home(){
         <div className="home-filter-row" aria-label="Filter home feed">{HOME_FILTERS.map(item=><button key={item.key} type="button" onClick={()=>{setFilter(item.key);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} className={filter===item.key?"active":""}>{item.label}</button>)}</div>
       </section>
 
-      <section className="home-community-category-filter" aria-label="Filter community opportunity posts"><button type="button" className={!communityCategory?"active":"" onClick={()=>setCommunityCategory(undefined)}>All</button>{["jobs","scholarships","competitions","admissions"].map(slug=>{const category=opportunityCategories?.find(item=>item.slug===slug);if(!category)return null;return <button key={slug} type="button" className={communityCategory===slug?"active":""} onClick={()=>{setCommunityCategory(slug);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{category.name}</button>})}</section>
+      <section className="home-community-category-filter" aria-label="Filter community opportunity posts"><button type="button" className={!communityCategory?"active":""} onClick={()=>setCommunityCategory(undefined)}>All</button>{["jobs","scholarships","competitions","admissions"].map(slug=>{const category=opportunityCategories?.find(item=>item.slug===slug);if(!category)return null;return <button key={slug} type="button" className={communityCategory===slug?"active":""} onClick={()=>{setCommunityCategory(slug);window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{category.name}</button>})}</section>
 
 
 
