@@ -1,0 +1,7 @@
+-- Consolidate overlapping enterprise RLS policies while preserving access semantics.
+-- Applied to production through Supabase migration: consolidate_enterprise_rls_policies.
+-- Covers organizations, posts, comments, opportunities, stories, job CBT access,
+-- story-view access, growth passport reads, and study-profile discovery.
+--
+-- Canonical SQL is retained in Supabase migration history; this marker documents
+-- the production hardening event for source/deployment traceability.
