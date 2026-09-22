@@ -1,8 +1,8 @@
 export function BrandMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
-      <path d="M8 35.5C14.8 31.2 16.1 14 24 11c8.1 3 9.2 20.2 16 24.5" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-      <path d="M16.7 29.1c2.5-4.2 4.6-6.1 7.3-6.1 2.8 0 4.9 1.9 7.4 6.1" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity=".72" />
+      <defs><linearGradient id="possara-spectrum" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse"><stop stopColor="#ff4d8d"/><stop offset=".24" stopColor="#ff9f43"/><stop offset=".43" stopColor="#ffd84d"/><stop offset=".62" stopColor="#35d6c5"/><stop offset=".8" stopColor="#4b7cff"/><stop offset="1" stopColor="#9b4dff"/></linearGradient></defs>
+      <path d="M9 8h18c8 0 13 4.2 13 10.5S35 29 27 29H18v10H9V8Zm9 8v5h8.5c2.6 0 4-1 4-2.5s-1.4-2.5-4-2.5H18Z" fill="url(#possara-spectrum)"/>
     </svg>
   );
 }
