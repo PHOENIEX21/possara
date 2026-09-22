@@ -329,7 +329,35 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
-  const [shareOpen, setShareOpen] = useState(false);\n  const qc = useQueryClient();\n  const { data: saved = false } = useQuery({ queryKey: ["saved-post", userId, post.id], enabled: !!userId, queryFn: async () => { const { data, error } = await supabase.from("saved_posts").select("post_id").eq("user_id", userId as string).eq("post_id", post.id).maybeSingle(); if (error) throw error; return !!data; } });\n  const toggleSaved = useMutation({ mutationFn: async () => { if (!userId) throw new Error("Sign in to save posts."); if (saved) { const { error } = await supabase.from("saved_posts").delete().eq("user_id", userId).eq("post_id", post.id); if (error) throw error; } else { const { error } = await supabase.from("saved_posts").insert({ user_id: userId, post_id: post.id }); if (error) throw error; } }, onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-post", userId, post.id] }) });
+  const [shareOpen, setShareOpen] = useState(false);
+  const qc = useQueryClient();
+  const { data: saved = false } = useQuery({
+    queryKey: ["saved-post", userId, post.id],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("saved_posts")
+        .select("post_id")
+        .eq("user_id", userId as string)
+        .eq("post_id", post.id)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+  });
+  const toggleSaved = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Sign in to save posts.");
+      if (saved) {
+        const { error } = await supabase.from("saved_posts").delete().eq("user_id", userId).eq("post_id", post.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("saved_posts").insert({ user_id: userId, post_id: post.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-post", userId, post.id] }),
+  });
   const [mediaViewer,setMediaViewer]=useState<{urls:string[];index:number}|null>(null);
 
   const organization = post.organizations;
