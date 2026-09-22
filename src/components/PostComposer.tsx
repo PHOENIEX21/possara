@@ -24,8 +24,9 @@ interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
-  { value: "insight", label: "Insight", help: "Motivation, encouragement, useful stories, knowledge, education, practical advice and lessons. Not random status updates, gossip or unrelated celebrity posts." },
+  { value: "insight", label: "Insight", help: "Motivation, encouragement, useful stories, knowledge, education, practical advice and lessons." },
 ] as const;
+const HOME_POST_CATEGORIES = ["jobs","scholarships","competitions","admissions"] as const;
 const FEELINGS = [
  {value:"happy",label:"😊 Happy"},{value:"grateful",label:"🙏 Grateful"},{value:"excited",label:"🤩 Excited"},
  {value:"celebrating",label:"🎉 Celebrating"},{value:"birthday",label:"🎂 Celebrating a birthday"},{value:"proud",label:"🙌 Proud"},
@@ -74,6 +75,7 @@ export function PostComposer({
 
   const firstName = profile?.full_name?.split(" ")[0];
   const selectedTopic = HOME_TOPICS.find((item) => item.value === topic);
+  const homeCategories = categories?.filter((cat) => HOME_POST_CATEGORIES.includes(cat.slug as typeof HOME_POST_CATEGORIES[number])) ?? [];
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -187,7 +189,8 @@ export function PostComposer({
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
       </div>
-      {musicPickerOpen&&<MusicPicker selectedTrackKey={libraryTrack?.trackKey} onSelect={(track)=>{setLibraryTrack(track);setMusicFile(null);}} onClose={()=>setMusicPickerOpen(false)}/>}\n    {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
+      {musicPickerOpen&&<MusicPicker selectedTrackKey={libraryTrack?.trackKey} onSelect={(track)=>{setLibraryTrack(track);setMusicFile(null);}} onClose={()=>setMusicPickerOpen(false)}/>}
+    {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
     </>;
   }
 
@@ -214,25 +217,14 @@ export function PostComposer({
         </div>
       )}
 
-      {showHomeTopicPicker && !categoryId && (
+      {showHomeTopicPicker && (
         <div className="mb-4">
-          <div className="mb-3">
-            <p className="text-sm font-semibold text-ink">Choose a section for this post</p>
-            <p className="mt-1 text-xs text-ink-faint">For You shows everything. Choosing a section also lets people filter directly to posts like yours.</p>
+          <div className="mb-3"><p className="text-sm font-semibold text-ink">Choose where this post belongs</p><p className="mt-1 text-xs text-ink-faint">For You is automatic. Choose the category that best matches what you are posting.</p></div>
+          <div className="grid grid-cols-2 gap-2">
+            {HOME_TOPICS.map(item=><button key={item.value} type="button" onClick={()=>{setCategoryId("");setTopic(item.value);setClassificationError(null)}} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${!categoryId&&topic===item.value?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/20 bg-white text-ink-light"}`}>{item.label}</button>)}
+            {homeCategories.map(cat=><button key={cat.id} type="button" onClick={()=>{setCategoryId(cat.id);setTopic("");setClassificationError(null)}} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${categoryId===cat.id?"border-brand bg-brand-light text-brand-dark":"border-ink-faint/20 bg-white text-ink-light"}`}>{cat.name}</button>)}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {HOME_TOPICS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => {setTopic(item.value);setClassificationError(null)}}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${topic===item.value ? "border-brand bg-brand-light text-brand-dark" : "border-ink-faint/20 bg-white text-ink-light hover:bg-paper-dim"}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          {selectedTopic && <div className="mt-2 rounded-xl bg-paper p-3"><p className="text-xs font-semibold text-ink">{selectedTopic.label} means:</p><p className="mt-1 text-xs leading-5 text-ink-light">{selectedTopic.help}</p></div>}
+          {!categoryId&&selectedTopic&&<div className="mt-2 rounded-xl bg-paper p-3"><p className="text-xs leading-5 text-ink-light">{selectedTopic.help}</p></div>}
         </div>
       )}
 
