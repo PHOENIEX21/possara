@@ -250,3 +250,17 @@ img,video,canvas,svg{max-width:100%}
 .home-moments-card:before{content:"";position:absolute;inset:-45% auto auto -15%;width:55%;aspect-ratio:1;border-radius:999px;background:rgba(255,255,255,.32);filter:blur(10px);pointer-events:none}
 .home-moments-card>*{position:relative;z-index:1}
 @media(max-width:640px){.home-community-category-filter{top:56px}}
+
+/* Exact Home reference structure */
+.home-moments-card{padding:1.15rem 1rem 1rem!important;border-radius:1.8rem!important;box-shadow:0 12px 30px rgba(70,54,130,.08)!important}
+.home-moments-card .home-section-heading{display:flex;align-items:center;justify-content:space-between;padding-right:9.4rem}
+.home-moments-card .home-section-heading p{font-size:1.45rem!important;line-height:1.05;color:#5220d4!important}
+.home-moments-card .home-section-heading span{display:block;margin-top:.3rem;font-size:.9rem!important;color:#5926cf!important}
+.moment-header-action{position:absolute;right:1rem;top:1.05rem;z-index:3}
+.moment-header-action button{display:inline-flex;align-items:center;gap:.55rem;border:0;border-radius:999px;padding:.72rem 1.05rem;background:linear-gradient(110deg,#c52cff,#7b38f5,#4d5df5);color:white;font-size:.82rem;font-weight:800;box-shadow:0 8px 20px rgba(113,48,234,.25)}
+.home-filter-sticky{position:sticky;top:58px;z-index:35;margin:0 -.5rem .7rem;padding:.45rem .5rem;background:rgba(248,249,253,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.home-filter-sticky .home-community-category-filter{position:static!important;top:auto!important;margin:0!important;padding:.15rem 0!important;display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;gap:.55rem!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+.home-filter-sticky .home-filter-button{width:auto!important;min-width:max-content!important;white-space:nowrap!important;border-radius:999px!important;padding:.72rem 1rem!important;background:#f0f1f6!important;color:#4a5165!important;border:1px solid rgba(50,54,75,.03)!important;font-weight:750!important}
+.home-filter-sticky .home-filter-button.active{background:#151620!important;color:#fff!important;box-shadow:0 7px 18px rgba(21,22,32,.16)!important}
+.home-filter-sticky .home-filter-button svg{width:18px;height:18px;stroke-width:2.25}
+@media(max-width:640px){.home-moments-card .home-section-heading{padding-right:7.6rem}.moment-header-action button{padding:.65rem .82rem;font-size:.75rem}.home-filter-sticky{top:56px}.home-moments-card{border-radius:1.45rem!important}}
