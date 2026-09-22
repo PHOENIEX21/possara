@@ -264,3 +264,13 @@ img,video,canvas,svg{max-width:100%}
 .home-filter-sticky .home-filter-button.active{background:#151620!important;color:#fff!important;box-shadow:0 7px 18px rgba(21,22,32,.16)!important}
 .home-filter-sticky .home-filter-button svg{width:18px;height:18px;stroke-width:2.25}
 @media(max-width:640px){.home-moments-card .home-section-heading{padding-right:7.6rem}.moment-header-action button{padding:.65rem .82rem;font-size:.75rem}.home-filter-sticky{top:56px}.home-moments-card{border-radius:1.45rem!important}}
+
+/* Functional social post action row */
+.post-social-bar{margin-left:-.15rem;margin-right:-.15rem}
+.post-social-bar>div{scrollbar-width:none}
+.post-social-bar>div::-webkit-scrollbar{display:none}
+.post-social-action{display:inline-flex;min-width:3.25rem;min-height:2.6rem;flex:0 0 auto;align-items:center;justify-content:center;gap:.4rem;border-radius:.8rem;padding:.45rem .7rem;color:#566078;font-size:.9rem;font-weight:650;transition:background .16s ease,color .16s ease,transform .16s ease}
+.post-social-action:hover{background:#f4f3fa;color:#342f52}
+.post-social-action:active{transform:scale(.96)}
+.post-social-action:disabled{cursor:not-allowed;opacity:.45}
+@media(max-width:420px){.post-social-action{min-width:2.8rem;padding:.42rem .55rem}.post-social-bar svg{width:20px;height:20px}}
