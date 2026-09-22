@@ -280,4 +280,7 @@ img,video,canvas,svg{max-width:100%}
 .connect-chip-rail>button,.connect-chip-rail>a{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
 @media(max-width:640px){.connect-chip-rail{margin-inline:0;padding-bottom:.55rem}.connect-chip-rail>button{max-width:82vw;overflow:hidden;text-overflow:ellipsis}}
 
-/* Home category row stays in its designed place. It scrolls away naturally with Home content. */\n.home-filter-sticky{position:static!important;inset:auto!important;width:auto!important;transform:none!important;margin:0 -.5rem .7rem!important;padding:.45rem .5rem!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important}\n.home-filter-sticky .home-community-category-filter{position:static!important;touch-action:auto!important;overflow-x:auto!important;overscroll-behavior-x:contain!important;scrollbar-width:none!important}\n.home-filter-sticky .home-community-category-filter::-webkit-scrollbar{display:none!important}\n
+/* Home category row: original position below Moments, sticky only after it reaches the header. */
+.home-filter-sticky{position:sticky!important;top:calc(var(--app-header-h, 64px) + .35rem)!important;z-index:35!important;margin:0 -.5rem .7rem!important;padding:.45rem .5rem!important;background:rgba(248,249,253,.94)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+.home-filter-sticky .home-community-category-filter{overflow-x:auto!important;overscroll-behavior-x:contain!important;scrollbar-width:none!important}
+.home-filter-sticky .home-community-category-filter::-webkit-scrollbar{display:none!important}
