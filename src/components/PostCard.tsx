@@ -329,7 +329,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
-  const [shareOpen, setShareOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);\n  const [repostOpen, setRepostOpen] = useState(false);\n  const [repostCommentary, setRepostCommentary] = useState("");
   const qc = useQueryClient();
   const { data: saved = false } = useQuery({
     queryKey: ["saved-post", userId, post.id],
@@ -511,7 +511,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="post-social-action">
             <MessageCircle size={21} /><span>{post.comment_count > 0 ? post.comment_count : ""}</span><span className="sr-only">Discuss</span>
           </button>
-          <button type="button" onClick={() => repost.mutate(post.id)} disabled={!userId || repost.isPending} className="post-social-action" aria-label="Repost">
+          <button type="button" onClick={() => setRepostOpen(true)} disabled={!userId || repost.isPending} className="post-social-action" aria-label="Repost">
             <Repeat2 size={21} /><span>{post.share_count > 0 ? post.share_count : ""}</span>
           </button>
           <button type="button" onClick={() => setShareOpen(true)} className="post-social-action" aria-label="Share">
@@ -522,6 +522,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           </button>
         </div>
       </div>
+
+      {repostOpen && <div className="fixed inset-0 z-[110] flex items-end bg-ink/55 sm:items-center sm:justify-center sm:p-4" onClick={()=>setRepostOpen(false)}><div className="w-full rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-3xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Repost</h2><p className="text-xs text-ink-faint">Add your own thoughts, or repost without a description.</p></div><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={19}/></button></div><textarea autoFocus rows={4} value={repostCommentary} onChange={e=>setRepostCommentary(e.target.value)} placeholder="Say something about this post…" className="mt-4 w-full resize-none rounded-2xl border border-black/10 p-3 text-sm outline-none focus:border-brand/40"/><div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full bg-paper px-4 py-2 text-sm font-semibold">Cancel</button><button type="button" disabled={repost.isPending} onClick={()=>void repost.mutateAsync({postId:post.id,commentary:repostCommentary}).then(()=>{setRepostOpen(false);setRepostCommentary("");})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{repost.isPending?"Reposting…":"Repost"}</button></div></div></div>}
 
       {commentsOpen && <CommentThread postId={post.id} />}
       {mediaViewer&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaViewer(null)}>
