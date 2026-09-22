@@ -102,7 +102,7 @@ function StoryViewer({ group, onClose }: { group: AuthorWithStories; onClose: ()
   </div>;
 }
 
-export function StoriesBar() {
+export function StoriesBar({ showHeaderAction = false }: { showHeaderAction?: boolean }) {
   const { userId } = useAuth();
   const { data: groups, refetch: refetchStories } = useActiveStories();
   const postStory = usePostStory();
