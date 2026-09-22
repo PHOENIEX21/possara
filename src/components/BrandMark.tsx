@@ -2,11 +2,13 @@ export function BrandMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
       <defs>
-        <linearGradient id="possara-p" x1="8" y1="5" x2="41" y2="43" gradientUnits="userSpaceOnUse">
+        <linearGradient id="possara-p" x1="7" y1="5" x2="42" y2="43" gradientUnits="userSpaceOnUse">
           <stop stopColor="#7C2CF3"/><stop offset=".42" stopColor="#D637E2"/><stop offset=".72" stopColor="#FF5B8C"/><stop offset="1" stopColor="#FFA33E"/>
         </linearGradient>
       </defs>
-      <path d="M10 5h17.2C36.5 5 42 10.1 42 17.7S36.5 30.4 27.2 30.4H18.5V43H10V5Zm8.5 8v9.5h8.1c4.4 0 6.7-1.6 6.7-4.8S31 13 26.6 13h-8.1Z" fill="url(#possara-p)"/>
+      {/* Hollow ribbon P: preserve the designed P, remove the extra slash/tail that made it read as V. */}
+      <path fillRule="evenodd" clipRule="evenodd" d="M8 5h20.2C36.8 5 42 10.1 42 17.5S36.8 30 28.2 30H18v13H8V5Zm10 8v9h9.4c3.2 0 5-1.6 5-4.5S30.6 13 27.4 13H18Z" fill="url(#possara-p)"/>
+      <path d="M18 13h9.4c3.2 0 5 1.6 5 4.5s-1.8 4.5-5 4.5H18v-9Z" fill="white"/>
     </svg>
   );
 }
