@@ -2,13 +2,15 @@ export function BrandMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
       <defs>
-        <linearGradient id="possara-spectrum" x1="7" y1="5" x2="41" y2="43" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5B35E8"/><stop offset=".28" stopColor="#8B36F0"/><stop offset=".55" stopColor="#E342C3"/><stop offset=".78" stopColor="#FF6B78"/><stop offset="1" stopColor="#FF9A43"/>
+        <linearGradient id="possara-top" x1="7" y1="8" x2="40" y2="18" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#8B28F2"/><stop offset=".46" stopColor="#E33AD1"/><stop offset="1" stopColor="#FF9B43"/>
+        </linearGradient>
+        <linearGradient id="possara-lower" x1="9" y1="18" x2="31" y2="39" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#A82DF3"/><stop offset=".5" stopColor="#7C35F1"/><stop offset="1" stopColor="#5363F4"/>
         </linearGradient>
       </defs>
-      <path d="M11 6.5h14.7c9.7 0 15.8 5 15.8 12.5 0 7.7-6.2 12.8-15.8 12.8h-5.4v9.7H11V6.5Zm9.3 8.2v9h5.1c4.3 0 6.8-1.6 6.8-4.6 0-2.9-2.5-4.4-6.8-4.4h-5.1Z" fill="url(#possara-spectrum)"/>
-      <path d="M7.2 11.7 12 7v34.5H7.2V11.7Z" fill="#4B32D7" opacity=".96"/>
-      <path d="M20.4 17.3h5.5c2.9 0 4.4.7 4.4 2.2 0 1.6-1.6 2.4-4.5 2.4h-5.4v-4.6Z" fill="white" opacity=".98"/>
+      <path d="M9 7.5h20.4c7.1 0 11.6 3.8 11.6 9.3 0 5.7-4.7 9.5-11.8 9.5H18.5l6.8-7.3h4.2c2.2 0 3.5-.8 3.5-2.2 0-1.3-1.3-2.1-3.5-2.1H9.8A3.8 3.8 0 0 1 6 10.9v-.1a3.3 3.3 0 0 1 3-3.3Z" fill="url(#possara-top)"/>
+      <path d="M6.2 20.1c0-2 1.6-3.6 3.6-3.6h13.8l-6.9 7.4h-2.5v5.7h8.2l-6.8 7.4H9.8a3.6 3.6 0 0 1-3.6-3.6V20.1Z" fill="url(#possara-lower)"/>
     </svg>
   );
 }
