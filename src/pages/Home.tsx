@@ -59,13 +59,13 @@ export function Home(){
 
   return <div className="feed-layout">
     <div className="feed-column">
-      <div className="home-top-welcome"><p>Welcome to POSSARA</p><span>See what is possible. Find what moves you forward.</span></div>
+      <div className="home-fixed-zone"><div className="home-top-welcome"><p>Welcome to POSSARA</p><span>See what is possible. Find what moves you forward.</span></div>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
       </section>
 
-      <section className="home-compose-section">
+      </div>\n\n      <section className="home-compose-section">
         <PostComposer
           placeholder="Share an insight, lesson or useful experience…"
           showHomeTopicPicker
