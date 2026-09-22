@@ -363,8 +363,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const organization = post.organizations;
   const name = organization?.name ?? post.profiles?.full_name ?? "A member of the community";
   const initial = name.charAt(0).toUpperCase();
-  const displayContent = (post.shared_from_post && /^Shared from /i.test(post.content) ? "" : post.content).replace(/
-/g, "\n");
+  const displayContent = (post.shared_from_post && /^Shared from /i.test(post.content) ? "" : post.content);
   const longPost = displayContent.length > 420 || displayContent.split("\n").length > 7;
   const path = organization ? `/organizations/${organization.slug}` : profilePath(post.author_id, post.profiles?.username, userId);
   const headline = organization ? "Organization" : post.profiles?.headline || post.profiles?.profession;
