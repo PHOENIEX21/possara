@@ -214,8 +214,8 @@ img,video,canvas,svg{max-width:100%}
 /* POSSARA Home spectrum treatment */
 .home-moments-card{background:linear-gradient(115deg,rgba(255,77,141,.10),rgba(255,216,77,.11) 28%,rgba(53,214,197,.10) 52%,rgba(75,124,255,.09) 74%,rgba(155,77,255,.10));border-color:rgba(155,77,255,.14)}
 .home-feed-heading-premium{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
-.home-reshuffle-button{display:inline-flex;align-items:center;gap:.4rem;flex:0 0 auto;border:1px solid rgba(155,77,255,.32);border-radius:999px;background:linear-gradient(100deg,rgba(75,124,255,.08),rgba(255,77,141,.09));padding:.5rem .75rem;font-size:.72rem;font-weight:750;color:#5b2bd6;box-shadow:0 4px 16px rgba(91,43,214,.08)}
-@media(max-width:520px){.home-reshuffle-button span{display:none}.home-reshuffle-button{padding:.58rem}}
+
+@media(max-width:520px){.home-reshuffle-button span{display:none}}
 
 /* Reference-matched Home presentation */
 .home-fixed-zone{position:sticky;top:60px;z-index:20;margin:0 -4px 12px;padding:4px 4px 10px;background:rgba(247,248,252,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
@@ -229,7 +229,7 @@ img,video,canvas,svg{max-width:100%}
 .home-community-category-filter button.active{border-color:transparent;background:linear-gradient(120deg,#171421,#24215c);color:#fff;box-shadow:0 7px 18px rgba(28,22,65,.14)}
 .home-feed-heading-premium{padding-top:.35rem}
 .home-feed-heading-premium h2{font-size:1.35rem;font-weight:850;color:#161b4b}
-.home-reshuffle-button{border:1px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#4b7cff,#9b4dff,#ff4d8d) border-box;color:#642ad8}
+
 .brand-lockup{color:#5927db}
 .brand-lockup svg{width:2.15rem;height:2.15rem}
 .brand-lockup span{font-weight:900;letter-spacing:.04em;background:linear-gradient(90deg,#5b28dc,#8c31ef,#e442c2);-webkit-background-clip:text;background-clip:text;color:transparent}
