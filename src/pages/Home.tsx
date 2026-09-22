@@ -65,7 +65,7 @@ export function Home(){
         <StoriesBar/>
       </section>
 
-\n\n      <section className="home-compose-section">
+      <section className="home-compose-section">
         <PostComposer
           placeholder="Share an insight, lesson or useful experience…"
           showHomeTopicPicker
