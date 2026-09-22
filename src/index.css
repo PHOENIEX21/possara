@@ -239,3 +239,14 @@ img,video,canvas,svg{max-width:100%}
 .home-fixed-zone{position:static!important;margin:0!important;padding:0!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .home-top-welcome{background:linear-gradient(90deg,rgba(255,255,255,.92),rgba(246,244,255,.9));border-radius:1rem}
 .home-moments-card{background:linear-gradient(112deg,rgba(255,94,164,.20) 0%,rgba(255,210,83,.20) 28%,rgba(86,226,206,.19) 51%,rgba(91,169,255,.18) 73%,rgba(226,92,255,.21) 100%)!important;border:1px solid rgba(155,77,255,.16)!important}
+
+/* Reference Home: persistent category dock + premium Moments */
+.home-community-category-filter{position:sticky;top:60px;z-index:30;margin:0 -.35rem .65rem;padding:.55rem .35rem!important;background:rgba(247,248,252,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 16px rgba(35,29,74,.035)}
+.home-filter-button{display:inline-flex!important;align-items:center;justify-content:center;gap:.35rem}
+.moment-ring{background:conic-gradient(from 210deg,#ff4d8d,#ff9f43,#ffd84d,#35d6c5,#4b7cff,#9b4dff,#ff4d8d);box-shadow:0 4px 12px rgba(100,62,190,.14)}
+.moment-ring>img,.moment-ring>div,.moment-ring>span{border:2px solid #fff}
+.moment-ring-add{position:relative;background:linear-gradient(135deg,#fff,#f7f0ff);border:3px solid transparent;background-image:linear-gradient(#fff,#fff),conic-gradient(from 210deg,#ff4d8d,#ff9f43,#ffd84d,#35d6c5,#4b7cff,#9b4dff,#ff4d8d);background-origin:border-box;background-clip:padding-box,border-box}
+.home-moments-card{position:relative;overflow:hidden}
+.home-moments-card:before{content:"";position:absolute;inset:-45% auto auto -15%;width:55%;aspect-ratio:1;border-radius:999px;background:rgba(255,255,255,.32);filter:blur(10px);pointer-events:none}
+.home-moments-card>*{position:relative;z-index:1}
+@media(max-width:640px){.home-community-category-filter{top:56px}}
