@@ -210,3 +210,9 @@ img,video,canvas,svg{max-width:100%}
 .home-top-welcome{text-align:center;padding:.38rem .75rem .18rem}
 .home-top-welcome p{margin:0;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#716a7d}
 .home-top-welcome span{display:block;margin-top:.08rem;font-size:.72rem;line-height:1.25;color:#8a8492}
+
+/* POSSARA Home spectrum treatment */
+.home-moments-card{background:linear-gradient(115deg,rgba(255,77,141,.10),rgba(255,216,77,.11) 28%,rgba(53,214,197,.10) 52%,rgba(75,124,255,.09) 74%,rgba(155,77,255,.10));border-color:rgba(155,77,255,.14)}
+.home-feed-heading-premium{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.home-reshuffle-button{display:inline-flex;align-items:center;gap:.4rem;flex:0 0 auto;border:1px solid rgba(155,77,255,.32);border-radius:999px;background:linear-gradient(100deg,rgba(75,124,255,.08),rgba(255,77,141,.09));padding:.5rem .75rem;font-size:.72rem;font-weight:750;color:#5b2bd6;box-shadow:0 4px 16px rgba(91,43,214,.08)}
+@media(max-width:520px){.home-reshuffle-button span{display:none}.home-reshuffle-button{padding:.58rem}}
