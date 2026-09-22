@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
+import { Bookmark, Building2, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Pencil, Repeat2, Send, Share2, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
@@ -329,7 +329,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
-  const [shareOpen, setShareOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);\n  const qc = useQueryClient();\n  const { data: saved = false } = useQuery({ queryKey: ["saved-post", userId, post.id], enabled: !!userId, queryFn: async () => { const { data, error } = await supabase.from("saved_posts").select("post_id").eq("user_id", userId as string).eq("post_id", post.id).maybeSingle(); if (error) throw error; return !!data; } });\n  const toggleSaved = useMutation({ mutationFn: async () => { if (!userId) throw new Error("Sign in to save posts."); if (saved) { const { error } = await supabase.from("saved_posts").delete().eq("user_id", userId).eq("post_id", post.id); if (error) throw error; } else { const { error } = await supabase.from("saved_posts").insert({ user_id: userId, post_id: post.id }); if (error) throw error; } }, onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-post", userId, post.id] }) });
   const [mediaViewer,setMediaViewer]=useState<{urls:string[];index:number}|null>(null);
 
   const organization = post.organizations;
@@ -477,16 +477,20 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         </div>
       )}
 
-      <div className="mt-4 border-t border-paper-dim pt-2">
-        <div className="flex flex-wrap items-center gap-1">
+      <div className="post-social-bar mt-4 border-t border-paper-dim pt-2">
+        <div className="flex items-center gap-1 overflow-x-auto">
           <PostReactionControl post={post} />
-
-          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
-            <MessageCircle size={19} /><span>{post.comment_count > 0 ? post.comment_count : ""}</span><span className="sr-only">Discuss</span>
+          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="post-social-action">
+            <MessageCircle size={21} /><span>{post.comment_count > 0 ? post.comment_count : ""}</span><span className="sr-only">Discuss</span>
           </button>
-
-          <button type="button" onClick={() => setShareOpen(true)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-ink-light hover:bg-paper-dim">
-            <Share2 size={19} /><span>{post.share_count > 0 ? post.share_count : ""}</span><span className="sr-only">Share</span>
+          <button type="button" onClick={() => repost.mutate(post.id)} disabled={!userId || repost.isPending} className="post-social-action" aria-label="Repost">
+            <Repeat2 size={21} /><span>{post.share_count > 0 ? post.share_count : ""}</span>
+          </button>
+          <button type="button" onClick={() => setShareOpen(true)} className="post-social-action" aria-label="Share">
+            <Send size={21} /><span className="sr-only">Share</span>
+          </button>
+          <button type="button" onClick={() => toggleSaved.mutate()} disabled={!userId || toggleSaved.isPending} className={`post-social-action ml-auto ${saved ? "text-brand-dark" : ""}`} aria-label={saved ? "Remove from saved posts" : "Save post"} title={saved ? "Saved" : "Save post"}>
+            <Bookmark size={21} fill={saved ? "currentColor" : "none"} />
           </button>
         </div>
       </div>
