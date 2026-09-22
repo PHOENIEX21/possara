@@ -329,7 +329,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.content);
-  const [shareOpen, setShareOpen] = useState(false);\n  const [repostOpen, setRepostOpen] = useState(false);\n  const [repostCommentary, setRepostCommentary] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [repostOpen, setRepostOpen] = useState(false);
+  const [repostCommentary, setRepostCommentary] = useState("");
   const qc = useQueryClient();
   const { data: saved = false } = useQuery({
     queryKey: ["saved-post", userId, post.id],
