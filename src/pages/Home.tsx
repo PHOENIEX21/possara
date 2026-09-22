@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
@@ -59,13 +59,13 @@ export function Home(){
 
   return <div className="feed-layout">
     <div className="feed-column">
-      <div className="home-fixed-zone"><div className="home-top-welcome"><p>Welcome to POSSARA</p><span>See what is possible. Find what moves you forward.</span></div>
+      <div className="home-top-welcome"><p>Welcome to POSSARA</p><span>See what is possible. Find what moves you forward.</span></div>
       <section className="home-moments-card">
         <div className="home-section-heading"><div><p className="inline-flex items-center gap-1.5"><Sparkles size={14} className="text-brand-dark"/>Moments</p><span>Fresh, temporary updates from your community.</span></div></div>
         <StoriesBar/>
       </section>
 
-      </div>\n\n      <section className="home-compose-section">
+\n\n      <section className="home-compose-section">
         <PostComposer
           placeholder="Share an insight, lesson or useful experience…"
           showHomeTopicPicker
@@ -74,10 +74,10 @@ export function Home(){
 
 
       <section ref={feedStartRef} id="home-posts" className="home-feed-heading home-feed-heading-premium">
-        <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Useful insights, knowledge, education, practical lessons and uplifting experiences shared by the POSSARA community.</p></div><button type="button" className="home-reshuffle-button" onClick={()=>{setReshuffleSeed(Date.now());void refetch();window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}} aria-label="Refresh and reshuffle posts" title="Refresh posts"><RefreshCw size={17}/><span>Refresh</span></button>
+        <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Useful insights, knowledge, education, practical lessons and uplifting experiences shared by the POSSARA community.</p></div>
       </section>
 
-      <section className="home-community-category-filter" aria-label="Filter home feed">{[...HOME_FILTERS.map(item=>({slug:item.key,label:item.label})),{slug:"jobs",label:"Jobs"},{slug:"scholarships",label:"Scholarships"},{slug:"competitions",label:"Competitions"},{slug:"admissions",label:"Admissions"}].map(item=><button key={item.slug} type="button" className={(item.slug==="for-you"&&!communityCategory&&filter==="for-you")||(item.slug==="insight"&&!communityCategory&&filter==="insight")||communityCategory===item.slug?"active":""} onClick={()=>{if(item.slug==="for-you"||item.slug==="insight"){setCommunityCategory(undefined);setFilter(item.slug as HomeFilter);}else{setCommunityCategory(item.slug);}window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{item.label}</button>)}</section>
+      <section className="home-community-category-filter" aria-label="Filter home feed">{[...HOME_FILTERS.map(item=>({slug:item.key,label:item.label})),{slug:"jobs",label:"Jobs"},{slug:"scholarships",label:"Scholarships"},{slug:"competitions",label:"Competitions"},{slug:"admissions",label:"Admissions"}].map(item=><button key={item.slug} type="button" className={(item.slug==="for-you"&&!communityCategory&&filter==="for-you")||(item.slug==="insight"&&!communityCategory&&filter==="insight")||communityCategory===item.slug?"active":""} onClick={()=>{if(item.slug==="for-you"){setCommunityCategory(undefined);setFilter("for-you");setReshuffleSeed(Date.now());void refetch();}else if(item.slug==="insight"){setCommunityCategory(undefined);setFilter("insight");}else{setCommunityCategory(item.slug);}window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{item.label}</button>)}</section>
 
 
 
