@@ -234,3 +234,8 @@ img,video,canvas,svg{max-width:100%}
 .brand-lockup svg{width:2.15rem;height:2.15rem}
 .brand-lockup span{font-weight:900;letter-spacing:.04em;background:linear-gradient(90deg,#5b28dc,#8c31ef,#e442c2);-webkit-background-clip:text;background-clip:text;color:transparent}
 @media(max-width:640px){.home-fixed-zone{top:60px}.home-moments-card{border-radius:1.35rem}.home-compose-section{margin-top:.65rem}}
+
+/* Home final reference layout: no sticky Home content or bottom nav */
+.home-fixed-zone{position:static!important;margin:0!important;padding:0!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.home-top-welcome{background:linear-gradient(90deg,rgba(255,255,255,.92),rgba(246,244,255,.9));border-radius:1rem}
+.home-moments-card{background:linear-gradient(112deg,rgba(255,94,164,.20) 0%,rgba(255,210,83,.20) 28%,rgba(86,226,206,.19) 51%,rgba(91,169,255,.18) 73%,rgba(226,92,255,.21) 100%)!important;border:1px solid rgba(155,77,255,.16)!important}
