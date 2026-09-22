@@ -7,7 +7,9 @@ export function useRepost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (postId: string) => {
+    mutationFn: async (input: string | { postId: string; commentary?: string }) => {
+      const postId = typeof input === "string" ? input : input.postId;
+      const commentary = typeof input === "string" ? "" : (input.commentary ?? "").trim();
       if (!userId) throw new Error("Sign in to pass on a post to your profile.");
 
       const { data: existing, error: existingError } = await supabase
@@ -32,7 +34,7 @@ export function useRepost() {
 
       const { error } = await supabase.from("posts").insert({
         author_id: userId,
-        content: "",
+        content: commentary,
         media_urls: null,
         type: original.type ?? "general",
         category_id: original.category_id,
