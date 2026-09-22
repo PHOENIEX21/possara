@@ -274,3 +274,8 @@ img,video,canvas,svg{max-width:100%}
 .post-social-action:active{transform:scale(.96)}
 .post-social-action:disabled{cursor:not-allowed;opacity:.45}
 @media(max-width:420px){.post-social-action{min-width:2.8rem;padding:.42rem .55rem}.post-social-bar svg{width:20px;height:20px}}
+
+/* Connect mobile rails: each row scrolls inside its own width without overlapping */
+.connect-chip-rail{display:flex;width:100%;max-width:100%;min-width:0;gap:.5rem;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:.1rem 0 .45rem;isolation:isolate;-webkit-overflow-scrolling:touch}
+.connect-chip-rail>button,.connect-chip-rail>a{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
+@media(max-width:640px){.connect-chip-rail{margin-inline:0;padding-bottom:.55rem}.connect-chip-rail>button{max-width:82vw;overflow:hidden;text-overflow:ellipsis}}
