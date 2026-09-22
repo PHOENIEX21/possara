@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
@@ -62,42 +62,12 @@ const queryClient = new QueryClient();
 function AccountEmailGate() {
   const { userId, emailVerified, loading } = useAuth();
   const location = useLocation();
-  const [showSlowSession, setShowSlowSession] = useState(false);
   const allowedWhileUnverified =
     location.pathname === "/verify-email" || location.pathname === "/reset-password";
 
-  useEffect(() => {
-    if (!loading) {
-      setShowSlowSession(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setShowSlowSession(true), 900);
-    return () => window.clearTimeout(timer);
-  }, [loading]);
-
-  // Keep the normal application frame visible while Supabase restores a saved
-  // session. This removes the white/blank refresh flash without pretending the
-  // user is signed out. The subtle message only appears on unusually slow
-  // connections.
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-paper pt-[60px] sm:pt-16">
-        <header className="app-header">
-          <div className="app-header-inner">
-            <div className="brand-lockup" aria-label="POSSARA">
-              <span>POSSARA</span>
-            </div>
-          </div>
-        </header>
-        {showSlowSession ? (
-          <div className="mx-auto max-w-[820px] px-4 py-6 text-sm text-ink-faint" role="status" aria-live="polite">
-            Restoring your session…
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-  if (userId && !emailVerified && !allowedWhileUnverified) {
+  // Normal refreshes render the app immediately. Supabase restores the cached
+  // session in the background; protected routes still enforce auth separately.
+  if (!loading && userId && !emailVerified && !allowedWhileUnverified) {
     return <Navigate to="/verify-email" replace />;
   }
   return <AppLayout />;
