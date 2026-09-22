@@ -279,3 +279,9 @@ img,video,canvas,svg{max-width:100%}
 .connect-chip-rail{display:flex;width:100%;max-width:100%;min-width:0;gap:.5rem;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:.1rem 0 .45rem;isolation:isolate;-webkit-overflow-scrolling:touch}
 .connect-chip-rail>button,.connect-chip-rail>a{flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}
 @media(max-width:640px){.connect-chip-rail{margin-inline:0;padding-bottom:.55rem}.connect-chip-rail>button{max-width:82vw;overflow:hidden;text-overflow:ellipsis}}
+
+/* Home category dock: fixed below the app header on Home; content scrolls underneath it. */
+.home-filter-sticky{position:fixed!important;top:64px!important;left:50%!important;z-index:45!important;width:min(calc(100vw - 1rem),42rem)!important;transform:translateX(-50%)!important;margin:0!important;padding:.45rem .5rem!important;background:rgba(248,249,253,.96)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;box-shadow:0 8px 18px rgba(35,29,74,.06)!important}
+.home-filter-sticky .home-community-category-filter{touch-action:pan-y!important;overflow-x:auto!important;overscroll-behavior-x:contain!important;scrollbar-width:none!important}
+.home-filter-sticky .home-community-category-filter::-webkit-scrollbar{display:none!important}
+@media(max-width:640px){.home-filter-sticky{top:58px!important;width:100%!important;left:0!important;transform:none!important;padding-left:1rem!important;padding-right:1rem!important}}
