@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Home as HomeIcon, Sparkles } from "lucide-react";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
@@ -77,7 +77,7 @@ export function Home(){
         <div><p className="eyebrow">Home community</p><h2>From your community</h2><p>Useful insights, knowledge, education, practical lessons and uplifting experiences shared by the POSSARA community.</p></div>
       </section>
 
-      <section className="home-community-category-filter" aria-label="Filter home feed">{[...HOME_FILTERS.map(item=>({slug:item.key,label:item.label})),{slug:"jobs",label:"Jobs"},{slug:"scholarships",label:"Scholarships"},{slug:"competitions",label:"Competitions"},{slug:"admissions",label:"Admissions"}].map(item=><button key={item.slug} type="button" className={(item.slug==="for-you"&&!communityCategory&&filter==="for-you")||(item.slug==="insight"&&!communityCategory&&filter==="insight")||communityCategory===item.slug?"active":""} onClick={()=>{if(item.slug==="for-you"){setCommunityCategory(undefined);setFilter("for-you");setReshuffleSeed(Date.now());void refetch();}else if(item.slug==="insight"){setCommunityCategory(undefined);setFilter("insight");}else{setCommunityCategory(item.slug);}window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{item.label}</button>)}</section>
+      <section className="home-community-category-filter" aria-label="Filter home feed">{[...HOME_FILTERS.map(item=>({slug:item.key,label:item.label})),{slug:"jobs",label:"Jobs"},{slug:"scholarships",label:"Scholarships"},{slug:"competitions",label:"Competitions"},{slug:"admissions",label:"Admissions"}].map(item=><button key={item.slug} type="button" className={`home-filter-button ${(item.slug==="for-you"&&!communityCategory&&filter==="for-you")||(item.slug==="insight"&&!communityCategory&&filter==="insight")||communityCategory===item.slug?"active":"")}`} onClick={()=>{if(item.slug==="for-you"){setCommunityCategory(undefined);setFilter("for-you");setReshuffleSeed(Date.now());void refetch();}else if(item.slug==="insight"){setCommunityCategory(undefined);setFilter("insight");}else{setCommunityCategory(item.slug);}window.requestAnimationFrame(()=>feedStartRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));}}>{item.slug==="for-you"&&<HomeIcon size={14} aria-hidden="true"/>}{item.label}</button>)}</section>
 
 
 
