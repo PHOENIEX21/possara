@@ -194,7 +194,7 @@ function ProfileView({profile,own=false,onEdit,onOwnCoverClick,onRemoveCover,cov
     <section className="max-w-3xl overflow-hidden rounded-[2rem] border border-black/[.06] bg-white shadow-card">
       <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#171128] via-brand-dark to-trust-dark sm:h-56">
         {profile.cover_url&&<img src={profile.cover_url} alt="" className="h-full w-full object-cover"/>}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[.06]"/>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[.06]"/>
       </div>
 
       <div className="relative px-4 pb-6 sm:px-6">

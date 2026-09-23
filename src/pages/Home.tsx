@@ -5,6 +5,7 @@ import { useActiveAdvertisements } from "../hooks/useAdvertisements";
 import { PostComposer } from "../components/PostComposer";
 import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
+import { FeedRefreshBar } from "../components/FeedRefreshBar";
 import { StoriesBar } from "../components/StoriesBar";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
@@ -46,6 +47,7 @@ export function Home() {
   const [feedLimit, setFeedLimit] = useState(30);
   const [reshuffleSeed, setReshuffleSeed] = useState(0);
   const feedStartRef = useRef<HTMLElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
 
   const { data: posts, isLoading, error, refetch } = useFeedPosts({
     noCategoryOnly: communityCategory ? false : true,
@@ -78,10 +80,53 @@ export function Home() {
 
   return (
     <div className="feed-layout">
-      <div className="feed-column">
-        <div className="home-top-welcome">
-          <p>Welcome to POSSARA</p>
-          <span>See what is possible. Find what moves you forward.</span>
+      <div ref={feedRef} className="feed-column">
+        <div className="home-top-sticky">
+          <div className="home-top-welcome">
+            <p>Welcome to POSSARA</p>
+            <span>See what is possible. Find what moves you forward.</span>
+          </div>
+          <div className="home-filter-sticky">
+            <section className="home-community-category-filter" aria-label="Filter home feed">
+              {COMMUNITY_FILTERS.map((item) => {
+                const active =
+                  (item.slug === "for-you" && !communityCategory && filter === "for-you") ||
+                  (item.slug === "insight" && !communityCategory && filter === "insight") ||
+                  communityCategory === item.slug;
+
+                return (
+                  <button
+                    key={item.slug}
+                    type="button"
+                    className={`home-filter-button ${active ? "active" : ""}`}
+                    onClick={() => {
+                      if (item.slug === "for-you") {
+                        setCommunityCategory(undefined);
+                        setFilter("for-you");
+                        setReshuffleSeed(Date.now());
+                        void refetch();
+                      } else if (item.slug === "insight") {
+                        setCommunityCategory(undefined);
+                        setFilter("insight");
+                      } else {
+                        setCommunityCategory(item.slug);
+                      }
+                      window.requestAnimationFrame(() =>
+                        feedStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                      );
+                    }}
+                  >
+                    {item.slug === "for-you" && <HomeIcon size={18} aria-hidden="true" />}
+                    {item.label}
+                  </button>
+                );
+              })}
+            </section>
+          </div>
+          <FeedRefreshBar feedRef={feedRef} onRefresh={async () => {
+            await refetch();
+            setReshuffleSeed((seed) => Math.max(Date.now(), seed + 1));
+          }} />
         </div>
 
         <section className="home-moments-card">
@@ -94,46 +139,8 @@ export function Home() {
               <span>Share what&apos;s on your mind</span>
             </div>
           </div>
-          <StoriesBar showHeaderAction />
+          <StoriesBar />
         </section>
-
-        <div className="home-filter-sticky">
-          <section className="home-community-category-filter" aria-label="Filter home feed">
-            {COMMUNITY_FILTERS.map((item) => {
-              const active =
-                (item.slug === "for-you" && !communityCategory && filter === "for-you") ||
-                (item.slug === "insight" && !communityCategory && filter === "insight") ||
-                communityCategory === item.slug;
-
-              return (
-                <button
-                  key={item.slug}
-                  type="button"
-                  className={`home-filter-button ${active ? "active" : ""}`}
-                  onClick={() => {
-                    if (item.slug === "for-you") {
-                      setCommunityCategory(undefined);
-                      setFilter("for-you");
-                      setReshuffleSeed(Date.now());
-                      void refetch();
-                    } else if (item.slug === "insight") {
-                      setCommunityCategory(undefined);
-                      setFilter("insight");
-                    } else {
-                      setCommunityCategory(item.slug);
-                    }
-                    window.requestAnimationFrame(() =>
-                      feedStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                    );
-                  }}
-                >
-                  {item.slug === "for-you" && <HomeIcon size={18} aria-hidden="true" />}
-                  {item.label}
-                </button>
-              );
-            })}
-          </section>
-        </div>
 
         <section className="home-compose-section">
           <PostComposer
@@ -156,6 +163,9 @@ export function Home() {
             </p>
           </div>
         </section>
+
+
+
 
         <div className="feed-list feed-list-premium">
           {isLoading && <div className="feed-skeleton" />}

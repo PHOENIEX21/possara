@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Building2, Image as ImageIcon, Music2, SmilePlus, X } from "lucide-react";
 import { useCreatePost } from "../hooks/useFeedPosts";
 import { useOpportunityCategories } from "./CategoryChips";
@@ -12,7 +13,7 @@ import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 import { MusicPicker } from "./MusicPicker";
 import type { MusicLibraryTrack } from "../hooks/useMusicLibrary";
 
-interface PostComposerProps {
+export interface PostComposerProps {
   postType?: "general" | "resource" | "opportunity" | "event";
   placeholder?: string;
   showCategoryPicker?: boolean;
@@ -33,7 +34,7 @@ const FEELINGS = [
  {value:"blessed",label:"✨ Blessed"},{value:"motivated",label:"💪 Motivated"}
 ] as const;
 
-export function PostComposer({
+export function PostEditor({
   postType = "general",
   placeholder,
   showCategoryPicker = false,
@@ -42,7 +43,9 @@ export function PostComposer({
   organizationId,
   organizationName,
   organizationLogoUrl,
-}: PostComposerProps) {
+  onPublished,
+  onCancel,
+}: PostComposerProps & { onPublished: () => void; onCancel: () => void }) {
   const { userId } = useAuth();
   const { data: profile } = useOwnProfile();
   const createPost = useCreatePost();
@@ -53,7 +56,6 @@ export function PostComposer({
   const effectiveOrganizationLogoUrl = organizationId ? organizationLogoUrl : activeOrganization?.logo_url ?? organizationLogoUrl;
   const effectiveOrganizationVerified = organizationId ? false : activeOrganization?.verified === true;
   const postingAsOrganization = !!effectiveOrganizationId && !!effectiveOrganizationName;
-  const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [topic, setTopic] = useState<string>(defaultTopic);
@@ -68,6 +70,45 @@ export function PostComposer({
   const [mediaError,setMediaError]=useState<string|null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [classificationError,setClassificationError]=useState<string|null>(null);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
+  const previewUrls = useRef(new Set<string>());
+  useEffect(() => {
+    const urls = previewUrls.current;
+    return () => { urls.forEach((url) => URL.revokeObjectURL(url)); };
+  }, []);
+  function createPreview(file: File) {
+    const url = URL.createObjectURL(file);
+    previewUrls.current.add(url);
+    return url;
+  }
+  const draftKey = userId ? `possara-post-draft:${userId}:${effectiveOrganizationId ?? "personal"}:${postType}:${showHomeTopicPicker ? "home" : "page"}` : null;
+
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) { setHydratedDraftKey(draftKey); return; }
+      const draft = JSON.parse(raw) as { content?: string; categoryId?: string; topic?: string; selectedPostType?: "general" | "resource" | "opportunity" | "event"; feeling?: string; libraryTrack?: MusicLibraryTrack | null };
+      if (typeof draft.content === "string") { setContent(draft.content); }
+      if (typeof draft.categoryId === "string") setCategoryId(draft.categoryId);
+      if (typeof draft.topic === "string") setTopic(draft.topic);
+      if (draft.selectedPostType) setSelectedPostType(draft.selectedPostType);
+      if (typeof draft.feeling === "string") setFeeling(draft.feeling);
+      if (draft.libraryTrack?.trackKey) setLibraryTrack(draft.libraryTrack);
+    } catch {
+      localStorage.removeItem(draftKey);
+    }
+    setHydratedDraftKey(draftKey);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || hydratedDraftKey !== draftKey) return;
+    if (!content && !categoryId && !feeling && !libraryTrack && topic === defaultTopic) {
+      localStorage.removeItem(draftKey);
+      return;
+    }
+    localStorage.setItem(draftKey, JSON.stringify({ content, categoryId, topic, selectedPostType, feeling, libraryTrack }));
+  }, [draftKey, hydratedDraftKey, content, categoryId, topic, selectedPostType, feeling, libraryTrack, defaultTopic]);
 
   if (!userId) {
     return <div className="rounded-2xl border border-paper-dim bg-white px-5 py-4 text-sm text-ink-light shadow-sm">Sign in to share something useful, inspiring or worth seeing.</div>;
@@ -89,8 +130,7 @@ export function PostComposer({
 
     if (accepted.length) {
       setMediaFiles((current) => [...current, ...accepted]);
-      setMediaPreviews((current) => [...current, ...accepted.map((file) => URL.createObjectURL(file))]);
-      setExpanded(true);
+      setMediaPreviews((current) => [...current, ...accepted.map(createPreview)]);
     }
 
     if (rejected) setMediaError("Some files were skipped. Use JPG, PNG or WebP images up to 8 MB each.");
@@ -122,7 +162,7 @@ export function PostComposer({
     setTopic(defaultTopic);
     clearMedia();
     setMusicFile(null); setLibraryTrack(null); setMusicPickerOpen(false); setFeeling(""); setShowFeelings(false);
-    setExpanded(false);
+    if (draftKey) localStorage.removeItem(draftKey);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -162,6 +202,7 @@ export function PostComposer({
       organizationId: effectiveOrganizationId ?? null,
     });
     reset();
+    onPublished();
   }
 
   const avatar = postingAsOrganization ? (
@@ -177,25 +218,8 @@ export function PostComposer({
     </div>
   );
 
-  if (!expanded) {
-    return <>
-      <div className="flex items-center gap-3 rounded-2xl border border-paper-dim bg-white px-4 py-3 shadow-sm">
-        {avatar}
-        <button onClick={() => setExpanded(true)} className="min-w-0 flex-1 truncate rounded-full bg-paper-dim px-4 py-2 text-left text-[15px] text-ink-faint hover:bg-paper-dim/70">
-          {placeholder ? placeholder : postingAsOrganization ? `Share an update as ${effectiveOrganizationName}` : firstName ? `What's on your mind, ${firstName}?` : "What's on your mind?"}
-        </button>
-        <label aria-label="Add photo" className="shrink-0 cursor-pointer text-trust-dark hover:text-trust">
-          <ImageIcon size={20} />
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
-        </label>
-      </div>
-      {musicPickerOpen&&<MusicPicker selectedTrackKey={libraryTrack?.trackKey} onSelect={(track)=>{setLibraryTrack(track);setMusicFile(null);}} onClose={()=>setMusicPickerOpen(false)}/>}
-    {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
-    </>;
-  }
-
   return <>
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
+    <form onSubmit={(event) => { void handleSubmit(event).catch(() => undefined); }} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
       {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold text-ink">{effectiveOrganizationName}</p>{effectiveOrganizationVerified&&<OrganizationVerificationBadge compact/>}</div><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. Formal vacancies belong in the organization hiring tools; regular organization posts use the same Insight community section as personal profiles.</p></div></div>}
       {showCategoryPicker && (
         <div className="mb-4">
@@ -260,10 +284,10 @@ export function PostComposer({
           <ImageIcon size={16} /> {mediaFiles.length ? "Add photos" : "Photos"}
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileSelect} className="hidden" />
         </label>
-        <button type="button" onClick={()=>setMusicPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Music</button><label className="inline-flex cursor-pointer items-center rounded-full px-2 py-1 text-xs text-ink-faint hover:bg-paper-dim">Device<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setLibraryTrack(null);setExpanded(true);}e.target.value="";}} className="hidden"/></label>
+        <button type="button" onClick={()=>setMusicPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Browse POSSARA Music</button><label className="inline-flex cursor-pointer items-center rounded-full px-2 py-1 text-xs text-ink-faint hover:bg-paper-dim">Device<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setLibraryTrack(null);}e.target.value="";}} className="hidden"/></label>
         <button type="button" onClick={()=>setShowFeelings(v=>!v)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><SmilePlus size={16}/> Feeling</button>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={reset} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
+          <button type="button" onClick={onCancel} disabled={createPost.isPending} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
           <button type="submit" disabled={!content.trim() || createPost.isPending} className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-40">
             {createPost.isPending ? "Posting…" : "Post"}
           </button>
@@ -273,6 +297,17 @@ export function PostComposer({
       {classificationError&&<div className="mt-3 rounded-xl bg-flag-light px-3 py-2 text-sm font-medium text-flag-dark">{classificationError}</div>}
       {createPost.error && <p className="mt-2 text-sm text-flag">{(createPost.error as Error).message}</p>}
     </form>
+    {musicPickerOpen && <MusicPicker selectedTrackKey={libraryTrack?.trackKey} onSelect={(track) => { setLibraryTrack(track); setMusicFile(null); }} onClose={() => setMusicPickerOpen(false)} />}
     {photoOpen && profile?.avatar_url && <ProfilePhotoViewer src={profile.avatar_url} name={profile.full_name ?? "Your"} onClose={() => setPhotoOpen(false)} />}
   </>;
+}
+
+export function PostComposer(props: PostComposerProps) {
+  const location = useLocation();
+  const { data: profile } = useOwnProfile();
+  return <Link to="/create/post" state={{ composer: props, returnTo: location.pathname + location.search }} className="post-composer-launcher">
+    {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : <span className="post-launcher-avatar"><ImageIcon size={20} /></span>}
+    <span className="post-launcher-prompt">{props.placeholder || "What's on your mind?"}</span>
+    <span className="post-launcher-action">Create post</span>
+  </Link>;
 }

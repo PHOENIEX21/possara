@@ -181,7 +181,7 @@ export function InterestingPlaces() {
     <section className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 shadow-xl" aria-label="Places worth experiencing" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{touchAction:"pan-y"}}>
       <div className="relative min-h-[300px] sm:min-h-[360px]">
         <img src={image} alt={`${place.name}, ${place.location}`} className="absolute inset-0 h-full w-full object-cover" style={{objectPosition:place.position ?? "center"}} loading="eager" decoding="async" referrerPolicy="no-referrer" onError={handleImageError} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10"/>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10"/>
         <div className="absolute inset-x-0 bottom-0 z-10 p-5 text-white sm:p-7">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-white/75">
             <span className="inline-flex items-center gap-1.5"><Sparkles size={13}/>Places worth experiencing</span>

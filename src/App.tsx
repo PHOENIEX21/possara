@@ -1,61 +1,67 @@
-import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { PageLoading } from "./components/PageLoading";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
 import { AppLayout } from "./layouts/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ImageActions } from "./components/ImageActions";
 import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
-import { ResetPassword } from "./pages/ResetPassword";
-import { VerifyEmail } from "./pages/VerifyEmail";
-import { Discover } from "./pages/Discover";
-import { Connect } from "./pages/Connect";
-import { Contribute } from "./pages/Contribute";
-import { Opportunities } from "./pages/Opportunities";
-import { Jobs } from "./pages/Jobs";
-import { Scholarships } from "./pages/Scholarships";
-import { Competitions } from "./pages/Competitions";
-import { Admissions } from "./pages/Admissions";
-import { Advertise } from "./pages/Advertise";
-import { SubmitOpportunity } from "./pages/SubmitOpportunity";
-import { OpportunityDetail } from "./pages/OpportunityDetail";
-import { PostDetail } from "./pages/PostDetail";
-import { Profile } from "./pages/Profile";
-import { Organizations } from "./pages/Organizations";
-import { OrganizationPage } from "./pages/OrganizationPage";
-import { OrganizationRegister } from "./pages/OrganizationRegister";
-import { OrganizationManage } from "./pages/OrganizationManage";
-import { JobDetail } from "./pages/JobDetail";
-import { JobPostWizard } from "./pages/JobPostWizard";
-import { JobApply } from "./pages/JobApply";
-import { JobApplicants } from "./pages/JobApplicants";
-import { JobCbt } from "./pages/JobCbt";
-import { JobCbtBuilder } from "./pages/JobCbtBuilder";
-import { JobApplicantReview } from "./pages/JobApplicantReview";
-import { JobInterviewBuilder } from "./pages/JobInterviewBuilder";
-import { OrganizationTeam } from "./pages/OrganizationTeam";
-import { OrganizationSettings } from "./pages/OrganizationSettings";
-import { SearchPage } from "./pages/SearchPage";
-import { Notifications } from "./pages/Notifications";
-import { Messages } from "./pages/Messages";
-import { Saved } from "./pages/Saved";
-import { Impact } from "./pages/Impact";
-import { Settings } from "./pages/Settings";
-import { Admin } from "./pages/Admin";
-import { OpportunityDiscoveryAdmin } from "./pages/OpportunityDiscoveryAdmin";
-import { Study } from "./pages/Study";
-import { StudyTopic } from "./pages/StudyTopic";
-import { StudyPractice } from "./pages/StudyPractice";
-import { StudyTogether } from "./pages/StudyTogether";
-import { StudyThread } from "./pages/StudyThread";
-import { StudySettings } from "./pages/StudySettings";
-import { PossaraPlus } from "./pages/PossaraPlus";
-import { Applications } from "./pages/Applications";
-import { Passport } from "./pages/Passport";
-import { Insights } from "./pages/Insights";
-import { Places } from "./pages/Places";
-import { PrivacyPolicy, SecurityPage, TermsOfUse } from "./pages/TrustPolicies";
+
+const ResetPassword=lazy(()=>import("./pages/ResetPassword").then(module=>({default:module.ResetPassword})));
+const VerifyEmail=lazy(()=>import("./pages/VerifyEmail").then(module=>({default:module.VerifyEmail})));
+const Discover=lazy(()=>import("./pages/Discover").then(module=>({default:module.Discover})));
+const Connect=lazy(()=>import("./pages/Connect").then(module=>({default:module.Connect})));
+const Contribute=lazy(()=>import("./pages/Contribute").then(module=>({default:module.Contribute})));
+const CreateContent=lazy(()=>import("./pages/CreateContent").then(module=>({default:module.CreateContent})));
+const Opportunities=lazy(()=>import("./pages/Opportunities").then(module=>({default:module.Opportunities})));
+const Jobs=lazy(()=>import("./pages/Jobs").then(module=>({default:module.Jobs})));
+const Scholarships=lazy(()=>import("./pages/Scholarships").then(module=>({default:module.Scholarships})));
+const Competitions=lazy(()=>import("./pages/Competitions").then(module=>({default:module.Competitions})));
+const Admissions=lazy(()=>import("./pages/Admissions").then(module=>({default:module.Admissions})));
+const Advertise=lazy(()=>import("./pages/Advertise").then(module=>({default:module.Advertise})));
+const SubmitOpportunity=lazy(()=>import("./pages/SubmitOpportunity").then(module=>({default:module.SubmitOpportunity})));
+const OpportunityDetail=lazy(()=>import("./pages/OpportunityDetail").then(module=>({default:module.OpportunityDetail})));
+const PostDetail=lazy(()=>import("./pages/PostDetail").then(module=>({default:module.PostDetail})));
+const Profile=lazy(()=>import("./pages/Profile").then(module=>({default:module.Profile})));
+const Organizations=lazy(()=>import("./pages/Organizations").then(module=>({default:module.Organizations})));
+const OrganizationPage=lazy(()=>import("./pages/OrganizationPage").then(module=>({default:module.OrganizationPage})));
+const OrganizationRegister=lazy(()=>import("./pages/OrganizationRegister").then(module=>({default:module.OrganizationRegister})));
+const OrganizationManage=lazy(()=>import("./pages/OrganizationManage").then(module=>({default:module.OrganizationManage})));
+const JobDetail=lazy(()=>import("./pages/JobDetail").then(module=>({default:module.JobDetail})));
+const JobPostWizard=lazy(()=>import("./pages/JobPostWizard").then(module=>({default:module.JobPostWizard})));
+const JobApply=lazy(()=>import("./pages/JobApply").then(module=>({default:module.JobApply})));
+const JobApplicants=lazy(()=>import("./pages/JobApplicants").then(module=>({default:module.JobApplicants})));
+const JobCbt=lazy(()=>import("./pages/JobCbt").then(module=>({default:module.JobCbt})));
+const JobCbtBuilder=lazy(()=>import("./pages/JobCbtBuilder").then(module=>({default:module.JobCbtBuilder})));
+const JobApplicantReview=lazy(()=>import("./pages/JobApplicantReview").then(module=>({default:module.JobApplicantReview})));
+const JobInterviewBuilder=lazy(()=>import("./pages/JobInterviewBuilder").then(module=>({default:module.JobInterviewBuilder})));
+const OrganizationTeam=lazy(()=>import("./pages/OrganizationTeam").then(module=>({default:module.OrganizationTeam})));
+const OrganizationSettings=lazy(()=>import("./pages/OrganizationSettings").then(module=>({default:module.OrganizationSettings})));
+const SearchPage=lazy(()=>import("./pages/SearchPage").then(module=>({default:module.SearchPage})));
+const Notifications=lazy(()=>import("./pages/Notifications").then(module=>({default:module.Notifications})));
+const Messages=lazy(()=>import("./pages/Messages").then(module=>({default:module.Messages})));
+const Saved=lazy(()=>import("./pages/Saved").then(module=>({default:module.Saved})));
+const Impact=lazy(()=>import("./pages/Impact").then(module=>({default:module.Impact})));
+const Settings=lazy(()=>import("./pages/Settings").then(module=>({default:module.Settings})));
+const Admin=lazy(()=>import("./pages/Admin").then(module=>({default:module.Admin})));
+const OpportunityDiscoveryAdmin=lazy(()=>import("./pages/OpportunityDiscoveryAdmin").then(module=>({default:module.OpportunityDiscoveryAdmin})));
+const Study=lazy(()=>import("./pages/Study").then(module=>({default:module.Study})));
+const StudyTopic=lazy(()=>import("./pages/StudyTopic").then(module=>({default:module.StudyTopic})));
+const StudyPractice=lazy(()=>import("./pages/StudyPractice").then(module=>({default:module.StudyPractice})));
+const StudyTogether=lazy(()=>import("./pages/StudyTogether").then(module=>({default:module.StudyTogether})));
+const StudyThread=lazy(()=>import("./pages/StudyThread").then(module=>({default:module.StudyThread})));
+const StudySettings=lazy(()=>import("./pages/StudySettings").then(module=>({default:module.StudySettings})));
+const PossaraPlus=lazy(()=>import("./pages/PossaraPlus").then(module=>({default:module.PossaraPlus})));
+const Applications=lazy(()=>import("./pages/Applications").then(module=>({default:module.Applications})));
+const Passport=lazy(()=>import("./pages/Passport").then(module=>({default:module.Passport})));
+const Insights=lazy(()=>import("./pages/Insights").then(module=>({default:module.Insights})));
+const Places=lazy(()=>import("./pages/Places").then(module=>({default:module.Places})));
+const PrivacyPolicy=lazy(()=>import("./pages/TrustPolicies").then(module=>({default:module.PrivacyPolicy})));
+const SecurityPage=lazy(()=>import("./pages/TrustPolicies").then(module=>({default:module.SecurityPage})));
+const TermsOfUse=lazy(()=>import("./pages/TrustPolicies").then(module=>({default:module.TermsOfUse})));
 
 const queryClient = new QueryClient();
 
@@ -70,6 +76,7 @@ function AccountEmailGate() {
   if (!loading && userId && !emailVerified && !allowedWhileUnverified) {
     return <Navigate to="/verify-email" replace />;
   }
+  if (location.pathname === "/create/post" || location.pathname === "/create/moment") return <Outlet />;
   return <AppLayout />;
 }
 
@@ -83,7 +90,8 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Routes>
+          <ImageActions />
+          <Suspense fallback={<PageLoading />}><Routes>
             <Route element={<AccountEmailGate />}>
               <Route path="/" element={<Home />} />
               <Route path="/signin" element={<SignIn />} />
@@ -100,6 +108,8 @@ export default function App() {
               <Route path="/study/together/:id" element={<StudyThread />} />
               <Route path="/connect" element={<Connect />} />
               <Route path="/contribute" element={<Contribute />} />
+              <Route path="/create/post" element={<CreateContent kind="post" />} />
+              <Route path="/create/moment" element={<CreateContent kind="moment" />} />
               <Route path="/opportunities" element={<Opportunities />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/jobs/:id" element={<JobDetail />} />
@@ -149,7 +159,7 @@ export default function App() {
                 <Route path="/admin/opportunity-discovery" element={<OpportunityDiscoveryAdmin />} />
               </Route>
             </Route>
-          </Routes>
+          </Routes></Suspense>
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

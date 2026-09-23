@@ -1,3 +1,4 @@
+import { usePersistentDraft } from "../hooks/usePersistentDraft";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { AtSign, Check, CheckCheck, ChevronLeft, Copy, Forward, Image as ImageIcon, MessageCircle, Mic, MoreHorizontal, Pencil, Reply, Search, Send, Share2, Square, Trash2, X } from "lucide-react";
@@ -136,7 +137,7 @@ function Thread({ otherUserId, conversations }: { otherUserId: string; conversat
   const toggleReaction=useToggleMessageReaction(otherUserId);
   const editMessage=useEditMessage(otherUserId);
   const deleteMessage=useDeleteMessageForMe(otherUserId);
-  const [text,setText]=useState("");
+  const [text,setText]=usePersistentDraft(userId?`possara-message-draft:${userId}:${otherUserId}`:null,"");
   const [replyingTo,setReplyingTo]=useState<ThreadMessage|null>(null);
   const [editingMessage,setEditingMessage]=useState<ThreadMessage|null>(null);
   const [forwardingMessage,setForwardingMessage]=useState<ThreadMessage|null>(null);

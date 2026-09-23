@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Music2, Pause, Play, Search, X } from "lucide-react";
 import { useMusicLibrary } from "../hooks/useMusicLibrary";
 import type { MusicLibraryTrack } from "../hooks/useMusicLibrary";
@@ -17,6 +17,8 @@ export function MusicPicker({
   const [category, setCategory] = useState("All");
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(()=>()=>{audioRef.current?.pause();audioRef.current=null;},[]);
 
   const categories = useMemo(() => ["All", ...Array.from(new Set((tracks ?? []).map((track) => track.category))).sort()], [tracks]);
   const filtered = useMemo(() => {
@@ -48,8 +50,9 @@ export function MusicPicker({
     audio.volume = 0.85;
     audio.onended = () => setPlayingKey(null);
     audio.onerror = () => setPlayingKey(null);
+    audioRef.current = audio;
     void audio.play().then(() => {
-      audioRef.current = audio;
+      if(audioRef.current!==audio){audio.pause();return;}
       setPlayingKey(track.trackKey);
     }).catch(() => setPlayingKey(null));
   }

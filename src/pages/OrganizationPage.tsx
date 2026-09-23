@@ -1,3 +1,4 @@
+import { StoriesBar } from "../components/StoriesBar";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -62,14 +63,14 @@ export function OrganizationPage(){
     <Link to="/organizations" className="inline-flex items-center gap-1.5 text-sm text-ink-light"><ArrowLeft size={15}/>All organizations</Link>
 
     <section className="overflow-hidden rounded-3xl border border-paper-dim bg-white shadow-sm">
-      <div className="relative h-40 overflow-hidden bg-gradient-to-r from-brand-light via-paper to-trust-light sm:h-52">{org.cover_url&&<img src={org.cover_url} alt="" className="h-full w-full object-cover"/>}<div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5"/></div>
+      <div className="relative h-40 overflow-hidden bg-gradient-to-r from-brand-light via-paper to-trust-light sm:h-52">{org.cover_url&&<img src={org.cover_url} alt="" className="h-full w-full object-cover"/>}<div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5"/></div>
       <div className="p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           {org.logo_url
             ? <img src={org.logo_url} alt="" className="-mt-12 h-24 w-24 rounded-full border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
             : <div className="-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{org.verified&&<OrganizationVerificationBadge compact/>}</div>
+            <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{(org.verified||org.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}</div>
             <div className="mt-2"><TrustBadge verified={org.verified??false} lastVerifiedAt={null} sponsored={org.is_sponsored}/></div>
             {org.industry&&<p className="mt-1 text-sm font-medium text-brand-dark">{org.industry}</p>}
           </div>
@@ -96,6 +97,8 @@ export function OrganizationPage(){
         </div>
       </div>
     </section>
+
+    <section className="rounded-2xl bg-white p-3"><h2 className="mb-3 font-semibold">Moments</h2><StoriesBar organizationId={org.id} canCreate={canManage}/></section>
 
     <nav className="sticky top-[60px] z-20 -mx-1 flex gap-1 overflow-x-auto border-b border-paper-dim bg-paper/95 px-1 py-2 backdrop-blur sm:static sm:rounded-2xl sm:border sm:bg-white sm:px-2" aria-label="Organization profile sections">
       {(["posts","about","media"] as const).map(item=><button key={item} type="button" onClick={()=>setSection(item)} className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold capitalize ${section===item?"bg-brand-light text-brand-dark":"text-ink-light hover:bg-paper"}`}>{item}{item==="media"&&media.length?` · ${media.length}`:""}</button>)}

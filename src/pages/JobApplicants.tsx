@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { usePersistentDraft } from "../hooks/usePersistentDraft";
+import { useAuth } from "../store/auth";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, MessageCircle, UserRound, XCircle } from "lucide-react";
 import { useHiringJob, useJobApplicants, useMessageJobApplicants, useUpdateJobApplication } from "../hooks/useHiring";
@@ -17,7 +18,7 @@ export function JobApplicants(){
   const {data,isLoading,error}=useJobApplicants(id);
   const update=useUpdateJobApplication(id||"");
   const messageAll=useMessageJobApplicants(id||"");
-  const [message,setMessage]=useState("");
+  const {userId}=useAuth();const [message,setMessage]=usePersistentDraft(userId&&id?`possara-applicant-message:${userId}:${id}`:null,"");
 
   async function sendAll(){
     await messageAll.mutateAsync({recipientIds:(data??[]).map((a:any)=>a.applicant_id),content:message});

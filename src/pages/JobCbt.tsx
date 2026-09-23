@@ -1,5 +1,67 @@
-import { useEffect, useMemo, useState } from "react";
-import { Navigate, Link, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import { useCbtAttempt, useCbtQuestions, useHiringJob, useMyJobApplication, useStartCbt, useSubmitCbt } from "../hooks/useHiring";
-export function JobCbt(){const {id}=useParams();const {data:job}=useHiringJob(id);const {data:application,isLoading:appLoading}=useMyJobApplication(id);const {data:questions,isLoading:qLoading}=useCbtQuestions(id);const {data:attempt}=useCbtAttempt(application?.id);const start=useStartCbt(application?.id||"");const submit=useSubmitCbt(id||"",application?.id||"");const [answers,setAnswers]=useState<Record<string,string>>({});const [remaining,setRemaining]=useState(0);const [started,setStarted]=useState(false);const [score,setScore]=useState<number|null>(null);const [expirySubmissionStarted,setExpirySubmissionStarted]=useState(false);const draftKey=application?.id?`possara-cbt-draft:${application.id}`:"";useEffect(()=>{if(!draftKey)return;try{const raw=localStorage.getItem(draftKey);if(raw)setAnswers(JSON.parse(raw));}catch{}},[draftKey]);useEffect(()=>{if(!draftKey)return;localStorage.setItem(draftKey,JSON.stringify(answers));},[draftKey,answers]);useEffect(()=>{if(!attempt?.started_at||attempt.submitted_at||started)return;const limit=Number(attempt.time_limit_seconds||job?.cbt_time_limit_seconds||0);const elapsed=Math.max(0,Math.floor((Date.now()-new Date(attempt.started_at).getTime())/1000));setRemaining(Math.max(0,limit-elapsed));setStarted(true);},[attempt,job?.cbt_time_limit_seconds,started]);useEffect(()=>{if(attempt?.submitted_at||!started)return;const timer=window.setInterval(()=>setRemaining(v=>Math.max(0,v-1)),1000);return()=>window.clearInterval(timer)},[attempt?.submitted_at,started]);useEffect(()=>{if(!started||remaining!==0||expirySubmissionStarted||attempt?.submitted_at||score!==null||!application||!questions?.length)return;setExpirySubmissionStarted(true);void submit.mutateAsync({answers}).then(result=>{if(draftKey)localStorage.removeItem(draftKey);setScore(result)}).catch(()=>undefined);},[started,remaining,expirySubmissionStarted,attempt?.submitted_at,score,application,questions,answers,submit]);const answered=useMemo(()=>Object.keys(answers).length,[answers]);if(!appLoading&&!application)return <Navigate to={id?"/jobs/"+id:"/jobs"} replace/>;async function begin(){const session=await start.mutateAsync();if(!session)return;const elapsed=Math.max(0,Math.floor((Date.now()-new Date(session.started_at).getTime())/1000));setRemaining(Math.max(0,session.time_limit_seconds-elapsed));setStarted(true);}async function finish(){if(!application||!questions?.length)return;const result=await submit.mutateAsync({answers});if(draftKey)localStorage.removeItem(draftKey);setScore(result);}if(attempt?.submitted_at||score!==null)return <div className="page-stack"><div className="empty-state"><CheckCircle2 size={34}/><h1>Assessment submitted</h1><p>Your CBT result is recorded with this application.</p><div className="mt-3 rounded-2xl bg-paper px-5 py-3 text-2xl font-bold">{score??attempt?.score}%</div><Link to="/applications" className="mt-4 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">Back to applications</Link></div></div>;if(!started&&!attempt?.submitted_at)return <div className="page-stack"><div className="empty-state"><ShieldCheck size={34}/><h1>{job?.title||"Role"} CBT</h1><p>The timer begins on the server when you start. You can submit this assessment only once.</p><button onClick={()=>void begin()} disabled={start.isPending} className="mt-4 rounded-xl bg-ink px-5 py-3 font-semibold text-white">{start.isPending?"Starting securely…":"Start assessment"}</button>{start.error&&<p className="mt-2 text-sm text-flag">{(start.error as Error).message}</p>}</div></div>;return <div className="page-stack"><section className="rounded-3xl bg-ink p-5 text-white"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-white/60">POSSARA assessment</p><h1 className="mt-1 text-2xl font-bold">{job?.title} CBT</h1></div><div className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold"><Clock3 size={15} className="mr-1 inline"/>{Math.floor(remaining/60)}:{String(remaining%60).padStart(2,"0")}</div></div><p className="mt-3 text-sm text-white/70"><ShieldCheck size={14} className="mr-1 inline"/>Answer keys are kept server-side. Submit once you have reviewed every answer.</p></section>{qLoading&&<div className="feed-skeleton"/>}{!qLoading&&!questions?.length&&<div className="empty-state"><h2>Assessment is not ready yet</h2><p>The organization has marked this role for CBT but has not published its questions.</p></div>}<div className="space-y-3">{questions?.map((q,index)=><section key={q.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm"><p className="text-xs font-semibold text-brand-dark">Question {index+1}</p><h2 className="mt-1 font-semibold">{q.question_text}</h2><div className="mt-3 grid gap-2">{(q.choices||[]).map(choice=><label key={choice} className={"flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm "+(answers[q.id]===choice?"border-brand bg-brand-light":"border-paper-dim")}><input type="radio" name={q.id} checked={answers[q.id]===choice} onChange={()=>setAnswers({...answers,[q.id]:choice})}/><span>{choice}</span></label>)}</div></section>)}</div>{questions?.length?<div className="sticky bottom-20 z-20 rounded-2xl border border-paper-dim bg-white/95 p-3 shadow-xl backdrop-blur sm:bottom-4"><div className="mb-2 flex justify-between text-xs text-ink-faint"><span>{answered}/{questions.length} answered</span><span>{remaining===0?(submit.isPending?"Time elapsed · submitting":"Time elapsed"):"Review before submitting"}</span></div><button onClick={()=>void finish()} disabled={submit.isPending||answered<questions.length||remaining===0} className="w-full rounded-xl bg-brand px-4 py-3 font-semibold text-white disabled:opacity-40">{submit.isPending?"Submitting…":"Submit CBT"}</button>{submit.error&&<p className="mt-2 text-xs text-flag">{(submit.error as Error).message}</p>}</div>:null}</div>}
+import { usePersistentDraft } from "../hooks/usePersistentDraft";
+import { supabase } from "../lib/supabase";
+
+type ExamSession={started_at:string;time_limit_seconds:number;submitted_at?:string|null;score?:number;draft_answers?:Record<string,string>};
+export function JobCbt(){
+ const {id}=useParams();
+ const jobQuery=useHiringJob(id);const applicationQuery=useMyJobApplication(id);
+ const job=jobQuery.data,application=applicationQuery.data;
+ const questionsQuery=useCbtQuestions(id);const questions=questionsQuery.data;
+ const attemptQuery=useCbtAttempt(application?.id);
+ const start=useStartCbt(application?.id||"");const submit=useSubmitCbt(id||"",application?.id||"");
+ const [session,setSession]=useState<ExamSession|null>(null);
+ const attempt=(attemptQuery.data||session) as ExamSession|null;
+ const draftKey=application?.id&&attempt?.started_at?'possara-cbt-draft:'+application.id+':'+attempt.started_at:null;
+ const [answers,setAnswers,clearDraft,draftError]=usePersistentDraft<Record<string,string>>(draftKey,attempt?.draft_answers||{});
+ const [now,setNow]=useState(Date.now);const [score,setScore]=useState<number|null>(null);
+ const [syncError,setSyncError]=useState("");const [syncing,setSyncing]=useState(false);
+ const autoSubmitted=useRef(false);const submissionLock=useRef(false);const pendingSave=useRef(Promise.resolve());
+ const deadline=attempt?Date.parse(attempt.started_at)+attempt.time_limit_seconds*1000:0;
+ const remaining=deadline?Math.max(0,Math.ceil((deadline-now)/1000)):0;
+ const finished=!!attempt?.submitted_at||score!==null;
+ const answered=(questions||[]).filter(question=>question.choices.includes(answers[question.id])).length;
+ useEffect(()=>{if(!deadline||finished)return;const tick=()=>setNow(Date.now());tick();const timer=window.setInterval(tick,1000);document.addEventListener('visibilitychange',tick);return()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',tick);};},[deadline,finished]);
+ // Restore unsynced device answers after reload and retry them on reconnection.
+ useEffect(()=>{
+  if(!application?.id||!deadline||finished||!Object.keys(answers).length)return;
+  let active=true;
+  const sync=()=>{
+   if(Date.now()>=deadline||submissionLock.current)return;
+   setSyncing(true);
+   pendingSave.current=pendingSave.current.then(async()=>{
+    if(Date.now()>=deadline)return;
+    const {error}=await supabase.rpc('save_job_cbt_draft',{p_application_id:application.id,p_answers:answers});
+    if(error)throw error;
+    if(active)setSyncError('');
+   }).catch(()=>{if(active)setSyncError('Answers are saved on this device. We will retry when your connection returns.');})
+     .finally(()=>{if(active)setSyncing(false);});
+  };
+  sync();window.addEventListener('online',sync);
+  return()=>{active=false;window.removeEventListener('online',sync);};
+ },[application?.id,deadline,finished,answers]);
+ function choose(questionId:string,choice:string){
+  if(!attempt||Date.now()>=deadline||submissionLock.current)return;
+  setAnswers(previous=>({...previous,[questionId]:choice}));
+ }
+ async function finish(){
+  if(!application||submissionLock.current||finished)return;
+  submissionLock.current=true;
+  try{await pendingSave.current;const result=await submit.mutateAsync({answers});clearDraft();setScore(result);}
+  catch{/* Keep the draft and show the mutation error with a retry button. */}
+  finally{submissionLock.current=false;}
+ }
+ useEffect(()=>{if(!draftKey||!deadline||remaining>0||finished||autoSubmitted.current||!questions?.length)return;autoSubmitted.current=true;void finish();},[draftKey,deadline,remaining,finished,questions]);
+ async function begin(){try{const result=await start.mutateAsync();if(result){setSession(result);setNow(Date.now());}}catch{/* Error shown below. */}}
+ if(jobQuery.isLoading||applicationQuery.isLoading||(application&&attemptQuery.isLoading))return <p role="status">Loading assessment...</p>;
+ if(jobQuery.error||applicationQuery.error||attemptQuery.error||questionsQuery.error)return <div className="empty-state"><h1>Assessment could not load</h1><p>{(jobQuery.error||applicationQuery.error||attemptQuery.error||questionsQuery.error)?.message}</p><button onClick={()=>{void jobQuery.refetch();void applicationQuery.refetch();void attemptQuery.refetch();void questionsQuery.refetch();}}>Retry</button></div>;
+ if(!application||application.needs_reapply)return <div className="empty-state"><h1>Complete your application first</h1><Link to={'/jobs/'+id+'/apply'}>Open application</Link></div>;
+ if(finished)return <div className="page-stack"><div className="empty-state"><CheckCircle2 size={34}/><h1>Assessment submitted</h1><p>Your result is recorded with this application.</p><p className="mt-3 text-2xl font-bold">{score??attempt?.score}%</p><Link to="/applications" className="mt-4 rounded-xl bg-ink px-4 py-3 text-white">Back to applications</Link></div></div>;
+ if(!attempt)return <div className="empty-state"><ShieldCheck size={34}/><h1>{job?.title||'Role'} CBT</h1><p>Your answers are saved as you choose them. Refreshing does not restart the timer.</p>{!questions?.length&&<p>The employer has not finished setting up this assessment yet.</p>}<button onClick={()=>void begin()} disabled={start.isPending||questionsQuery.isLoading||!questions?.length} className="mt-4 rounded-xl bg-ink px-5 py-3 font-semibold text-white disabled:opacity-40">{start.isPending?'Starting...':'Start assessment'}</button>{start.error&&<p role="alert" className="text-flag">{start.error.message}</p>}</div>;
+ return <div className="page-stack"><section className="rounded-3xl bg-ink p-5 text-white"><h1 className="text-2xl font-bold">{job?.title} CBT</h1><p className="mt-3"><Clock3 size={16} className="mr-2 inline"/>{Math.floor(remaining/60)}:{String(remaining%60).padStart(2,'0')} remaining</p><p role="status" className="mt-2 text-sm">{syncing?'Saving answers...':syncError||'Answers saved as you choose them.'}</p>{draftError&&<p role="alert">{draftError}</p>}</section>
+ <div className="space-y-3">{questions?.map((question,index)=><fieldset disabled={!remaining||submit.isPending} key={question.id} className="rounded-2xl border border-paper-dim bg-white p-4"><legend className="px-1 font-semibold">Question {index+1}: {question.question_text}</legend><div className="grid gap-2">{question.choices.map(choice=><label key={choice} className={'flex items-center gap-3 rounded-xl border p-3 text-sm '+(answers[question.id]===choice?'border-brand bg-brand-light':'border-paper-dim')}><input type="radio" name={question.id} checked={answers[question.id]===choice} onChange={()=>choose(question.id,choice)}/>{choice}</label>)}</div></fieldset>)}</div>
+ <div className="sticky bottom-20 rounded-2xl bg-white p-3 shadow-xl sm:bottom-4"><p className="mb-2 text-sm">{answered}/{questions?.length||0} answered{remaining===0?' - Time elapsed. Only answers saved before the deadline count.':''}</p><button onClick={()=>void finish()} disabled={submit.isPending||(!remaining&&!submit.error)||!!remaining&&answered<(questions?.length||0)} className="w-full rounded-xl bg-brand p-3 font-semibold text-white disabled:opacity-40">{submit.isPending?'Submitting...':submit.error?'Retry submission':'Submit CBT'}</button>{submit.error&&<p role="alert" className="mt-2 text-sm text-flag">{submit.error.message}</p>}</div></div>;
+}

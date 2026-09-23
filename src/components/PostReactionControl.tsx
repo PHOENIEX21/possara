@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, X } from "lucide-react";
@@ -95,7 +95,7 @@ function reactionPreviewLabel(post: PostWithAuthor) {
     .map((person) => person.organization_name ?? person.full_name ?? person.username)
     .filter((name): name is string => !!name)
     .slice(0, 2);
-  const remaining = Math.max(0, post.reaction_count - post.reaction_preview.length);
+  const remaining = Math.max(0, post.reaction_count - names.length);
 
   if (!names.length) return `${formatCompactCount(post.reaction_count)} ${post.reaction_count === 1 ? "person" : "people"} reacted`;
   if (names.length === 1) {
@@ -106,7 +106,7 @@ function reactionPreviewLabel(post: PostWithAuthor) {
   return names.join(" and ");
 }
 
-export function PostReactionControl({ post }: { post: PostWithAuthor }) {
+export function PostReactionControl({ post, children }: { post: PostWithAuthor; children?: ReactNode }) {
   const toggleReaction = useTogglePostReaction();
   const activeOrganization = useActiveOrganizationIdentity();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -119,6 +119,8 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   const onlyLikes = Boolean(people?.length) && people!.every((person) => person.type === "like");
   const remainingPeople = Math.max(0, post.reaction_count - (people?.length ?? 0));
   const previewLabel = reactionPreviewLabel(post);
+
+  useEffect(() => () => { if (timerRef.current !== null) window.clearTimeout(timerRef.current); }, []);
 
   function clearTimer() {
     if (timerRef.current !== null) {
@@ -159,7 +161,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
   }
 
   return (
-    <>
+    <div className="post-reaction-control">
       {post.reaction_count > 0 && (
         <button
           type="button"
@@ -168,7 +170,7 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
           aria-label={`See ${post.reaction_count} reactions`}
         >
           <span className="flex min-w-0 items-center gap-2">
-            <span className="flex -space-x-1.5">
+            <span className="flex shrink-0 -space-x-1.5">
               {post.reaction_preview.map((person) => {
                 const reaction = REACTIONS.find((item) => item.type === person.type);
                 const name = person.organization_name ?? person.full_name ?? person.username ?? "POSSARA member";
@@ -182,13 +184,14 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
               })}
               {post.reaction_preview.length === 0 && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light text-[11px]">✨</span>}
             </span>
-            <span className="truncate text-xs text-ink-light">{previewLabel}</span>
+            <span title={previewLabel} className="min-w-0 truncate text-xs text-ink-light">{previewLabel}</span>
           </span>
           <span className="shrink-0 text-xs font-semibold text-ink-faint">{formatCompactCount(post.reaction_count)}</span>
         </button>
       )}
 
-      <div className="post-reaction-action relative inline-flex flex-1 items-center justify-center gap-1">
+      <div className="post-action-row">
+      <div className="post-reaction-action relative inline-flex min-w-0 flex-1 items-center justify-center gap-1">
         {pickerOpen && (
           <div className="absolute bottom-full left-0 z-30 mb-2 flex gap-1 rounded-2xl border border-black/[.06] bg-white p-2 shadow-xl" role="menu" aria-label="Choose a reaction">
             {REACTIONS.map((reaction) => {
@@ -244,6 +247,10 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
         {pickerOpen && <button type="button" aria-label="Close reaction picker" onClick={() => setPickerOpen(false)} className="fixed inset-0 z-20 cursor-default bg-transparent" />}
       </div>
 
+        {children}
+      </div>
+      {toggleReaction.error && <p role="alert" className="mt-2 text-xs text-flag">{toggleReaction.error.message}</p>}
+
       {peopleOpen && (
         <div className="fixed inset-0 z-[85] flex items-end bg-ink/45 sm:items-center sm:justify-center sm:p-4" onClick={() => setPeopleOpen(false)}>
           <div className="max-h-[78vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="People who reacted">
@@ -289,6 +296,6 @@ export function PostReactionControl({ post }: { post: PostWithAuthor }) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

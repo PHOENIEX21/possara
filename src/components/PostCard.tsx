@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bookmark, Building2, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Pencil, Repeat2, Send, Trash2, X } from "lucide-react";
+import { Bookmark, Building2, MessageCircle, MoreHorizontal, Pencil, Repeat2, Send, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
 import { supabase } from "../lib/supabase";
@@ -10,6 +10,7 @@ import { usePostStory } from "../hooks/useStories";
 import { useMemberTrustRank } from "../hooks/useTrustRank";
 import { InAppShareDialog } from "./InAppShareDialog";
 import { ReportButton } from "./ReportButton";
+import { PhotoViewer } from "./PhotoViewer";
 import { ProfilePhotoViewer } from "./ProfilePhotoViewer";
 import { PostReactionControl } from "./PostReactionControl";
 import { TrustRankBadge } from "./TrustRankBadge";
@@ -21,6 +22,8 @@ import { MentionSuggestions } from "./MentionSuggestions";
 import { useActiveOrganizationIdentity } from "../hooks/useActiveOrganizationIdentity";
 import { CommentReactionControl } from "./CommentReactionControl";
 import type { PostWithAuthor } from "../hooks/useFeedPosts";
+
+const compactCount = (value: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 0 }).format(value);
 
 const COMMENT_EMOJIS = ["😀", "😂", "🔥", "👏", "🎉", "💯", "🤝", "🙌"];
 
@@ -67,7 +70,7 @@ function collapsedContent(content: string, maxChars = 420) {
 
 function PostMediaGrid({ urls, onOpen }: { urls: string[]; onOpen: (index: number) => void }) {
   if (!urls.length) return null;
-  const tile=(url:string,index:number,className:string,hiddenCount=0)=><button key={url+`-${index}`} type="button" onClick={()=>onOpen(index)} className={`relative min-h-0 overflow-hidden bg-paper-dim ${className}`} aria-label={`View post image ${index+1} of ${urls.length}`}><img src={url} alt="" loading="lazy" className="h-full w-full object-cover"/>{hiddenCount>0&&<span className="absolute inset-0 flex items-center justify-center bg-black/55 text-3xl font-bold text-white">+${hiddenCount}</span>}</button>;
+  const tile=(url:string,index:number,className:string,hiddenCount=0)=><button key={url+`-${index}`} type="button" onClick={()=>onOpen(index)} className={`relative min-h-0 overflow-hidden bg-paper-dim ${className}`} aria-label={`View post image ${index+1} of ${urls.length}`}><img src={url} alt="" loading="lazy" className="h-full w-full object-cover"/>{hiddenCount>0&&<span className="absolute inset-0 flex items-center justify-center bg-black/55 text-3xl font-bold text-white">+{hiddenCount}</span>}</button>;
   if(urls.length===1)return <div className="mt-3 overflow-hidden rounded-xl bg-paper">{tile(urls[0],0,"block max-h-[680px] w-full [&>img]:max-h-[680px] [&>img]:object-contain")}</div>;
   if(urls.length===2)return <div className="mt-3 grid h-[360px] grid-cols-2 gap-1 overflow-hidden rounded-xl sm:h-[460px]">{tile(urls[0],0,"h-full")}{tile(urls[1],1,"h-full")}</div>;
   if(urls.length===3)return <div className="mt-3 grid h-[390px] grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl sm:h-[500px]">{tile(urls[0],0,"row-span-2 h-full")}{tile(urls[1],1,"h-full")}{tile(urls[2],2,"h-full")}</div>;
@@ -163,7 +166,7 @@ function CommentThread({ postId }: { postId: string }) {
     repliesByRoot.set(root, list);
   });
 
-  function CommentRow({ comment, rootId, isReply = false }: { comment: (typeof rows)[number]; rootId: string; isReply?: boolean }) {
+  function renderCommentRow({ comment, rootId, isReply = false }: { comment: (typeof rows)[number]; rootId: string; isReply?: boolean }) {
     const commentOrganization = comment.organizations;
     const name = commentOrganization?.name ?? comment.profiles?.full_name ?? "A member of the community";
     const path = commentOrganization ? `/organizations/${commentOrganization.slug}` : profilePath(comment.author_id, comment.profiles?.username, userId);
@@ -200,7 +203,7 @@ function CommentThread({ postId }: { postId: string }) {
             }}
           >
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <Link to={path} className="truncate text-[14px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
+              <Link to={path} className="min-w-0 max-w-full truncate text-[14px] font-semibold leading-tight text-ink hover:underline">{name}</Link>
               {commentOrganization ? (commentOrganization.verified ? <OrganizationVerificationBadge compact/> : null) : <CommentTrustBadge userId={comment.author_id} />}
               <span className="text-[10px] text-ink-faint">{timeAgo(comment.created_at)}</span>
             </div>
@@ -219,7 +222,7 @@ function CommentThread({ postId }: { postId: string }) {
                 </div>
               </div>
             ) : (
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink"><MentionText text={comment.content}/></p>
+              <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-ink"><MentionText text={comment.content}/></p>
             )}
           </div>
 
@@ -255,8 +258,8 @@ function CommentThread({ postId }: { postId: string }) {
 
         {roots.map((root) => (
           <div key={root.id} className="space-y-2.5">
-            <CommentRow comment={root} rootId={root.id}/>
-            {(repliesByRoot.get(root.id) ?? []).map((reply) => <CommentRow key={reply.id} comment={reply} rootId={root.id} isReply/> )}
+            {renderCommentRow({ comment: root, rootId: root.id })}
+            {(repliesByRoot.get(root.id) ?? []).map((reply) => <div key={reply.id}>{renderCommentRow({ comment: reply, rootId: root.id, isReply: true })}</div> )}
           </div>
         ))}
       </div>
@@ -267,7 +270,7 @@ function CommentThread({ postId }: { postId: string }) {
             {actingOrganization&&<div className="flex items-center gap-2 rounded-xl bg-brand-light px-3 py-2 text-xs font-semibold text-brand-dark"><Building2 size={14}/><span className="truncate">Commenting as {actingOrganization.name}</span>{actingOrganization.verified&&<OrganizationVerificationBadge compact/>}</div>}
             {replyTo && (
               <div className="flex items-center justify-between rounded-xl bg-brand-light px-3 py-2 text-xs text-brand-dark">
-                <span>Replying to {replyTo.username ? `@${replyTo.username}` : replyTo.name}</span>
+                <span className="min-w-0 truncate">Replying to {replyTo.username ? `@${replyTo.username}` : replyTo.name}</span>
                 <button type="button" onClick={() => { setReplyTo(null); setText(""); }} className="font-bold">×</button>
               </div>
             )}
@@ -509,12 +512,12 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
       <div className="post-social-bar mt-4 border-t border-paper-dim pt-2">
         <div className="flex items-center gap-1 overflow-x-auto">
-          <PostReactionControl post={post} />
-          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} className="post-social-action">
-            <MessageCircle size={21} /><span>{post.comment_count > 0 ? post.comment_count : ""}</span><span className="sr-only">Discuss</span>
+          <PostReactionControl post={post}>
+          <button onClick={() => setCommentsOpen((value) => !value)} aria-expanded={commentsOpen} aria-label={`Discuss (${post.comment_count} comments)`} title={`${post.comment_count.toLocaleString()} comments`} className="post-social-action">
+            <MessageCircle size={21} /><span>{post.comment_count > 0 ? compactCount(post.comment_count) : ""}</span><span className="sr-only">Discuss</span>
           </button>
-          <button type="button" onClick={() => setRepostOpen(true)} disabled={!userId || repost.isPending} className="post-social-action" aria-label="Repost">
-            <Repeat2 size={21} /><span>{post.share_count > 0 ? post.share_count : ""}</span>
+          <button type="button" onClick={() => setRepostOpen(true)} disabled={!userId || repost.isPending} className="post-social-action" aria-label={`Repost (${post.share_count} reposts)`} title={`${post.share_count.toLocaleString()} reposts`}>
+            <Repeat2 size={21} /><span>{post.share_count > 0 ? compactCount(post.share_count) : ""}</span>
           </button>
           <button type="button" onClick={() => setShareOpen(true)} className="post-social-action" aria-label="Share">
             <Send size={21} /><span className="sr-only">Share</span>
@@ -522,19 +525,14 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           <button type="button" onClick={() => toggleSaved.mutate()} disabled={!userId || toggleSaved.isPending} className={`post-social-action ml-auto ${saved ? "text-brand-dark" : ""}`} aria-label={saved ? "Remove from saved posts" : "Save post"} title={saved ? "Saved" : "Save post"}>
             <Bookmark size={21} fill={saved ? "currentColor" : "none"} />
           </button>
+          </PostReactionControl>
         </div>
       </div>
 
       {repostOpen && <div className="fixed inset-0 z-[110] flex items-end bg-ink/55 sm:items-center sm:justify-center sm:p-4" onClick={()=>setRepostOpen(false)}><div className="w-full rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-3xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Repost</h2><p className="text-xs text-ink-faint">Add your own thoughts, or repost without a description.</p></div><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={19}/></button></div><textarea autoFocus rows={4} value={repostCommentary} onChange={e=>setRepostCommentary(e.target.value)} placeholder="Say something about this post…" className="mt-4 w-full resize-none rounded-2xl border border-black/10 p-3 text-sm outline-none focus:border-brand/40"/><div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full bg-paper px-4 py-2 text-sm font-semibold">Cancel</button><button type="button" disabled={repost.isPending} onClick={()=>void repost.mutateAsync({postId:post.id,commentary:repostCommentary}).then(()=>{setRepostOpen(false);setRepostCommentary("");})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{repost.isPending?"Reposting…":"Repost"}</button></div></div></div>}
 
       {commentsOpen && <CommentThread postId={post.id} />}
-      {mediaViewer&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={()=>setMediaViewer(null)}>
-        <button type="button" onClick={()=>setMediaViewer(null)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white" aria-label="Close image"><X size={22}/></button>
-        {mediaViewer.urls.length>1&&<div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-xs font-semibold text-white">{mediaViewer.index+1} / {mediaViewer.urls.length}</div>}
-        {mediaViewer.index>0&&<button type="button" onClick={(event)=>{event.stopPropagation();setMediaViewer((current)=>current?{...current,index:current.index-1}:current);}} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white" aria-label="Previous image"><ChevronLeft size={26}/></button>}
-        {mediaViewer.index<mediaViewer.urls.length-1&&<button type="button" onClick={(event)=>{event.stopPropagation();setMediaViewer((current)=>current?{...current,index:current.index+1}:current);}} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 p-2 text-white" aria-label="Next image"><ChevronRight size={26}/></button>}
-        <img src={mediaViewer.urls[mediaViewer.index]} alt="" className="max-h-full max-w-full object-contain" onClick={e=>e.stopPropagation()}/>
-      </div>}
+      {mediaViewer && <PhotoViewer urls={mediaViewer.urls} initialIndex={mediaViewer.index} title={name + " ? Photos"} onClose={() => setMediaViewer(null)} />}
       {photoOpen && !organization && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
       <InAppShareDialog
         open={shareOpen}

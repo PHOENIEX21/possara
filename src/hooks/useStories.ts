@@ -9,6 +9,7 @@ export type MomentBackground = "midnight" | "plum" | "sunset" | "ocean" | "emera
 export interface StoryWithAuthor {
   id: string;
   author_id: string;
+  organization_id?: string | null;
   media_url: string | null;
   storage_path: string | null;
   audience: "public" | "followers";
@@ -30,11 +31,13 @@ export interface StoryWithAuthor {
 
 export interface AuthorWithStories {
   authorId: string;
+  organization?: { id: string; name: string; slug: string; logo_url: string | null; verified: boolean | null; verification_status: string | null } | null;
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
   stories: StoryWithAuthor[];
 }
 
 export type PostStoryInput = {
+  organizationId?: string | null;
   imageFile?: File | null;
   imageFiles?: File[];
   textBody?: string;
@@ -132,11 +135,19 @@ export function useActiveStories() {
       if (profileError) throw profileError;
       const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
       const hydrated = rawRows.map((story) => ({ ...story, profiles: profileById.get(story.author_id) ?? null })) as StoryWithAuthor[];
+      const organizationIds = [...new Set(rawRows.map(story => story.organization_id).filter((id): id is string => !!id))];
+      const { data: organizations, error: organizationError } = organizationIds.length
+        ? await supabase.from("organizations").select("id,name,slug,logo_url,verified,verification_status").in("id", organizationIds)
+        : { data: [], error: null };
+      if (organizationError) throw organizationError;
+      const organizationById = new Map((organizations ?? []).map(org => [org.id, org]));
       const rows = await attachSignedUrls(hydrated);
       const byAuthor = new Map<string, AuthorWithStories>();
       rows.forEach((story) => {
-        if (!byAuthor.has(story.author_id)) byAuthor.set(story.author_id, { authorId: story.author_id, author: story.profiles, stories: [] });
-        byAuthor.get(story.author_id)!.stories.push(story);
+        const organization = story.organization_id ? organizationById.get(story.organization_id) : null;
+        const key = story.organization_id ? "org:" + story.organization_id : story.author_id;
+        if (!byAuthor.has(key)) byAuthor.set(key, { authorId: key, organization, author: organization ? { full_name: organization.name, avatar_url: organization.logo_url } : story.profiles, stories: [] });
+        byAuthor.get(key)!.stories.push(story);
       });
       const groups = [...byAuthor.values()];
       groups.forEach((group) => group.stories.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
@@ -157,6 +168,7 @@ export function useMyStories() {
         .from("stories")
         .select("*")
         .eq("author_id", userId as string)
+        .is("organization_id", null)
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -236,6 +248,7 @@ export function usePostStory() {
         const sequencePaths: Array<string | null> = uploadedImagePaths.length ? [...uploadedImagePaths] : [null];
         const storyRows = sequencePaths.map((imagePath,index) => ({
           author_id: userId,
+          organization_id: input.organizationId || null,
           storage_path: imagePath,
           media_url: null,
           caption: null,
@@ -288,8 +301,9 @@ export function useDeleteStory() {
 
   return useMutation({
     mutationFn: async (story: StoryWithAuthor) => {
-      if (!userId || story.author_id !== userId) throw new Error("You can only delete your own Moment.");
-      const { error: deleteRowError } = await supabase.from("stories").delete().eq("id", story.id).eq("author_id", userId);
+      if (!userId || (!story.organization_id && story.author_id !== userId)) throw new Error("You can only delete your own Moment.");
+      const { data: deleted, error: deleteRowError } = await supabase.from("stories").delete().eq("id", story.id).select("id");
+      if (!deleteRowError && !deleted?.length) throw new Error("You no longer have permission to delete this Moment.");
       if (deleteRowError) throw new Error(`Moment could not be deleted: ${deleteRowError.message}`);
       const cleanup: Promise<unknown>[] = [];
       if (story.storage_path) cleanup.push(supabase.storage.from("moments").remove([story.storage_path]));
