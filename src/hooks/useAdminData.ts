@@ -44,8 +44,9 @@ export function useUnverifiedOrganizations() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("organizations")
-        .select("id,name,slug,website,created_at")
-        .eq("verified", false)
+        .select("id,name,slug,website,description,industry,location,created_at")
+        .or("verified.eq.false,verified.is.null")
+        .neq("verification_status", "verified")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -96,6 +97,7 @@ export function useCreateOrganization() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin"] });
       qc.invalidateQueries({ queryKey: ["organization-directory"] });
+      for (const key of ["my-organizations", "profile-organizations", "feed-posts", "active-stories", "hiring-jobs", "hiring-job"]) qc.invalidateQueries({queryKey:[key]});
     },
   });
 }
@@ -129,6 +131,7 @@ export function useVerifyOrganization() {
       qc.invalidateQueries({ queryKey: ["opportunities"] });
       qc.invalidateQueries({ queryKey: ["organization"] });
       qc.invalidateQueries({ queryKey: ["organization-directory"] });
+      for (const key of ["my-organizations", "profile-organizations", "feed-posts", "active-stories", "hiring-jobs", "hiring-job"]) qc.invalidateQueries({queryKey:[key]});
     },
   });
 }

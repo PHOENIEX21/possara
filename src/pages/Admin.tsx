@@ -1,3 +1,4 @@
+import { OrganizationVerificationAdmin } from "../components/OrganizationVerificationAdmin";
 import { useState } from "react";
 import { Building2, Plus, ShieldCheck, FileText, Images, GraduationCap } from "lucide-react";
 import {
@@ -13,8 +14,6 @@ import {
   useSetOpportunityReviewStatus,
   useSetUserRole,
   useUpdateAccountDeletionRequest,
-  useUnverifiedOrganizations,
-  useVerifyOrganization,
 } from "../hooks/useAdminData";
 import {
   useAdminActiveMoments,
@@ -126,8 +125,6 @@ export function Admin() {
   const { email, role, isVerified } = useAuth();
   const pendingOpps = usePendingOpportunities();
   const reviewOpp = useSetOpportunityReviewStatus();
-  const orgs = useUnverifiedOrganizations();
-  const verifyOrg = useVerifyOrganization();
   const reports = usePendingReports();
   const resolveReport = useResolveReport();
   const ads = usePendingAdvertisements();
@@ -143,6 +140,7 @@ export function Admin() {
     <div className="flex items-start gap-3"><div className="rounded-xl bg-trust-light p-2 text-trust-dark"><ShieldCheck size={22}/></div><div><h1 className="text-2xl">Admin</h1><p className="text-sm text-ink-light">Moderation, Study oversight, organizations, verification and member-role controls.</p></div></div>
     <div className="rounded-2xl bg-trust-light px-4 py-3 text-sm text-trust-dark">Signed in as <b>{email ?? "admin"}</b> · role <b>{role ?? "loading"}</b> · {isVerified ? "verified" : "not verified"}</div>
 
+    <OrganizationVerificationAdmin/>
     <AdminSignupSummary/>
     <AdminFollowerOverview/>
     <ContentAdmin/>
@@ -155,12 +153,7 @@ export function Admin() {
       <ErrorText error={reviewOpp.error}/>
     </Section>
 
-    <Section title="Organizations awaiting verification">
-      {orgs.isLoading && <p className="text-sm text-ink-light">Loading…</p>}
-      {!orgs.isLoading && orgs.data?.length === 0 && <p className="text-sm text-ink-light">Nothing waiting for verification.</p>}
-      <div className="space-y-3">{orgs.data?.map((org) => <div key={org.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-paper-dim p-3"><div><p className="font-medium">{org.name}</p>{org.website&&<p className="text-xs text-ink-faint">{org.website}</p>}</div><button onClick={()=>verifyOrg.mutate(org.id)} className="rounded-full bg-trust px-3 py-1.5 text-sm font-medium text-white">Verify</button></div>)}</div>
-      <ErrorText error={verifyOrg.error}/>
-    </Section>
+
 
     <Section title="Reports">
       {reports.isLoading && <p className="text-sm text-ink-light">Loading…</p>}

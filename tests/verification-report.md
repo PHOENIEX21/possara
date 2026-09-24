@@ -47,3 +47,9 @@ Preview: run `npm run dev` and open the displayed local URL. Header screenshot: 
 - Supabase advisors found no notice for the new invoker function. Existing findings remain: callable security-definer endpoints requiring review, a locked-down `blocked_terms` table without policies, and disabled leaked-password protection. See [function-access review guidance](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) and [password protection guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). These were not automatically treated as newly introduced vulnerabilities or changed without inspection.
 
 Database function design was checked against the [Supabase function documentation](https://supabase.com/docs/guides/database/functions).
+
+## Admin organization verification — 24 September 2026
+
+Moved the verification queue directly below the admin account summary, with a pending count, search, refresh, profile-review links, an explicit Approve verification action and visible fetch/mutation errors. The queue includes legacy null verification flags, and approval refreshes organization, feed, Moment and hiring caches.
+
+The isolated mobile browser test showed the panel near the top without horizontal overflow. Clicking approval sent both `verified: true` and `verification_status: verified`, removed the fixture organization from the queue and displayed success. `organization-verification.sql` passed against the real database in a rolled-back transaction: a regular owner cannot self-verify; an eligible admin can approve a synthetic organization. No real organization was approved. Production build and targeted lint passed. Screenshot: `../admin-verification-panel.png`.
