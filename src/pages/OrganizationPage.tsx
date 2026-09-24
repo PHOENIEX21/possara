@@ -59,18 +59,18 @@ export function OrganizationPage(){
   if(isLoading)return <p className="text-ink-light">Loading…</p>;
   if(error||!org)return <div><p className="text-flag">This organization couldn&apos;t be found.</p><Link to="/organizations" className="mt-3 inline-block text-sm text-trust-dark underline">Back to organizations</Link></div>;
 
-  return <div className="page-stack">
+  return <div className="page-stack organization-page">
     <Link to="/organizations" className="inline-flex items-center gap-1.5 text-sm text-ink-light"><ArrowLeft size={15}/>All organizations</Link>
 
     <section className="overflow-hidden rounded-3xl border border-paper-dim bg-white shadow-sm">
       <div className="relative h-40 overflow-hidden bg-gradient-to-r from-brand-light via-paper to-trust-light sm:h-52">{org.cover_url&&<img src={org.cover_url} alt="" className="h-full w-full object-cover"/>}<div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5"/></div>
       <div className="p-4 sm:p-6">
-        <div className="flex items-start gap-3 sm:gap-4">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:gap-4">
           {org.logo_url
-            ? <img src={org.logo_url} alt="" className="-mt-12 h-24 w-24 rounded-full border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
-            : <div className="-mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2"><h1 className="break-words text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{(org.verified||org.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}</div>
+            ? <img src={org.logo_url} alt="" className="relative z-10 -mt-12 h-24 w-24 shrink-0 rounded-full border-4 border-white bg-white object-cover shadow-lg sm:-mt-14 sm:h-28 sm:w-28"/>
+            : <div className="relative z-10 -mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-paper-dim text-ink-light shadow-lg sm:-mt-14 sm:h-28 sm:w-28"><Building2 size={32}/></div>}
+          <div className="min-w-0 w-full sm:flex-1">
+            <div className="flex flex-wrap items-center gap-2"><h1 className="min-w-0 max-w-full [overflow-wrap:anywhere] text-2xl font-bold leading-tight sm:text-3xl">{org.name}</h1>{(org.verified||org.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}</div>
             <div className="mt-2"><TrustBadge verified={org.verified??false} lastVerifiedAt={null} sponsored={org.is_sponsored}/></div>
             {org.industry&&<p className="mt-1 text-sm font-medium text-brand-dark">{org.industry}</p>}
           </div>
@@ -91,9 +91,9 @@ export function OrganizationPage(){
           <Link to={`/organizations/${org.id}/team`} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-ink-faint/25 px-3 py-2 text-sm font-semibold text-ink sm:col-auto"><Users size={14}/>Team</Link>
         </div>}
 
-        <div className="mt-5 flex flex-wrap gap-2 text-sm text-ink-light">
+        <div className="organization-contact mt-5 flex flex-wrap gap-2 text-sm text-ink-light">
           {(org.headquarters||org.state||org.country)&&<span className="inline-flex items-center gap-1.5 rounded-full bg-paper-dim px-3 py-1.5"><MapPin size={14}/>{[org.headquarters||org.state,org.country].filter(Boolean).join(" · ")}</span>}
-          {org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/25 px-3 py-1.5 text-trust-dark hover:bg-paper-dim"><Globe size={14}/>{org.website.replace(/^https?:\/\//,"").replace(/\/$/,"")}</a>}
+          {org.website&&<a href={org.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-ink-faint/25 px-3 py-1.5 text-trust-dark hover:bg-paper-dim"><Globe size={14}/><span>{org.website.replace(/^https?:\/\//,"").replace(/\/$/,"")}</span></a>}
         </div>
       </div>
     </section>

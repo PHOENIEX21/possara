@@ -298,6 +298,13 @@ img,video,canvas,svg{max-width:100%}
 }
 
 /* Home welcome and filters stay together below the app header. */
+.mobile-drawer{z-index:60;overscroll-behavior:contain}
+.mobile-drawer-card{overscroll-behavior:contain;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.mobile-menu-btn{min-width:44px;min-height:44px;align-items:center;justify-content:center}
+.organization-page{min-width:0;overflow-wrap:anywhere}
+.organization-contact>a,.organization-contact>span{max-width:100%}
+.organization-contact svg{flex-shrink:0}
+.organization-contact span{min-width:0;overflow-wrap:anywhere}
 .home-main{padding-top:0!important}
 .home-top-sticky{position:sticky;top:0;z-index:35;background:#f8f9fd;margin-bottom:.7rem;padding-top:0}
 .home-top-sticky .home-top-welcome{border-radius:0 0 1rem 1rem}
