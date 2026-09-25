@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-export function AdminSignupSummary() {
+export function AdminSignupSummary({compact=false}:{compact?:boolean}) {
   const query = useQuery({
     queryKey: ["admin", "signup-count"],
     queryFn: async () => {
@@ -12,6 +12,13 @@ export function AdminSignupSummary() {
     },
     staleTime: 30_000,
   });
+
+  if (compact) return <section className="rounded-2xl border border-paper-dim bg-white p-5">
+    <h2 className="text-sm font-semibold text-ink-light">Registered members</h2>
+    <p className="mt-2 text-3xl font-bold">{query.isLoading||query.error ? "—" : query.data??0}</p>
+    <p className="mt-1 text-xs leading-5 text-ink-faint">Accounts in the POSSARA community.</p>
+    {query.error&&<button onClick={()=>void query.refetch()} className="mt-3 text-left text-xs font-semibold text-flag">Could not load. Retry</button>}
+  </section>;
 
   return (
     <section className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">
