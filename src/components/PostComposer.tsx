@@ -25,7 +25,7 @@ export interface PostComposerProps {
 }
 
 const HOME_TOPICS = [
-  { value: "insight", label: "Insight", help: "Motivation, encouragement, useful stories, knowledge, education, practical advice and lessons." },
+  { value: "insight", label: "Insight", help: "Motivation, encouragement, useful experiences, knowledge, education, practical advice and lessons." },
 ] as const;
 const HOME_POST_CATEGORIES = ["jobs","scholarships","competitions","admissions"] as const;
 const FEELINGS = [

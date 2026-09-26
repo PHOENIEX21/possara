@@ -1,3 +1,4 @@
+import { Link, useSearchParams } from "react-router-dom";
 import { OrganizationVerificationBadge } from "./OrganizationVerificationBadge";
 import { useCanManageOrganization } from "../hooks/useHiring";
 import { useEffect, useRef, useState } from "react";
@@ -14,12 +15,13 @@ import { STORY_REACTIONS } from "../lib/storyReactions";
 const DURATION = 6500;
 const compact = (count: number) => new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count);
 
-export function StoryViewer({ groups, initialAuthorId, onClose }: {
+export function StoryViewer({ groups, initialAuthorId, initialMomentId, onClose }: {
   groups: AuthorWithStories[];
   initialAuthorId: string;
+  initialMomentId?: string;
   onClose: () => void;
 }) {
-  const [position, setPosition] = useState(() => ({ group: Math.max(0, groups.findIndex((group) => group.authorId === initialAuthorId)), story: 0 }));
+  const [position, setPosition] = useState(() => ({ group: Math.max(0, groups.findIndex((group) => group.authorId === initialAuthorId)), story: Math.max(0, groups.find(group => group.authorId === initialAuthorId)?.stories.findIndex(moment => moment.id === initialMomentId) ?? 0) }));
   const group = groups[position.group];
   const story = group?.stories[position.story];
   const dialog = useRef<HTMLDivElement>(null);
@@ -63,6 +65,8 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
   onNext: () => void; onPrevious: () => void; onClose: () => void;
 }) {
   const { userId } = useAuth();
+  const [searchParams] = useSearchParams();
+  const targetInteraction = searchParams.get("interaction");
   const {data:canManageOrganization}=useCanManageOrganization(story.organization_id || undefined);
   const own = story.organization_id ? canManageOrganization===true : userId === story.author_id;
   const [paused, setPaused] = useState(false);
@@ -73,7 +77,7 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
   const [ready, setReady] = useState(!story.media_url);
   const [mediaError, setMediaError] = useState(story.story_type === "image" && !story.media_url);
   const [muted, setMuted] = useState(true);
-  const [sheet, setSheet] = useState<"viewers" | "replies" | "delete" | null>(null);
+  const [sheet, setSheet] = useState<"viewers" | "replies" | "delete" | null>(targetInteraction ? "replies" : null);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
   const [savingPhoto, setSavingPhoto] = useState(false);
@@ -91,14 +95,17 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
   const myReaction = interactions.data?.find((item) => item.kind === "like" && item.user_id === userId);
   const liked = !!myReaction;
   const likes = interactions.data?.filter((item) => item.kind === "like").length ?? 0;
-  const replies = interactions.data?.filter((item) => item.kind === "reply") ?? [];
+  const replies = interactions.data?.filter((item) => item.kind === "reply" || item.id === targetInteraction) ?? [];
+  useEffect(() => {
+    if (targetInteraction && interactions.data) document.getElementById(`moment-interaction-${targetInteraction}`)?.scrollIntoView({ block: "nearest" });
+  }, [targetInteraction, interactions.data]);
   const stopped = paused || holding || typing || reactionsOpen || !!draft || hidden || !!sheet || !ready || reply.isPending || like.isPending || savingPhoto;
   const text = story.text_body?.trim() || story.caption?.trim();
   const [age] = useState(() => Math.max(0, Math.floor((Date.now() - Date.parse(story.created_at)) / 60000)));
 
   useEffect(() => {
-    if (userId && !own) recordView({ storyId: story.id, authorId: story.author_id });
-  }, [userId, own, recordView, story.id, story.author_id]);
+    if (userId && !own && ready && !mediaError && !hidden) recordView({ storyId: story.id, authorId: story.author_id });
+  }, [userId, own, ready, mediaError, hidden, recordView, story.id, story.author_id]);
   useEffect(() => {
     const update = () => setHidden(document.hidden);
     document.addEventListener("visibilitychange", update);
@@ -146,7 +153,7 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
   async function downloadPhoto() {
     if (!story.media_url || saveLock.current) return;
     saveLock.current = true; setSavingPhoto(true); setNotice("");
-    try { await saveImage(story.media_url, `${group.author?.full_name || "POSSARA"}-story`); setNotice("Download started"); }
+    try { await saveImage(story.media_url, `${group.author?.full_name || "POSSARA"}-moment`); setNotice("Download started"); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Could not save this photo."); }
     finally { saveLock.current = false; setSavingPhoto(false); }
   }
@@ -182,7 +189,7 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
       </div>
       <div className="story-author-row">
         {group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" /> : <span className="story-avatar">{(group.author?.full_name || "M").charAt(0)}</span>}
-        <div className="story-author-name"><strong title={group.author?.full_name || "Member"}>{group.author?.full_name || "Member"}</strong>{(group.organization?.verified||group.organization?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}<span>{age < 1 ? "Just now" : age < 60 ? `${age}m` : `${Math.floor(age / 60)}h`}</span></div>
+        <div className="story-author-name"><Link to={group.organization ? `/organizations/${group.organization.slug}` : `/profile/id/${story.author_id}`} className="font-bold hover:underline" title={group.author?.full_name || "Member"}>{group.author?.full_name || "Member"}</Link>{(group.organization?.verified||group.organization?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}<span>{age < 1 ? "Just now" : age < 60 ? `${age}m` : `${Math.floor(age / 60)}h`}</span></div>
         {story.music_url && <button aria-label={muted ? "Enable music" : "Mute music"} onClick={() => { setMuted(!muted); if (muted) { setNotice(""); void audio.current?.play().catch(() => setNotice("Music could not play. Please try again.")); } }}>{muted ? <VolumeX size={19} /> : <Volume2 size={19} />}</button>}
         <button aria-label={paused ? "Resume Moment" : "Pause Moment"} onClick={() => setPaused(!paused)}>{paused ? <Play size={19} /> : <Pause size={19} />}</button>
         {own && <button aria-label="Delete Moment" onClick={() => setSheet("delete")}><Trash2 size={18} /></button>}
@@ -198,12 +205,12 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
       if (element) element.currentTime = Math.min(Math.max(0, story.music_clip_start_seconds ?? 0), Number.isFinite(element.duration) ? Math.max(0, element.duration - 0.1) : 0);
     }} />}
     <footer className="story-footer">
-      {reactionsOpen&&<div className="mb-3 flex flex-wrap justify-center gap-1 rounded-2xl bg-white p-2 text-ink shadow-xl" role="group" aria-label="Choose a story reaction">
+      {reactionsOpen&&<div className="mb-3 flex flex-wrap justify-center gap-1 rounded-2xl bg-white p-2 text-ink shadow-xl" role="group" aria-label="Choose a Moment reaction">
         {STORY_REACTIONS.map(reaction=><button key={reaction.value} type="button" aria-label={reaction.label} aria-pressed={myReaction?.reaction_type===reaction.value} disabled={like.isPending} className="flex min-h-12 min-w-11 flex-col items-center rounded-xl p-1 hover:bg-paper" onClick={()=>{like.mutate(reaction.value);setReactionsOpen(false);}}><span className="text-2xl">{reaction.emoji}</span><span className="text-[10px]">{reaction.label}</span></button>)}
         {liked&&<button type="button" className="px-2 text-xs" onClick={()=>{like.mutate(null);setReactionsOpen(false);}}>Remove reaction</button>}
         <button type="button" aria-label="Close reactions" onClick={()=>setReactionsOpen(false)} className="p-2"><X size={16}/></button>
       </div>}
-      {story.media_url && <div className="story-photo-actions"><button type="button" disabled={savingPhoto} onClick={() => void downloadPhoto()} aria-label="Save story photo to device">{savingPhoto ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}{savingPhoto ? "Saving…" : "Save photo"}</button><a href={story.media_url} target="_blank" rel="noopener noreferrer" onClick={() => setPaused(true)}>Open original</a></div>}
+      {story.media_url && <div className="story-photo-actions"><button type="button" disabled={savingPhoto} onClick={() => void downloadPhoto()} aria-label="Save Moment photo to device">{savingPhoto ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}{savingPhoto ? "Saving…" : "Save photo"}</button><a href={story.media_url} target="_blank" rel="noopener noreferrer" onClick={() => setPaused(true)}>Open original</a></div>}
       {(notice || like.error || reply.error) && <p className="story-notice" role="status">{like.error?.message || reply.error?.message || notice}</p>}
       {own ? <div className="story-owner-actions">
         <button onClick={() => setSheet("viewers")}><Eye size={19} />{compact(viewers.data?.length ?? 0)} viewers</button>
@@ -222,14 +229,15 @@ function StorySlide({ story, group, index, canGoBack, onNext, onPrevious, onClos
       <div className="story-sheet-heading"><strong>{sheet === "delete" ? "Delete this Moment?" : sheet === "viewers" ? "Moment viewers" : "Replies"}</strong><button aria-label="Close panel" onClick={() => setSheet(null)}><X size={20} /></button></div>
       {sheet === "delete" ? <><p>This cannot be undone.</p>{remove.error && <p role="alert">{remove.error.message}</p>}<button className="mt-4 rounded-full bg-flag px-5 py-2 text-white" disabled={remove.isPending} onClick={() => void remove.mutateAsync(story).then(onClose).catch(() => undefined)}>{remove.isPending ? "Deleting…" : "Delete Moment"}</button></> : <div className="story-sheet-list">
         {sheet === "viewers" ? <>
-          <p className="mb-3 text-xs text-ink-faint">People who allow story-view visibility.</p>
+          <p className="mb-3 text-xs text-ink-faint">People who allow Moment-view visibility.</p>
           {viewers.isLoading && <p>Loading viewers…</p>}{viewers.error && <p role="alert">Could not load viewers.</p>}
-          {viewers.data?.map((viewer) => <div key={viewer.viewerId} className="flex min-w-0 items-center gap-3 py-2">{viewer.avatarUrl && <img src={viewer.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />}<span className="min-w-0 truncate">{viewer.fullName || viewer.username || "Member"}</span></div>)}
+          {viewers.data?.map((viewer) => <div key={viewer.viewerId} className="flex min-w-0 items-center gap-3 py-2">{viewer.avatarUrl && <img src={viewer.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />}<Link to={`/profile/id/${viewer.viewerId}`} className="min-w-0 truncate hover:underline">{viewer.fullName || viewer.username || "Member"}</Link></div>)}
           {!viewers.isLoading && !viewers.error && !viewers.data?.length && <p>No visible viewers yet.</p>}
         </> : <>
           {interactions.isLoading && <p>Loading replies…</p>}{interactions.error && <p role="alert">Could not load replies.</p>}
-          {replies.map((item) => <div key={item.id} className="mb-2 rounded-xl bg-paper p-3"><strong className="block truncate">{item.profile?.full_name || item.profile?.username || "Member"}</strong><p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{item.body}</p></div>)}
-          {!interactions.isLoading && !interactions.error && !replies.length && <p>No replies yet.</p>}
+          {targetInteraction && !interactions.isLoading && !interactions.error && !interactions.data?.some(item => item.id === targetInteraction) && <p role="status" className="mb-3">This reply or reaction is no longer available.</p>}
+          {replies.map((item) => <div key={item.id} id={`moment-interaction-${item.id}`} className={`mb-2 rounded-xl bg-paper p-3 ${item.id === targetInteraction ? "ring-2 ring-brand" : ""}`}><Link to={`/profile/id/${item.user_id}`} className="block truncate font-bold hover:underline">{item.profile?.full_name || item.profile?.username || "Member"}</Link><p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{item.kind === "like" ? `Reacted ${STORY_REACTIONS.find(reaction => reaction.value === item.reaction_type)?.label || item.reaction_type}` : item.body}</p></div>)}
+          {!targetInteraction && !interactions.isLoading && !interactions.error && !replies.length && <p>No replies yet.</p>}
         </>}
       </div>}
     </div>}

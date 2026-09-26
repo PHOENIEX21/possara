@@ -163,11 +163,8 @@ export function PostReactionControl({ post, children }: { post: PostWithAuthor; 
   return (
     <div className="post-reaction-control">
       {post.reaction_count > 0 && (
-        <button
-          type="button"
-          onClick={() => setPeopleOpen(true)}
+        <div
           className="post-engagement-summary flex basis-full items-center justify-between gap-3 rounded-xl px-1 py-1.5 text-left hover:bg-paper/70"
-          aria-label={`See ${post.reaction_count} reactions`}
         >
           <span className="flex min-w-0 items-center gap-2">
             <span className="flex shrink-0 -space-x-1.5">
@@ -184,10 +181,10 @@ export function PostReactionControl({ post, children }: { post: PostWithAuthor; 
               })}
               {post.reaction_preview.length === 0 && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light text-[11px]">✨</span>}
             </span>
-            <span title={previewLabel} className="min-w-0 truncate text-xs text-ink-light">{previewLabel}</span>
+            <span title={previewLabel} className="min-w-0 truncate text-xs text-ink-light">{post.reaction_preview.slice(0, 2).map((person, index) => <span key={person.organization_id || person.user_id}>{index > 0 && " and "}<Link className="hover:underline" to={person.organization_slug ? `/organizations/${person.organization_slug}` : `/profile/id/${person.user_id}`}>{person.organization_name || person.full_name || person.username || "Member"}</Link></span>)}{post.reaction_count > Math.min(2, post.reaction_preview.length) && " and others"}</span>
           </span>
-          <span className="shrink-0 text-xs font-semibold text-ink-faint">{formatCompactCount(post.reaction_count)}</span>
-        </button>
+          <button type="button" onClick={() => setPeopleOpen(true)} aria-label={`See ${post.reaction_count} reactions`} className="shrink-0 rounded-lg px-2 py-2 text-xs font-semibold text-ink-faint hover:bg-paper">{formatCompactCount(post.reaction_count)}</button>
+        </div>
       )}
 
       <div className="post-action-row">

@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Bell, UserPlus } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
@@ -56,21 +56,32 @@ function useMarkAllNotificationsRead(userId: string | null) {
 
 export function Notifications() {
   const { userId } = useAuth();
-  const { data: notifications, isLoading } = useNotifications(userId);
+  const { data: notifications, isLoading, error, refetch } = useNotifications(userId);
   const markAllRead = useMarkAllNotificationsRead(userId);
   const { data: suggestedMembers } = useSuggestedMembers(userId);
-  const navigate = useNavigate();
 
+
+  const organizationIds = [...new Set((notifications ?? []).map(item => item.actor_organization_id).filter(Boolean))] as string[];
+  const { data: organizationPaths } = useQuery({
+    queryKey: ['notification-organization-paths', organizationIds],
+    enabled: organizationIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('organizations').select('id,slug').in('id', organizationIds);
+      if (error) throw error;
+      return new Map((data ?? []).map(org => [org.id, '/organizations/' + org.slug]));
+    },
+  });
   const hasUnread = !!notifications?.some((notification) => !notification.read);
+  const markedForUser = useRef<string | null>(null);
+  const { mutate: markRead } = markAllRead;
 
   useEffect(() => {
-    if (!userId || !hasUnread || markAllRead.isPending) return;
-    markAllRead.mutate();
-  }, [userId, hasUnread]);
+    if (!userId || !hasUnread || markedForUser.current === userId) return;
+    markedForUser.current = userId;
+    markRead();
+  }, [userId, hasUnread, markRead]);
 
-  function handleClick(notification: { link: string | null }) {
-    if (notification.link) navigate(notification.link);
-  }
+
 
   return (
     <div className="max-w-prose">
@@ -79,7 +90,7 @@ export function Notifications() {
           <h1 className="text-2xl">Notifications</h1>
           <p className="mt-1 text-ink-light">Opportunity, organization and social updates in one place.</p>
         </div>
-        {!isLoading && notifications?.length ? <span className="text-xs text-ink-faint">All caught up</span> : null}
+        {!isLoading && notifications?.length && !hasUnread && !markAllRead.error ? <span className="text-xs text-ink-faint">All caught up</span> : null}
       </div>
 
       {isLoading && <p className="mt-4 text-ink-light">Loading…</p>}
@@ -90,21 +101,27 @@ export function Notifications() {
         </div>
       )}
 
-      {!!suggestedMembers?.length && <section className="mt-4 rounded-2xl border border-paper-dim bg-white p-4"><div className="flex items-center gap-2"><UserPlus size={17}/><div><h2 className="text-sm font-bold">New people on POSSARA</h2><p className="text-xs text-ink-faint">Occasional suggestions as the community grows.</p></div></div><div className="mt-3 space-y-2">{suggestedMembers.map((person:any)=><div key={person.id} className="flex items-center gap-3 rounded-xl bg-paper p-2.5">{person.avatar_url?<img src={person.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>:<div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light font-bold text-brand-dark">{(person.full_name||person.username||"?").charAt(0).toUpperCase()}</div>}<div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{person.full_name||"POSSARA member"}</p><p className="truncate text-xs text-ink-faint">{person.username?`@${person.username}`:"New member"}{person.headline?` · ${person.headline}`:""}</p></div><MemberFollowButton targetUserId={person.id} compact/></div>)}</div></section>}
+      {!!suggestedMembers?.length && <section className="mt-4 rounded-2xl border border-paper-dim bg-white p-4"><div className="flex items-center gap-2"><UserPlus size={17}/><div><h2 className="text-sm font-bold">New people on POSSARA</h2><p className="text-xs text-ink-faint">Occasional suggestions as the community grows.</p></div></div><div className="mt-3 space-y-2">{suggestedMembers.map((person:any)=><div key={person.id} className="flex items-center gap-3 rounded-xl bg-paper p-2.5">{person.avatar_url?<img src={person.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover"/>:<div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light font-bold text-brand-dark">{(person.full_name||person.username||"?").charAt(0).toUpperCase()}</div>}<div className="min-w-0 flex-1"><Link to={`/profile/id/${person.id}`} className="block truncate text-sm font-semibold hover:underline">{person.full_name||"POSSARA member"}</Link><p className="truncate text-xs text-ink-faint">{person.username?`@${person.username}`:"New member"}{person.headline?` · ${person.headline}`:""}</p></div><MemberFollowButton targetUserId={person.id} compact/></div>)}</div></section>}
 
       <div className="mt-4 divide-y divide-paper-dim overflow-hidden rounded-2xl border border-paper-dim bg-white">
-        {notifications?.map((notification) => (
-          <button
-            key={notification.id}
-            type="button"
-            onClick={() => handleClick(notification)}
-            className="block w-full px-4 py-3 text-left transition hover:bg-paper-dim/40"
-          >
-            <p className="font-medium text-ink">{notification.title}</p>
-            {notification.message && <p className="mt-0.5 text-sm font-normal text-ink-light">{notification.message}</p>}
-            <p className="mt-1 text-xs font-normal text-ink-faint">{new Date(notification.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-          </button>
-        ))}
+        {error && <p role="alert" className="p-4">Could not load notifications. <button className="underline" onClick={() => void refetch()}>Retry</button></p>}
+        {notifications?.map((notification) => {
+          const actorPath = notification.actor_organization_id
+            ? organizationPaths?.get(notification.actor_organization_id)
+            : notification.actor_id ? '/profile/id/' + notification.actor_id : null;
+          const title = notification.title.replace(/\bstory\b/gi, 'Moment').replace(/\bstories\b/gi, 'Moments');
+          const action = notification.actor_name && title.startsWith(notification.actor_name)
+            ? title.slice(notification.actor_name.length).trimStart() : title;
+          const destination = notification.link?.startsWith('/') && !notification.link.startsWith('//') ? notification.link : null;
+          return <article key={notification.id} className="px-4 py-3 transition hover:bg-paper-dim/40">
+            {actorPath && notification.actor_name && <Link to={actorPath} className="font-semibold text-ink hover:underline">{notification.actor_name}</Link>}
+            {destination ? <Link to={destination} className="block rounded-lg py-1 focus-visible:outline-brand">
+              <p className="font-medium text-ink">{actorPath ? action : title}</p>
+              {notification.message && <p className="mt-0.5 text-sm text-ink-light">{notification.message}</p>}
+            </Link> : <div><p className="font-medium text-ink">{title}</p>{notification.message && <p className="text-sm text-ink-light">{notification.message}</p>}</div>}
+            <p className="mt-1 text-xs text-ink-faint">{new Date(notification.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+          </article>;
+        })}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Bookmark, Building2, MessageCircle, MoreHorizontal, Pencil, Repeat2, Send, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useComments, useCreateComment, useDeleteComment, useEditComment } from "../hooks/useComments";
@@ -90,10 +90,16 @@ function CommentTrustBadge({ userId }: { userId: string | null }) {
 }
 
 function CommentThread({ postId }: { postId: string }) {
+  const location = useLocation();
+  const targetComment = new URLSearchParams(location.search).get("comment");
   const { userId } = useAuth();
   const { data: viewerProfile } = useQuery({queryKey:["discussion-viewer-profile",userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from("profiles").select("full_name,username").eq("id",userId as string).maybeSingle();if(error)throw error;return data;}});
   const actingOrganization = useActiveOrganizationIdentity();
   const { data: comments, isLoading, error: commentsError } = useComments(postId, true, actingOrganization?.id ?? null);
+  useEffect(() => {
+    if (!targetComment || !comments) return;
+    document.getElementById(`comment-${targetComment}`)?.scrollIntoView({ block: "center" });
+  }, [targetComment, comments]);
   const createComment = useCreateComment(postId, actingOrganization?.id ?? null);
   const editComment = useEditComment(postId);
   const deleteComment = useDeleteComment(postId);
@@ -173,7 +179,7 @@ function CommentThread({ postId }: { postId: string }) {
     const mine = userId === comment.author_id || (!!actingOrganization && comment.organization_id === actingOrganization.id);
 
     return (
-      <div className={`flex gap-2.5 ${isReply ? "ml-8 sm:ml-10" : ""}`}>
+      <div id={`comment-${comment.id}`} data-highlighted={targetComment === comment.id} className={`scroll-mt-28 rounded-xl ${targetComment === comment.id ? "ring-2 ring-brand bg-brand-light p-2" : ""} flex gap-2.5 ${isReply ? "ml-8 sm:ml-10" : ""}`}>
         {commentOrganization ? (
           <Link to={path} className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-light text-brand-dark" aria-label={`Open ${name}`}>
             {commentOrganization.logo_url ? <img src={commentOrganization.logo_url} alt="" className="h-full w-full object-cover"/> : <Building2 size={14}/>}
@@ -248,6 +254,7 @@ function CommentThread({ postId }: { postId: string }) {
       <div className="max-h-[34rem] space-y-4 overflow-y-auto overscroll-contain pr-1">
         {isLoading && <p className="py-3 text-sm text-ink-faint">Loading discussion…</p>}
         {commentsError && <p className="py-3 text-sm text-flag">Couldn&apos;t load discussion.</p>}
+        {targetComment && !isLoading && !commentsError && !rows.some(comment => comment.id === targetComment) && <p role="status" className="rounded-xl bg-paper p-3 text-sm text-ink-light">This comment is no longer available. You can still read the rest of the discussion.</p>}
         {!isLoading && !commentsError && rows.length === 0 && (
           <div className="rounded-2xl bg-paper px-4 py-6 text-center">
             <MessageCircle className="mx-auto mb-2 text-ink-faint" size={22} />
@@ -324,6 +331,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const editPost = useEditPost();
   const repost = useRepost();
   const postStory = usePostStory();
+  const location = useLocation();
+  const targetComment = new URLSearchParams(location.search).get("comment");
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -393,7 +402,6 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
     const clean = editText.trim();
     if (!clean) return;
     await editPost.mutateAsync({ postId: post.id, content: clean });
-    post.content = clean;
     setEditing(false);
     setMenuOpen(false);
   }
@@ -531,7 +539,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
       {repostOpen && <div className="fixed inset-0 z-[110] flex items-end bg-ink/55 sm:items-center sm:justify-center sm:p-4" onClick={()=>setRepostOpen(false)}><div className="w-full rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-3xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Repost</h2><p className="text-xs text-ink-faint">Add your own thoughts, or repost without a description.</p></div><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full p-2 hover:bg-paper" aria-label="Close"><X size={19}/></button></div><textarea autoFocus rows={4} value={repostCommentary} onChange={e=>setRepostCommentary(e.target.value)} placeholder="Say something about this post…" className="mt-4 w-full resize-none rounded-2xl border border-black/10 p-3 text-sm outline-none focus:border-brand/40"/><div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setRepostOpen(false)} className="rounded-full bg-paper px-4 py-2 text-sm font-semibold">Cancel</button><button type="button" disabled={repost.isPending} onClick={()=>void repost.mutateAsync({postId:post.id,commentary:repostCommentary}).then(()=>{setRepostOpen(false);setRepostCommentary("");})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{repost.isPending?"Reposting…":"Repost"}</button></div></div></div>}
 
-      {commentsOpen && <CommentThread postId={post.id} />}
+      {(commentsOpen || !!targetComment) && <CommentThread postId={post.id} />}
       {mediaViewer && <PhotoViewer urls={mediaViewer.urls} initialIndex={mediaViewer.index} title={name + " ? Photos"} onClose={() => setMediaViewer(null)} />}
       {photoOpen && !organization && post.profiles?.avatar_url && <ProfilePhotoViewer src={post.profiles.avatar_url} name={name} onClose={() => setPhotoOpen(false)} />}
       <InAppShareDialog

@@ -9,6 +9,7 @@ import { ImageActions } from "./components/ImageActions";
 import { RequireAdmin, RequireAuth } from "./components/RouteGuards";
 import { Home } from "./pages/Home";
 import { SignIn } from "./pages/SignIn";
+import { InstallAppPrompt } from "./components/InstallAppPrompt";
 
 const ResetPassword=lazy(()=>import("./pages/ResetPassword").then(module=>({default:module.ResetPassword})));
 const VerifyEmail=lazy(()=>import("./pages/VerifyEmail").then(module=>({default:module.VerifyEmail})));
@@ -25,6 +26,7 @@ const Advertise=lazy(()=>import("./pages/Advertise").then(module=>({default:modu
 const SubmitOpportunity=lazy(()=>import("./pages/SubmitOpportunity").then(module=>({default:module.SubmitOpportunity})));
 const OpportunityDetail=lazy(()=>import("./pages/OpportunityDetail").then(module=>({default:module.OpportunityDetail})));
 const PostDetail=lazy(()=>import("./pages/PostDetail").then(module=>({default:module.PostDetail})));
+const MomentDetail=lazy(()=>import("./pages/MomentDetail").then(module=>({default:module.MomentDetail})));
 const Profile=lazy(()=>import("./pages/Profile").then(module=>({default:module.Profile})));
 const Organizations=lazy(()=>import("./pages/Organizations").then(module=>({default:module.Organizations})));
 const OrganizationPage=lazy(()=>import("./pages/OrganizationPage").then(module=>({default:module.OrganizationPage})));
@@ -91,6 +93,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ImageActions />
+          <InstallAppPrompt />
           <Suspense fallback={<PageLoading />}><Routes>
             <Route element={<AccountEmailGate />}>
               <Route path="/" element={<Home />} />
@@ -119,6 +122,7 @@ export default function App() {
               <Route path="/advertise" element={<Advertise />} />
               <Route path="/opportunities/:id" element={<OpportunityDetail />} />
               <Route path="/post/:id" element={<PostDetail />} />
+              <Route path="/moments/:id" element={<MomentDetail />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/profile/id/:id" element={<Profile />} />
               <Route path="/organizations" element={<Organizations />} />

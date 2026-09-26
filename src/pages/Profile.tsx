@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { BriefcaseBusiness, CalendarDays, Camera, GraduationCap, MapPin, MessageCircle, MoreHorizontal, Pencil, Search } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { useProfileById, useProfileByUsername, useOwnProfile, useUpdateOwnProfile } from "../hooks/useProfile";
@@ -314,7 +314,9 @@ export function Profile(){
   const updateOwnProfile=useUpdateOwnProfile();
   const coverInputRef=useRef<HTMLInputElement>(null);
   const [coverStatus,setCoverStatus]=useState<string|null>(null);
-  const [editing,setEditing]=useState(false);
+  const [searchParams,setSearchParams]=useSearchParams();
+  const editing=searchParams.get("edit")==="1";
+  function setEditing(value:boolean){setSearchParams(current=>{const next=new URLSearchParams(current);if(value)next.set("edit","1");else next.delete("edit");return next;},{replace:true});}
   const isOwn=username==="me"||!!(id&&id===userId)||!!(ownProfile?.username&&username===ownProfile.username);
   const coverBusy=coverUpload.isPending||updateOwnProfile.isPending;
   async function changeOwnCover(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setCoverStatus(null);try{await coverUpload.mutateAsync(file);setCoverStatus("Cover photo updated.");}catch(err){setCoverStatus((err as Error).message);}finally{event.target.value="";}}

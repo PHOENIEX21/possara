@@ -28,7 +28,22 @@ export function useRecordStoryView() {
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
+      queryClient.setQueryData<string[]>(["viewed-moments", userId], (ids = []) => [...new Set([...ids, variables.storyId])]);
       queryClient.invalidateQueries({ queryKey: ["story-viewers", variables.storyId] });
+    },
+  });
+}
+
+export function useViewedMoments() {
+  const { userId } = useAuth();
+  return useQuery({
+    queryKey: ["viewed-moments", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("story_views").select("story_id")
+        .eq("viewer_id", userId!).gte("viewed_at", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString());
+      if (error) throw error;
+      return (data ?? []).map(row => row.story_id as string);
     },
   });
 }

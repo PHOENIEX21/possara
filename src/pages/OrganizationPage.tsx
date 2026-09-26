@@ -133,7 +133,7 @@ export function OrganizationPage(){
     </section>}
 
     {canManage&&<section>
-      <div className="mb-3"><p className="eyebrow">Publish as {org.name}</p><h2 className="text-xl">Organization update</h2><p className="mt-1 text-sm text-ink-light">Share an organization insight, update, lesson or useful story here. Formal vacancies stay in the hiring tools at the top.</p></div>
+      <div className="mb-3"><p className="eyebrow">Publish as {org.name}</p><h2 className="text-xl">Organization update</h2><p className="mt-1 text-sm text-ink-light">Share an organization insight, update, lesson or useful experience here. Formal vacancies stay in the hiring tools at the top.</p></div>
       <PostComposer
         organizationId={org.id}
         organizationName={org.name}

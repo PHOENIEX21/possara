@@ -4,10 +4,12 @@ import { Plus } from "lucide-react";
 import { useActiveStories, type AuthorWithStories } from "../hooks/useStories";
 import { useAuth } from "../store/auth";
 import { StoryViewer } from "./StoryViewer";
+import { useViewedMoments } from "../hooks/useStoryViews";
 import { BACKGROUNDS } from "../lib/momentStyles";
 
 export function StoriesBar({organizationId,canCreate=true}:{organizationId?:string;canCreate?:boolean}) {
   const location = useLocation();
+  const { data: viewedIds = [] } = useViewedMoments();
   const { userId } = useAuth();
   const { data: allGroups } = useActiveStories();
   const groups=organizationId?allGroups?.filter(group=>group.organization?.id===organizationId):allGroups;
@@ -17,20 +19,23 @@ export function StoriesBar({organizationId,canCreate=true}:{organizationId?:stri
   return <div>
     <div className="moment-story-rail story-card-rail">
       {canCreate&&<Link to="/create/moment" state={{ organizationId, returnTo: location.pathname + location.search }} className="story-preview-card story-create-card" aria-label="Create a new Moment">
-        <span className="story-create-art"><Plus size={32} /></span><span className="story-preview-name">Add story</span>
+        <span className="story-create-art"><Plus size={32} /></span><span className="story-preview-name">Add Moment</span>
       </Link>}
       {[...(myGroup ? [myGroup] : []), ...otherGroups].map((group) => {
         const preview = group.stories[0];
         if (!preview) return null;
-        const name = group.authorId === userId ? "Your story" : group.author?.full_name || "Member";
-        return <button key={group.authorId} type="button" onClick={() => setViewingGroup(group)} className={"story-preview-card " + (BACKGROUNDS[preview.background_style] || BACKGROUNDS.midnight)} aria-label={"View " + name}>
+        const viewed = group.stories.every(moment => viewedIds.includes(moment.id) || moment.author_id === userId);
+        const name = group.authorId === userId ? "Your Moment" : group.author?.full_name || "Member";
+        return <div key={group.authorId} className={"story-preview-card " + (BACKGROUNDS[preview.background_style] || BACKGROUNDS.midnight)} data-viewed={viewed}>
+          <button type="button" onClick={() => setViewingGroup(group)} className="absolute inset-0 h-full w-full text-left" aria-label={"View Moment by " + name + (viewed ? ", viewed" : ", new")}>
           {preview.media_url ? <img className="story-preview-image" src={preview.media_url} alt="" loading="lazy" /> : <span className="story-preview-text">{preview.text_body || preview.caption || "Moment"}</span>}
           <span className="story-preview-shade" />
-          <span className="story-preview-avatar">{group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" /> : name.charAt(0)}</span>
-          <span className="story-preview-name" title={name}>{name}</span>
-        </button>;
+          <span className={"story-preview-avatar " + (viewed ? "moment-viewed-avatar" : "")}>{group.author?.avatar_url ? <img src={group.author.avatar_url} alt="" /> : name.charAt(0)}</span>
+          </button>
+          <Link to={group.organization ? `/organizations/${group.organization.slug}` : `/profile/id/${preview.author_id}`} className="story-preview-name hover:underline" title={name}>{name}{viewed && <small className="block text-[10px] font-normal">Viewed</small>}</Link>
+        </div>;
       })}
     </div>
-    {viewingGroup && <StoryViewer groups={[...(myGroup ? [myGroup] : []), ...otherGroups].filter((group) => group.stories.length > 0)} initialAuthorId={viewingGroup.authorId} onClose={() => setViewingGroup(null)} />}
+    {viewingGroup && <StoryViewer groups={[...(myGroup ? [myGroup] : []), ...otherGroups].filter((group) => group.stories.length > 0)} initialAuthorId={viewingGroup.authorId} initialMomentId={viewingGroup.stories.find(moment => !viewedIds.includes(moment.id))?.id} onClose={() => setViewingGroup(null)} />}
   </div>;
 }

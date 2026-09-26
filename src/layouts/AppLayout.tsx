@@ -1,3 +1,4 @@
+import { useOpportunityDigest } from "../hooks/useOpportunityDigest";
 import { Suspense } from "react";
 import { PageLoading } from "../components/PageLoading";
 import { useEffect, useRef, useState } from "react";
@@ -48,6 +49,7 @@ function EntryExperience(){
   </div>;
 }
 export function AppLayout(){
+ useOpportunityDigest();
  const {userId,role,isVerified,signOut}=useAuth(); const {data:unreadCount}=useUnreadNotificationCount(); const {data:unreadMessages}=useUnreadMessageCount(); const location=useLocation(); const navigate=useNavigate(); const [open,setOpen]=useState(false);
  const drawerRef=useRef<HTMLDivElement>(null);const menuButtonRef=useRef<HTMLButtonElement>(null);
  useEffect(()=>{
