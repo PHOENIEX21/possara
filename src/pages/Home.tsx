@@ -7,6 +7,7 @@ import { PostCard } from "../components/PostCard";
 import { AdvertisementCard } from "../components/AdvertisementCard";
 import { FeedRefreshBar } from "../components/FeedRefreshBar";
 import { StoriesBar } from "../components/StoriesBar";
+import { NextStepCard } from "../components/NextStepCard";
 
 const HOME_TOPIC_KEYS = ["insight"] as const;
 
@@ -148,6 +149,8 @@ export function Home() {
             showHomeTopicPicker
           />
         </section>
+
+        {!communityCategory && filter === "for-you" && <NextStepCard />}
 
         <section
           ref={feedStartRef}

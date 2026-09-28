@@ -25,6 +25,6 @@
 
 ## Production boundary
 
-Automatic approval review rejected the production migration because it changes database functions, grants, and existing notification links. No production database mutation was applied. The web release supports both schemas and skips the digest gracefully when the new RPC is absent. Production notification generation and personalized alerts require approval to apply `supabase/migrations/20260925182228_moment_notification_destinations.sql`.
+The user explicitly approved the production database update on 2026-09-26. The migration applied successfully to the existing Supabase project. Live checks confirmed actor columns, Moment interaction trigger, exact Moment/comment destinations, authenticated RPC access, and anonymous RPC denial. A rollback-only live transaction verified generated Moment, comment, and reply notification links plus authenticated profile-reminder deduplication; all fixture writes were rolled back. Security advisor findings were unchanged from the pre-migration baseline, with no findings for the new functions. The web release is already live at https://possara.pages.dev (commit c757ef3); no additional web deployment is required for this database activation.
 
 Installation follows https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/How_to/Trigger_install_prompt . Browser-controlled icon updates are described at https://web.dev/articles/manifest-updates . Native OS installation was simulated, not performed on the user's computer.

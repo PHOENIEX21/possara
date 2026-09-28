@@ -17,6 +17,7 @@ export function useOpportunityDigest() {
       if (error) throw error;
       await Promise.all([
         client.invalidateQueries({ queryKey: ["notifications", userId] }),
+        client.invalidateQueries({ queryKey: ["next-step-matches", userId] }),
         client.invalidateQueries({ queryKey: ["unread-notification-count", userId] }),
       ]);
       return true;
