@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../store/auth";
 
-export type Group = { id:string; owner_id:string; name:string; description:string; privacy:"public"|"private"; approval_required:boolean; rules:string; last_message_at:string|null };
+export type Group = { organization_id?:string|null; organization?:{id:string;name:string;slug:string;verified:boolean;verification_status:string|null}|null; id:string; owner_id:string; name:string; description:string; privacy:"public"|"private"; approval_required:boolean; rules:string; last_message_at:string|null };
 export type GroupMember = { group_id:string; user_id:string; role:"owner"|"admin"|"member"; status:"active"|"pending"|"banned"; muted:boolean; last_read_at:string; profile?:{full_name:string|null;username:string|null;avatar_url:string|null}|null };
 export type GroupMessage = { id:string; group_id:string; author_id:string; body:string; kind:"chat"|"request"|"offer"; resolved:boolean; pinned:boolean; reply_to_id:string|null; file_path:string|null; file_name:string|null; created_at:string };
 export type GroupReaction = {message_id:string;user_id:string;reaction:string};
@@ -13,8 +13,8 @@ export function useGroups() {
   if(members.error)throw members.error;
   const ids=members.data.filter(m=>m.status!=="banned").map(m=>m.group_id);
   const [publicGroups,myGroups]=await Promise.all([
-   supabase.from("community_groups").select("*").eq("privacy","public").order("created_at",{ascending:false}).limit(100),
-   ids.length?supabase.from("community_groups").select("*").in("id",ids):Promise.resolve({data:[],error:null}),
+   supabase.from("community_groups").select("*, organization:organizations(id,name,slug,verified,verification_status)").eq("privacy","public").order("created_at",{ascending:false}).limit(100),
+   ids.length?supabase.from("community_groups").select("*, organization:organizations(id,name,slug,verified,verification_status)").in("id",ids):Promise.resolve({data:[],error:null}),
   ]);
   if(publicGroups.error)throw publicGroups.error;if(myGroups.error)throw myGroups.error;
   return {groups:[...new Map([...publicGroups.data,...myGroups.data].map(g=>[g.id,g])).values()] as Group[],members:members.data as GroupMember[]};
@@ -23,7 +23,7 @@ export function useGroups() {
 export function useGroup(id:string|undefined, targetId?:string|null) {
  const {userId}=useAuth();
  return useQuery({queryKey:["groups",userId,id,targetId],enabled:!!userId&&!!id,refetchInterval:5000,queryFn:async()=>{
-  const group=await supabase.from("community_groups").select("*").eq("id",id!).maybeSingle();
+  const group=await supabase.from("community_groups").select("*, organization:organizations(id,name,slug,verified,verification_status)").eq("id",id!).maybeSingle();
   if(group.error)throw group.error;
   if(!group.data)return null;
   const members=await supabase.from("community_members").select("*, profile:profiles!community_members_user_id_fkey(full_name,username,avatar_url)").eq("group_id",id!);

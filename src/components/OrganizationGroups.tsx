@@ -1,0 +1,9 @@
+import {useQuery} from '@tanstack/react-query';
+import {Link} from 'react-router-dom';
+import {Users} from 'lucide-react';
+import {supabase} from '../lib/supabase';
+import {useAuth} from '../store/auth';
+export function OrganizationGroups({organizationId,canManage}:{organizationId:string;canManage:boolean}){
+ const {userId}=useAuth();const query=useQuery({queryKey:['organization-groups',organizationId,userId],enabled:!!userId,queryFn:async()=>{const {data,error}=await supabase.from('community_groups').select('id,name,description,privacy').eq('organization_id',organizationId).order('created_at',{ascending:false});if(error)throw error;return data;}});
+ return <section className="rounded-2xl border bg-white p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="inline-flex items-center gap-2 font-semibold"><Users size={18}/>Organization groups</h2>{canManage&&<Link to={`/groups?organization=${organizationId}&create=1`} className="text-sm font-medium text-brand-dark">Create official group</Link>}</div>{!userId?<Link to={`/signin?next=${encodeURIComponent('/groups?organization='+organizationId)}`} className="mt-3 block text-sm text-brand-dark">Sign in to explore this organization’s groups</Link>:query.isPending?<p role="status" className="mt-3 text-sm">Loading groups…</p>:query.error?<p role="alert" className="mt-3 text-sm">Could not load groups. <button onClick={()=>query.refetch()} className="underline">Retry</button></p>:query.data?.length?<div className="mt-3 grid gap-2 sm:grid-cols-2">{query.data.map(group=><Link key={group.id} to={`/groups/${group.id}`} className="min-w-0 rounded-xl bg-paper p-3"><h3 className="break-words text-sm font-semibold">{group.name}</h3><p className="mt-1 line-clamp-2 text-xs text-ink-light">{group.description}</p></Link>)}</div>:<p className="mt-3 text-sm text-ink-light">No groups available to join yet.</p>}</section>;
+}

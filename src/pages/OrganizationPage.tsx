@@ -1,3 +1,4 @@
+import { OrganizationGroups } from "../components/OrganizationGroups";
 import { StoriesBar } from "../components/StoriesBar";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -98,6 +99,7 @@ export function OrganizationPage(){
       </div>
     </section>
 
+    <OrganizationGroups organizationId={org.id} canManage={canManage}/>
     <section className="rounded-2xl bg-white p-3"><h2 className="mb-3 font-semibold">Moments</h2><StoriesBar organizationId={org.id} canCreate={canManage}/></section>
 
     <nav className="sticky top-[60px] z-20 -mx-1 flex gap-1 overflow-x-auto border-b border-paper-dim bg-paper/95 px-1 py-2 backdrop-blur sm:static sm:rounded-2xl sm:border sm:bg-white sm:px-2" aria-label="Organization profile sections">
