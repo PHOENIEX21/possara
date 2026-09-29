@@ -22,6 +22,7 @@ export const useAuth=create<AuthState>((set,get)=>({
     let active=true;
     let authEventSeen=false;
     let hydrationVersion=0;
+    let hydrationTimer:ReturnType<typeof setTimeout>|undefined;
 
     async function hydrateUser(user:{id:string;email?:string|null}|null){
       const version=++hydrationVersion;
@@ -31,9 +32,23 @@ export const useAuth=create<AuthState>((set,get)=>({
         return;
       }
 
-      set({userId:user.id,email:user.email??null,emailVerified:false,role:null,isVerified:false,isBanned:false,banReason:null,loading:true});
-      const {data:accountState,error:accountStateError}=await supabase.rpc("get_my_account_state");
+      // Returning from a native photo picker can emit SIGNED_IN again. Do not
+      // unmount composers (and lose their File objects) for the same account.
+      const refreshing=get().userId===user.id&&!get().loading;
+      if(refreshing)set({email:user.email??null});
+      else set({userId:user.id,email:user.email??null,emailVerified:false,role:null,isVerified:false,isBanned:false,banReason:null,loading:true});
+      let accountState:unknown=null;
+      let accountStateError:unknown=null;
+      try {
+        const result=await supabase.rpc("get_my_account_state");
+        accountState=result.data;
+        accountStateError=result.error;
+      } catch(error) { accountStateError=error; }
       if(!active||version!==hydrationVersion)return;
+
+      // A temporary network failure is not evidence that a verified user has
+      // become unverified. Database policies still authorize every write.
+      if(refreshing&&accountStateError)return;
 
       const accountRow=(Array.isArray(accountState)?accountState[0]:accountState) as {
         role?:UserRole|null;
@@ -63,13 +78,18 @@ export const useAuth=create<AuthState>((set,get)=>({
 
     const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
       authEventSeen=true;
-      void hydrateUser(session?.user??null);
+      clearTimeout(hydrationTimer);
+      hydrationVersion+=1;
+      if(!session?.user){void hydrateUser(null);return;}
+      // Supabase calls listeners while holding its auth lock. Start requests
+      // after the callback returns so RPC authentication cannot deadlock.
+      hydrationTimer=setTimeout(()=>{void hydrateUser(session.user);},0);
     });
     void supabase.auth.getSession().then(({data})=>{
       if(!authEventSeen)void hydrateUser(data.session?.user??null);
     });
 
-    return()=>{active=false;hydrationVersion+=1;listener.subscription.unsubscribe();};
+    return()=>{active=false;hydrationVersion+=1;clearTimeout(hydrationTimer);listener.subscription.unsubscribe();};
   },
   refreshEmailVerification:async()=>{
     const userId=get().userId;

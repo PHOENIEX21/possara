@@ -70,6 +70,8 @@ export function PostEditor({
   const [mediaError,setMediaError]=useState<string|null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [classificationError,setClassificationError]=useState<string|null>(null);
+  const [submitting,setSubmitting]=useState(false);
+  const submitLock=useRef(false);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const previewUrls = useRef(new Set<string>());
   useEffect(() => {
@@ -96,18 +98,20 @@ export function PostEditor({
       if (typeof draft.feeling === "string") setFeeling(draft.feeling);
       if (draft.libraryTrack?.trackKey) setLibraryTrack(draft.libraryTrack);
     } catch {
-      localStorage.removeItem(draftKey);
+      try { localStorage.removeItem(draftKey); } catch { /* Storage is optional. */ }
     }
     setHydratedDraftKey(draftKey);
   }, [draftKey]);
 
   useEffect(() => {
     if (!draftKey || hydratedDraftKey !== draftKey) return;
+    try {
     if (!content && !categoryId && !feeling && !libraryTrack && topic === defaultTopic) {
       localStorage.removeItem(draftKey);
       return;
     }
     localStorage.setItem(draftKey, JSON.stringify({ content, categoryId, topic, selectedPostType, feeling, libraryTrack }));
+    } catch { /* Draft storage failure must not interrupt selecting or posting. */ }
   }, [draftKey, hydratedDraftKey, content, categoryId, topic, selectedPostType, feeling, libraryTrack, defaultTopic]);
 
   if (!userId) {
@@ -162,12 +166,16 @@ export function PostEditor({
     setTopic(defaultTopic);
     clearMedia();
     setMusicFile(null); setLibraryTrack(null); setMusicPickerOpen(false); setFeeling(""); setShowFeelings(false);
-    if (draftKey) localStorage.removeItem(draftKey);
+    if (draftKey) { try { localStorage.removeItem(draftKey); } catch { /* Post is already saved. */ } }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim()||submitLock.current) return;
+    submitLock.current=true;
+    setSubmitting(true);
+    setClassificationError(null);
+    try {
     if (showHomeTopicPicker && !categoryId) {
       if (!topic) {
         setClassificationError("Choose the section that accurately describes this post before publishing.");
@@ -203,6 +211,9 @@ export function PostEditor({
     });
     reset();
     onPublished();
+    } catch(error) {
+      setClassificationError(error instanceof Error?error.message:(error as {message?:string})?.message||"Could not publish this post. Please try again.");
+    } finally { submitLock.current=false;setSubmitting(false); }
   }
 
   const avatar = postingAsOrganization ? (
@@ -219,7 +230,7 @@ export function PostEditor({
   );
 
   return <>
-    <form onSubmit={(event) => { void handleSubmit(event).catch(() => undefined); }} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
+    <form onSubmit={(event) => { void handleSubmit(event); }} aria-busy={submitting} className="rounded-2xl border border-paper-dim bg-white px-4 py-4 shadow-sm sm:px-5">
       {postingAsOrganization&&<div className="mb-4 flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-light/35 p-3">{avatar}<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-dark">Posting as organization</p><div className="flex items-center gap-1.5"><p className="truncate text-sm font-semibold text-ink">{effectiveOrganizationName}</p>{effectiveOrganizationVerified&&<OrganizationVerificationBadge compact/>}</div><p className="mt-0.5 text-xs text-ink-faint">Choose the section that matches the update. Formal vacancies belong in the organization hiring tools; regular organization posts use the same Insight community section as personal profiles.</p></div></div>}
       {showCategoryPicker && (
         <div className="mb-4">
@@ -287,9 +298,9 @@ export function PostEditor({
         <button type="button" onClick={()=>setMusicPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><Music2 size={16}/> Browse POSSARA Music</button><label className="inline-flex cursor-pointer items-center rounded-full px-2 py-1 text-xs text-ink-faint hover:bg-paper-dim">Device<input type="file" accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav" onChange={e=>{const f=e.target.files?.[0];if(f){setMusicFile(f);setLibraryTrack(null);}e.target.value="";}} className="hidden"/></label>
         <button type="button" onClick={()=>setShowFeelings(v=>!v)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-ink-light hover:bg-paper-dim"><SmilePlus size={16}/> Feeling</button>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={onCancel} disabled={createPost.isPending} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
-          <button type="submit" disabled={!content.trim() || createPost.isPending} className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-40">
-            {createPost.isPending ? "Posting…" : "Post"}
+          <button type="button" onClick={onCancel} disabled={submitting} className="rounded-full px-3 py-1.5 text-sm text-ink-faint hover:bg-paper-dim">Cancel</button>
+          <button type="submit" disabled={!content.trim() || submitting} className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-40">
+            {submitting ? "Posting…" : "Post"}
           </button>
         </div>
       </div>
