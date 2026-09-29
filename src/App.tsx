@@ -15,6 +15,8 @@ const ResetPassword=lazy(()=>import("./pages/ResetPassword").then(module=>({defa
 const VerifyEmail=lazy(()=>import("./pages/VerifyEmail").then(module=>({default:module.VerifyEmail})));
 const Discover=lazy(()=>import("./pages/Discover").then(module=>({default:module.Discover})));
 const Connect=lazy(()=>import("./pages/Connect").then(module=>({default:module.Connect})));
+const Groups=lazy(()=>import("./pages/Groups").then(module=>({default:module.Groups})));
+const GroupPage=lazy(()=>import("./pages/Groups").then(module=>({default:module.GroupPage})));
 const Contribute=lazy(()=>import("./pages/Contribute").then(module=>({default:module.Contribute})));
 const CreateContent=lazy(()=>import("./pages/CreateContent").then(module=>({default:module.CreateContent})));
 const Opportunities=lazy(()=>import("./pages/Opportunities").then(module=>({default:module.Opportunities})));
@@ -76,7 +78,7 @@ function AccountEmailGate() {
   // Normal refreshes render the app immediately. Supabase restores the cached
   // session in the background; protected routes still enforce auth separately.
   if (!loading && userId && !emailVerified && !allowedWhileUnverified) {
-    return <Navigate to="/verify-email" replace />;
+    return <Navigate to={`/verify-email?next=${encodeURIComponent(location.pathname+location.search)}`} replace />;
   }
   if (location.pathname === "/create/post" || location.pathname === "/create/moment") return <Outlet />;
   return <AppLayout />;
@@ -135,6 +137,8 @@ export default function App() {
               <Route path="/security" element={<SecurityPage />} />
 
               <Route element={<RequireAuth />}>
+                <Route path="/groups" element={<Groups />} />
+                <Route path="/groups/:id" element={<GroupPage />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/organizations/register" element={<OrganizationRegister />} />
                 <Route path="/organizations/manage" element={<OrganizationManage />} />

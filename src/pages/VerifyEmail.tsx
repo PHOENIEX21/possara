@@ -1,3 +1,4 @@
+import { authReturnPath } from "../lib/authReturnPath";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { BrandMark } from "../components/BrandMark";
@@ -17,6 +18,7 @@ type VerificationResponse = {
 export function VerifyEmail() {
   const { userId, email, emailVerified, loading: authLoading, refreshEmailVerification, signOut } = useAuth();
   const [searchParams] = useSearchParams();
+  const returnPath = authReturnPath(searchParams.get("next"));
   const navigate = useNavigate();
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
@@ -49,17 +51,17 @@ export function VerifyEmail() {
         setDeliveryConfigured(result?.deliveryConfigured??null);
         setResendAvailableAt(result?.resendAvailableAt??null);
         if(result?.verified){
-          void refreshEmailVerification().then(()=>navigate("/profile/me",{replace:true}));
+          void refreshEmailVerification().then(()=>navigate(returnPath,{replace:true}));
         }
       }
       setStatusLoading(false);
     });
     return()=>{active=false;};
-  },[userId,navigate,refreshEmailVerification]);
+  },[userId,navigate,refreshEmailVerification,returnPath]);
 
   if(authLoading)return <div className="text-ink-light">Loading…</div>;
   if(!userId)return <Navigate to="/signin" replace/>;
-  if(emailVerified)return <Navigate to="/profile/me" replace/>;
+  if(emailVerified)return <Navigate to={returnPath} replace/>;
 
   async function verify(e:React.FormEvent){
     e.preventDefault();

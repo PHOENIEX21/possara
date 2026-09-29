@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { authReturnPath } from "../lib/authReturnPath";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
@@ -25,6 +26,7 @@ export function SignIn() {
   const { isBanned, banReason } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const returnPath = authReturnPath(searchParams.get("next"));
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">(
     searchParams.get("mode") === "signup" ? "signup" : "signin",
   );
@@ -178,8 +180,8 @@ export function SignIn() {
       setLoading(false);
       window.location.replace(
         directSignup.emailSent
-          ? "/verify-email?sent=1"
-          : "/verify-email?delivery=retry",
+          ? `/verify-email?sent=1&next=${encodeURIComponent(returnPath)}`
+          : `/verify-email?delivery=retry&next=${encodeURIComponent(returnPath)}`,
       );
       return;
     }
@@ -218,7 +220,7 @@ export function SignIn() {
 
     queryClient.clear();
     setLoading(false);
-    window.location.replace("/profile/me");
+    window.location.replace(returnPath);
   }
 
   async function handleGoogle() {
@@ -226,7 +228,7 @@ export function SignIn() {
     await clearCurrentBrowserSession();
     const { error: oAuthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin+returnPath },
     });
     if (oAuthError) setError(friendlyAuthError(oAuthError.message));
   }

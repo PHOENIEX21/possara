@@ -94,7 +94,8 @@ export function Connect(){
 
     <FriendSuggestions/>
 
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
+      <Link to="/groups" className="rounded-full bg-brand-light px-4 py-2 text-sm font-medium text-brand-dark"><Users size={15} className="mr-1 inline"/>Groups &amp; Help</Link>
       <button onClick={()=>setTab("people")} className={`rounded-full px-4 py-2 text-sm font-medium ${tab==="people"?"bg-ink text-white":"bg-white text-ink-light"}`}><Users size={15} className="mr-1 inline"/>People</button>
       <button onClick={()=>setTab("organizations")} className={`rounded-full px-4 py-2 text-sm font-medium ${tab==="organizations"?"bg-ink text-white":"bg-white text-ink-light"}`}><Building2 size={15} className="mr-1 inline"/>Organizations</button>
     </div>
