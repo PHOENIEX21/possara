@@ -1,3 +1,4 @@
+import { isJobOpen, jobStatus } from "../lib/jobAvailability";
 import { OrganizationGroups } from "../components/OrganizationGroups";
 import { StoriesBar } from "../components/StoriesBar";
 import { useState } from "react";
@@ -52,7 +53,7 @@ export function OrganizationPage(){
     limit:20,
   });
 
-  const openNativeJobs=(nativeJobs??[]).filter(j=>j.status==="open");
+  const openNativeJobs=(nativeJobs??[]).filter(j=>isJobOpen(j));
   const canManage=!!userId&&canManageOrganization===true;
   const visibleJobs=canManage?(nativeJobs??[]):openNativeJobs;
   const media=(organizationPosts??[]).flatMap(post=>(post.media_urls??[]).map((src,index)=>({src,id:`${post.id}-${index}`,postId:post.id})));
@@ -112,7 +113,7 @@ export function OrganizationPage(){
         {visibleJobs.map(job=><article key={job.id} className="rounded-2xl border border-paper-dim bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <Link to={"/jobs/"+job.id} className="min-w-0 hover:underline"><h3 className="font-bold">{job.title}</h3><p className="mt-1 text-xs text-ink-faint">{job.rank} · {job.employment_type} · {job.work_style}</p></Link>
-            <div className="flex gap-1">{canManage&&<span className="rounded-full bg-paper-dim px-2 py-1 text-[10px] font-bold uppercase text-ink-light">{JOB_STATE_LABEL[job.status]??job.status}</span>}{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-[10px] font-bold text-opportunity-dark">CBT</span>}</div>
+            <div className="flex gap-1">{canManage&&<span className="rounded-full bg-paper-dim px-2 py-1 text-[10px] font-bold uppercase text-ink-light">{JOB_STATE_LABEL[jobStatus(job)]??jobStatus(job)}</span>}{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-[10px] font-bold text-opportunity-dark">CBT</span>}</div>
           </div>
           <p className="mt-3 text-sm text-ink-light">{job.location}</p>
           {canManage&&<div className="mt-3 grid grid-cols-2 gap-2">

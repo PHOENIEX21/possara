@@ -224,6 +224,7 @@ export function usePostStory() {
       const uploadedImagePaths: string[] = [];
       const createdStoryIds: string[] = [];
       let musicPath: string | null = null;
+      let publicationUncertain = false;
 
       try {
         for (const [index,file] of imageFiles.entries()) {
@@ -247,6 +248,7 @@ export function usePostStory() {
         const baseCreatedAt = Date.now();
         const sequencePaths: Array<string | null> = uploadedImagePaths.length ? [...uploadedImagePaths] : [null];
         const storyRows = sequencePaths.map((imagePath,index) => ({
+          id: crypto.randomUUID(),
           author_id: userId,
           organization_id: input.organizationId || null,
           storage_path: imagePath,
@@ -265,12 +267,23 @@ export function usePostStory() {
           created_at: new Date(baseCreatedAt + index).toISOString(),
         }));
 
-        const { data, error } = await supabase
+        publicationUncertain = true;
+        let { data, error } = await supabase
           .from("stories")
           .insert(storyRows)
           .select("id,music_path,storage_path,music_track_key");
 
-        if (error) throw new Error(`Moment could not be published: ${error.message}`);
+        if (error) {
+          // SQL/PostgREST rejections are definite; a dropped response may follow a
+          // committed insert, so check our exact IDs before reporting failure.
+          const rejected = /^(?:[0-9A-Z]{5}|PGRST[0-9]+)$/.test(error.code || "");
+          if (rejected) publicationUncertain = false;
+          else {
+            const confirmation = await supabase.from("stories").select("id,music_path,storage_path,music_track_key").in("id",storyRows.map(row=>row.id));
+            if (!confirmation.error && confirmation.data?.length === storyRows.length) { data=confirmation.data; error=null; }
+          }
+          if(error) throw new Error(publicationUncertain ? "We could not confirm whether your Moment posted. Check your Moments before trying again. Your uploaded files have been kept." : `Moment could not be published: ${error.message}`);
+        }
         if (!data?.length) throw new Error("Moment publish returned no created items.");
         createdStoryIds.push(...data.map((row) => row.id as string));
         if (imageFiles.length && data.length !== imageFiles.length) throw new Error("Not every selected photo became a Moment.");
@@ -279,18 +292,18 @@ export function usePostStory() {
 
         return createdStoryIds;
       } catch (error) {
+        if (publicationUncertain) throw error;
         if (createdStoryIds.length) await supabase.from("stories").delete().in("id", createdStoryIds).eq("author_id", userId);
         if (uploadedImagePaths.length) await supabase.storage.from("moments").remove(uploadedImagePaths);
         if (musicPath) await supabase.storage.from("moment-music").remove([musicPath]);
         throw error;
       }
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       signedMomentCache.clear();
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["active-stories"] }),
-        queryClient.refetchQueries({ queryKey: ["my-stories"] }),
-      ]);
+      // Saving is complete; feed/media refresh must not hold the composer open.
+      void queryClient.invalidateQueries({ queryKey: ["active-stories"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-stories"] });
     },
   });
 }

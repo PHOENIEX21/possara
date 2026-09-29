@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { isJobOpen, jobStatus } from "../lib/jobAvailability";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Briefcase, Building2, CheckCircle2, Copy, Eye, FilePenLine, PauseCircle, PlayCircle, Plus, Settings2, ShieldCheck, Users } from "lucide-react";
 import { useInterviewQuestions, useMyOrganizations, useOrganizationJobs, useRecruiterCbtQuestions, useUpdateJob } from "../hooks/useHiring";
@@ -35,10 +36,14 @@ function JobCard({job,org}:{job:any;org:any}){
   const update=useUpdateJob(job.id,org.id);
   const {data:cbt}=useRecruiterCbtQuestions(job.id);
   const {data:interview}=useInterviewQuestions(job.id);
-  const state=STATE_COPY[job.status as keyof typeof STATE_COPY]??STATE_COPY.draft;
+  const [opening,setOpening]=useState(false);
+  const [deadline,setDeadline]=useState("");
+  const [noDeadline,setNoDeadline]=useState(false);
+  const status=jobStatus(job);
+  const state=STATE_COPY[status as keyof typeof STATE_COPY]??STATE_COPY.draft;
   const busy=update.isPending;
 
-  function setStatus(status:"draft"|"open"|"closed"|"filled"){ update.mutate({status}); }
+  function setStatus(status:"draft"|"open"|"closed"|"filled"){ if(status==="open"){setOpening(true);return;} update.mutate({status}); }
 
   return <article className="overflow-hidden rounded-2xl border border-paper-dim bg-paper/55">
     <div className="p-4 sm:p-5">
@@ -58,20 +63,31 @@ function JobCard({job,org}:{job:any;org:any}){
 
       {update.error&&<p className="mt-3 rounded-xl bg-flag-light px-3 py-2.5 text-sm font-medium text-flag-dark">{(update.error as Error).message}</p>}
 
+      {opening&&<form className="mt-4 space-y-3 rounded-xl border border-paper-dim bg-white p-4" onSubmit={async event=>{
+        event.preventDefault();
+        const closes_at=noDeadline?null:new Date(deadline).toISOString();
+        try { await update.mutateAsync({status:"open",closes_at}); setOpening(false); } catch { /* Error is displayed above. */ }
+      }}>
+        <p className="font-semibold">Open applications</p>
+        <p className="text-sm text-ink-light">Choose a future closing date, or accept applications without a deadline.</p>
+        <label className="block text-sm">Closing date and time<input aria-label="Closing date and time" type="datetime-local" required={!noDeadline} disabled={noDeadline||busy} value={deadline} onChange={event=>setDeadline(event.target.value)} className="mt-1 block w-full rounded-lg border p-2"/></label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={noDeadline} disabled={busy} onChange={event=>setNoDeadline(event.target.checked)}/>No closing deadline</label>
+        <div className="flex gap-2"><button disabled={busy||(!noDeadline&&!deadline)} className="rounded-xl bg-ink px-4 py-2 text-white disabled:opacity-50">{busy?"Saving...":"Confirm open"}</button><button type="button" disabled={busy} onClick={()=>setOpening(false)} className="rounded-xl bg-paper px-4 py-2">Cancel</button></div>
+      </form>}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Link to={"/organizations/"+org.id+"/jobs/new"} state={{edit:job}} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold"><FilePenLine size={15}/>Edit role</Link>
         <Link to={"/organizations/"+org.id+"/jobs/new"} state={{duplicate:job}} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold"><Copy size={15}/>Duplicate</Link>
 
-        {job.status==="draft"&&<button disabled={busy} onClick={()=>setStatus("open")} className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-trust px-4 py-3 text-sm font-bold text-white disabled:opacity-50"><PlayCircle size={17}/>{busy?"Publishing…":"Publish role"}</button>}
-        {job.status==="open"&&<>
+        {status==="draft"&&<button disabled={busy} onClick={()=>setStatus("open")} className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-trust px-4 py-3 text-sm font-bold text-white disabled:opacity-50"><PlayCircle size={17}/>{busy?"Publishing…":"Publish role"}</button>}
+        {status==="open"&&<>
           <button disabled={busy} onClick={()=>setStatus("closed")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold disabled:opacity-50"><PauseCircle size={15}/>Close</button>
           <button disabled={busy} onClick={()=>setStatus("filled")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-light px-3 py-2.5 text-sm font-semibold text-brand-dark disabled:opacity-50"><CheckCircle2 size={15}/>Mark filled</button>
         </>}
-        {job.status==="closed"&&<>
+        {status==="closed"&&<>
           <button disabled={busy} onClick={()=>setStatus("open")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-trust-light px-3 py-2.5 text-sm font-semibold text-trust-dark disabled:opacity-50"><PlayCircle size={15}/>Reopen</button>
           <button disabled={busy} onClick={()=>setStatus("filled")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-light px-3 py-2.5 text-sm font-semibold text-brand-dark disabled:opacity-50"><CheckCircle2 size={15}/>Mark filled</button>
         </>}
-        {job.status==="filled"&&<button disabled={busy} onClick={()=>setStatus("open")} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-sm font-semibold disabled:opacity-50"><PlayCircle size={15}/>Reopen hiring</button>}
+        {status==="filled"&&<button disabled={busy} onClick={()=>setStatus("open")} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-sm font-semibold disabled:opacity-50"><PlayCircle size={15}/>Reopen hiring</button>}
       </div>
     </div>
 
@@ -90,7 +106,7 @@ function JobCard({job,org}:{job:any;org:any}){
 
 function OrgWorkspace({org}:{org:any}){
   const {data:jobs}=useOrganizationJobs(org.id);
-  const live=(jobs??[]).filter(job=>job.status==="open").length;
+  const live=(jobs??[]).filter(job=>isJobOpen(job)).length;
   const draft=(jobs??[]).filter(job=>job.status==="draft").length;
 
   return <section className="overflow-hidden rounded-3xl border border-paper-dim bg-white shadow-card">

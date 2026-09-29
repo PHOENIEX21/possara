@@ -59,19 +59,19 @@ export function MomentComposer({ onPublished, onCancel, organizationId }: { orga
         if (draft.backgroundStyle) setBackgroundStyle(draft.backgroundStyle);
       }
     } catch {
-      localStorage.removeItem(momentDraftKey);
+      try { localStorage.removeItem(momentDraftKey); } catch { /* Storage may be unavailable. */ }
     }
     setHydratedDraftKey(momentDraftKey);
   }, [momentDraftKey]);
 
   useEffect(() => {
     if (!momentDraftKey || hydratedDraftKey !== momentDraftKey) return;
-    localStorage.setItem(momentDraftKey, JSON.stringify({ mode, textBody, musicTitle, audience, backgroundStyle }));
+    try { localStorage.setItem(momentDraftKey, JSON.stringify({ mode, textBody, musicTitle, audience, backgroundStyle })); } catch { /* Publishing still works without local draft storage. */ }
   }, [momentDraftKey, hydratedDraftKey, mode, textBody, musicTitle, audience, backgroundStyle]);
 
   function clearMusic() { if (musicPreview) URL.revokeObjectURL(musicPreview); setMusicFile(null); setMusicPreview(null); setMusicTitle(""); setSelectedTrack(null); }
   function clearImages() { imagePreviews.forEach((preview)=>URL.revokeObjectURL(preview)); setImageFiles([]); setImagePreviews([]); setSelectedImageIndex(0); }
-  function resetComposer(clearDraft = false) { clearImages(); if (musicPreview) URL.revokeObjectURL(musicPreview); setMode("photo"); setTextBody(""); setMusicFile(null); setMusicPreview(null); setMusicTitle(""); setSelectedTrack(null); setMusicPickerOpen(false); setAudience("public"); setBackgroundStyle("midnight"); setUploadError(null); if (clearDraft && momentDraftKey) localStorage.removeItem(momentDraftKey); }
+  function resetComposer(clearDraft = false) { clearImages(); if (musicPreview) URL.revokeObjectURL(musicPreview); setMode("photo"); setTextBody(""); setMusicFile(null); setMusicPreview(null); setMusicTitle(""); setSelectedTrack(null); setMusicPickerOpen(false); setAudience("public"); setBackgroundStyle("midnight"); setUploadError(null); if (clearDraft && momentDraftKey) { try { localStorage.removeItem(momentDraftKey); } catch { /* Already published. */ } } }
   function closeComposer() { if (!postStory.isPending) onCancel(); }
   function chooseImages(event: React.ChangeEvent<HTMLInputElement>) {
     const picked=Array.from(event.target.files??[]);
@@ -103,7 +103,7 @@ export function MomentComposer({ onPublished, onCancel, organizationId }: { orga
 
   async function publishMoment() {
     setUploadError(null);
-    if(identityUnavailable){setUploadError("You do not have permission to publish for this organization.");return;}
+    if(postStory.isPending||organizationsLoading)return;
     if(identityUnavailable){setUploadError("You do not have permission to publish for this organization.");return;}
     if (mode === "photo" && !imageFiles.length) { setUploadError("Choose at least one photo, or switch to Text Moment."); return; }
     if (mode === "text" && !textBody.trim()) { setUploadError("Write something for your text Moment."); return; }
@@ -121,7 +121,7 @@ export function MomentComposer({ onPublished, onCancel, organizationId }: { orga
   return <>
     <section className="rounded-2xl border border-paper-dim bg-white p-4 sm:p-5" aria-label="Create Moment">
         <p className="mb-3 rounded-xl bg-paper p-3 text-sm font-semibold">{organizationsLoading?"Loading publishing identity?":identityUnavailable?"Organization access unavailable":"Publishing as " + (organization?.name || "your personal profile")}</p>
-        <div className="flex items-start justify-between gap-4"><div><p className="eyebrow">Create Moment</p><h2 className="text-xl font-semibold">Share for the next 24 hours</h2><p className="mt-1 text-xs text-ink-faint">Choose up to 10 photos to publish as a Moment sequence, or share a text Moment. Caption and music apply to the selected sequence.</p></div><button type="button" onClick={closeComposer} disabled={postStory.isPending||organizationsLoading||identityUnavailable} className="rounded-full p-2 hover:bg-paper-dim" aria-label="Close Moment composer"><X size={19} /></button></div>
+        <div className="flex items-start justify-between gap-4"><div><p className="eyebrow">Create Moment</p><h2 className="text-xl font-semibold">Share for the next 24 hours</h2><p className="mt-1 text-xs text-ink-faint">Choose up to 10 photos to publish as a Moment sequence, or share a text Moment. Caption and music apply to the selected sequence.</p></div><button type="button" onClick={closeComposer} disabled={postStory.isPending} className="rounded-full p-2 hover:bg-paper-dim" aria-label="Close Moment composer"><X size={19} /></button></div>
         <div className="mt-4 grid grid-cols-2 rounded-2xl bg-paper-dim p-1"><button type="button" onClick={() => setMode("photo")} className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold ${mode === "photo" ? "bg-white text-ink shadow-sm" : "text-ink-light"}`}><ImageIcon size={16} />Photos</button><button type="button" onClick={() => setMode("text")} className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold ${mode === "text" ? "bg-white text-ink shadow-sm" : "text-ink-light"}`}><Type size={16} />Text</button></div>
         <div className={`moment-composer-preview relative mt-4 aspect-[9/12] overflow-hidden rounded-2xl ${mode === "text" || !currentImagePreview ? BACKGROUNDS[backgroundStyle] : "bg-black"}`}>{mode === "photo" && currentImagePreview && <img src={currentImagePreview} alt="Moment preview" className="h-full w-full object-cover" />}{mode === "photo" && currentImagePreview && <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/45" />}{mode === "photo" && !currentImagePreview && <button type="button" onClick={() => imageInputRef.current?.click()} className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/90"><div className="rounded-full bg-white/15 p-4"><Upload size={24} /></div><span className="text-sm font-semibold">Choose photos</span><span className="text-xs text-white/65">Up to 10 · JPG, PNG or WebP · max 8 MB each</span></button>}{textBody.trim() && <div className={`absolute inset-x-5 flex justify-center ${mode === "text" ? "inset-y-10 items-center" : "bottom-8"}`}><p className={`whitespace-pre-wrap text-center font-semibold leading-tight text-white drop-shadow-lg ${mode === "text" ? "text-3xl" : "rounded-xl bg-black/25 px-3 py-2 text-lg"}`}>{textBody}</p></div>}{!textBody.trim() && mode === "text" && <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-2xl font-semibold text-white/55">Your text will appear here</div>}{mode==="photo"&&imagePreviews.length>1&&<span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white">{selectedImageIndex+1} / {imagePreviews.length}</span>}</div>
         <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImages} className="hidden" />
@@ -139,7 +139,7 @@ export function MomentComposer({ onPublished, onCancel, organizationId }: { orga
 
         <label className="mt-4 block text-sm font-medium text-ink">Who can see it?<select value={audience} onChange={(event) => setAudience(event.target.value as "public" | "followers")} className="mt-1.5 w-full rounded-xl border border-ink-faint/25 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"><option value="public">Everyone on POSSARA</option><option value="followers">Followers only</option></select></label>
         {uploadError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-flag">{uploadError}</p>}
-        <button type="button" onClick={publishMoment} disabled={postStory.isPending} className="mt-5 w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{postStory.isPending ? "Publishing…" : mode==="photo"&&imageFiles.length>1 ? `Post ${imageFiles.length} Moments` : "Post Moment"}</button>
+        <button type="button" onClick={publishMoment} disabled={postStory.isPending||organizationsLoading||identityUnavailable} className="mt-5 w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{postStory.isPending ? "Publishing…" : mode==="photo"&&imageFiles.length>1 ? `Post ${imageFiles.length} Moments` : "Post Moment"}</button>
       {uploadMessage && <p role="status" className="mt-3 text-sm text-ink-light">{uploadMessage}</p>}
     </section>
     {musicPickerOpen && <MusicPicker selectedTrackKey={selectedTrack?.trackKey} onSelect={chooseLibraryTrack} onClose={() => setMusicPickerOpen(false)} />}
