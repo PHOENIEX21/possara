@@ -26,11 +26,11 @@ export function CreateContent({ kind }: { kind: "post" | "moment" }) {
         <button type="button" onClick={leave} aria-label="Back to previous page"><ArrowLeft size={22} /></button>
         <h1>{title}</h1>
       </header>
-      {loading ? <p role="status" className="p-4 text-ink-light">Loading…</p> : !userId ? <div className="rounded-2xl bg-white p-6 text-center">
+      {loading && !userId ? <p role="status" className="p-4 text-ink-light">Loading…</p> : !userId ? <div className="rounded-2xl bg-white p-6 text-center">
         <p className="mb-4">Sign in to {kind === "moment" ? "share a Moment" : "write a post"}.</p>
         <Link to="/signin" className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white">Sign in</Link>
-      </div> : kind === "moment" ? <MomentComposer organizationId={state?.organizationId} onCancel={leave} onPublished={() => navigate(returnTo, { replace: true })} /> :
-        <PostEditor {...(state?.composer ?? { showHomeTopicPicker: true })} onCancel={leave} onPublished={() => navigate(returnTo, { replace: true })} />}
+      </div> : kind === "moment" ? <MomentComposer key={userId} organizationId={state?.organizationId} onCancel={leave} onPublished={() => navigate(returnTo, { replace: true })} /> :
+        <PostEditor key={userId} {...(state?.composer ?? { showHomeTopicPicker: true })} onCancel={leave} onPublished={() => navigate(returnTo, { replace: true })} />}
     </div>
   </main>;
 }
