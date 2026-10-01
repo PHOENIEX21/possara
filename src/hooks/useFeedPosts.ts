@@ -75,8 +75,10 @@ export function useFeedPosts(options: UseFeedPostsOptions = {}) {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
       if (slugsToResolve?.length) {
-        const { data: cats } = await supabase.from("opportunity_categories").select("id").in("slug", slugsToResolve);
+        const { data: cats, error: categoryError } = await supabase.from("opportunity_categories").select("id").in("slug", slugsToResolve);
+        if (categoryError) throw categoryError;
         categoryIds = (cats ?? []).map((c) => c.id);
+        if (!categoryIds.length) return [];
       }
       let query = supabase
         .from("posts")

@@ -13,11 +13,13 @@ interface UseOpportunitiesOptions { limit?: number; categorySlug?: string; categ
 export function useOpportunities({ limit = 20, categorySlug, categorySlugs }: UseOpportunitiesOptions = {}) {
   return useQuery({
     queryKey: ["opportunities", { limit, categorySlug, categorySlugs }],
+    refetchInterval: 15000,
     queryFn: async (): Promise<OpportunityWithOrg[]> => {
       let categoryIds: string[] | undefined;
       const slugsToResolve = categorySlugs ?? (categorySlug ? [categorySlug] : undefined);
       if (slugsToResolve?.length) {
-        const { data: categories } = await supabase.from("opportunity_categories").select("id").in("slug", slugsToResolve);
+        const { data: categories, error: categoryError } = await supabase.from("opportunity_categories").select("id").in("slug", slugsToResolve);
+        if (categoryError) throw categoryError;
         categoryIds = (categories ?? []).map((c) => c.id);
         if (!categoryIds.length) return [];
       }

@@ -35,6 +35,13 @@ export function Jobs() {
     });
   }, [opportunities, locationQuery, workStyle]);
 
+  const filteredNative = (nativeJobs ?? []).filter(job => {
+    if (!matchesWorkStyle(job.location, [job.work_style], workStyle)) return false;
+    const term = locationQuery.trim().toLowerCase();
+    return !term || [job.title, job.location, job.description, job.role_type, job.organizations?.name].some(value => value?.toLowerCase().includes(term));
+  });
+  const roleCount = filtered.length + filteredNative.length;
+
   return (
     <div className="page-stack">
       <section className="page-hero">
@@ -68,7 +75,7 @@ export function Jobs() {
               {style === "all" ? "Any" : style === "onsite" ? "On-site" : style.charAt(0).toUpperCase() + style.slice(1)}
             </button>
           ))}
-          {!isLoading && !error && <span className="ml-auto text-xs text-ink-faint">{filtered.length} live {filtered.length === 1 ? "role" : "roles"}</span>}
+          {!isLoading && !nativeLoading && !error && !nativeError && <span className="ml-auto text-xs text-ink-faint">{roleCount} live {roleCount === 1 ? "role" : "roles"}</span>}
         </div>
       </section>
 
@@ -76,13 +83,13 @@ export function Jobs() {
         <div className="mb-3 flex items-end justify-between gap-3"><div><p className="eyebrow">Apply inside POSSARA</p><h2 className="text-xl font-bold">Jobs from registered organizations</h2></div><Link to="/organizations/manage" className="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold"><Building2 size={13}/>I&apos;m hiring</Link></div>
         {nativeLoading&&<div className="feed-skeleton"/>}
         {nativeError&&<p className="text-flag">Couldn&apos;t load organization jobs right now.</p>}
-        <div className="space-y-3">{nativeJobs?.map(job=><Link key={job.id} to={"/jobs/"+job.id} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><h3 className="font-bold">{job.title}</h3><div className="flex flex-wrap items-center gap-1.5"><p className="text-sm text-ink-light">{job.organizations?.name}</p>{(job.organizations?.verified||job.organizations?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}<span className="text-sm text-ink-faint">· {job.location}</span></div><div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold"><span className="rounded-full bg-brand-light px-2 py-1 text-brand-dark">{job.employment_type} · {job.work_style}</span><span className="rounded-full bg-paper-dim px-2 py-1">{job.rank}</span>{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-opportunity-dark">CBT</span>}</div></div></div></Link>)}</div>
+        <div className="space-y-3">{filteredNative.map(job=><Link key={job.id} to={"/jobs/"+job.id} className="block rounded-2xl border border-paper-dim bg-white p-4 shadow-sm"><div className="flex items-start gap-3">{job.organizations?.logo_url?<img src={job.organizations.logo_url} alt="" className="h-11 w-11 rounded-xl object-cover"/>:<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper-dim"><Building2 size={18}/></div>}<div className="min-w-0 flex-1"><h3 className="font-bold">{job.title}</h3><div className="flex flex-wrap items-center gap-1.5"><p className="text-sm text-ink-light">{job.organizations?.name}</p>{(job.organizations?.verified||job.organizations?.verification_status==="verified")&&<OrganizationVerificationBadge compact/>}<span className="text-sm text-ink-faint">· {job.location}</span></div><div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold"><span className="rounded-full bg-brand-light px-2 py-1 text-brand-dark">{job.employment_type} · {job.work_style}</span><span className="rounded-full bg-paper-dim px-2 py-1">{job.rank}</span>{job.requires_cbt&&<span className="rounded-full bg-opportunity-light px-2 py-1 text-opportunity-dark">CBT</span>}</div></div></div></Link>)}</div>
       </section>
 
       <div>
         {isLoading && <div className="feed-skeleton"/>}
         {error && <p className="text-flag">Couldn&apos;t load jobs right now.</p>}
-        {!isLoading && !error && filtered.length === 0 && (
+        {!isLoading && !nativeLoading && !error && !nativeError && roleCount === 0 && (
           <div className="empty-state"><Briefcase size={28}/><h2>No matching live jobs</h2><p>Try another city, state or work style. New verified openings will appear here as they are added.</p></div>
         )}
         {filtered.map((opp) => <OpportunityCard key={opp.id} opportunity={opp} organization={opp.organizations} category={opp.opportunity_categories}/>) }

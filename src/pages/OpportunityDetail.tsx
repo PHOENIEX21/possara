@@ -27,7 +27,7 @@ export function OpportunityDetail() {
 
   async function startTracking() {
     if (!userId || !id || application) return;
-    await trackApplication.mutateAsync({ opportunityId: id, status: "preparing", nextStep: "Review eligibility and required documents" });
+    trackApplication.mutate({ opportunityId: id, status: "preparing", nextStep: "Review eligibility and required documents" });
   }
 
   return <div className="max-w-prose">

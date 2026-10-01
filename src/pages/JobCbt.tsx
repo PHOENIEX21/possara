@@ -4,9 +4,14 @@ import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import { useCbtAttempt, useCbtQuestions, useHiringJob, useMyJobApplication, useStartCbt, useSubmitCbt } from "../hooks/useHiring";
 import { usePersistentDraft } from "../hooks/usePersistentDraft";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../store/auth";
 
 type ExamSession={started_at:string;time_limit_seconds:number;submitted_at?:string|null;score?:number;draft_answers?:Record<string,string>};
 export function JobCbt(){
+ const {id}=useParams();const {userId}=useAuth();
+ return <JobCbtSession key={`${userId}:${id}`}/>;
+}
+function JobCbtSession(){
  const {id}=useParams();
  const jobQuery=useHiringJob(id);const applicationQuery=useMyJobApplication(id);
  const job=jobQuery.data,application=applicationQuery.data;

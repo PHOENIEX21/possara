@@ -1,3 +1,4 @@
+import { searchFilter } from "../lib/search";
 import { isJobOpen } from "../lib/jobAvailability";
 import type { ApplicationDefaults } from "../lib/applicationUploads";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +38,7 @@ export function useCreateJob(){
 }
 export function useApplyToJob(jobId:string){
  const {userId}=useAuth();const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{cvUrl:string;documentUrls?:string[];photoUrl?:string;coverLetter:string;answers:{questionId:string;value:string}[]})=>{if(!userId)throw new Error("Sign in first.");const {data,error}=await supabase.rpc("submit_job_application",{p_job_id:jobId,p_cv_url:input.cvUrl,p_cover_letter:input.coverLetter,p_answers:input.answers,p_photo_url:input.photoUrl??null,p_document_urls:input.documentUrls??[]});if(error)throw error;return {id:String(data)};},onSuccess:()=>qc.invalidateQueries({queryKey:["my-job-applications"]})});
+ return useMutation({mutationFn:async(input:{cvUrl:string;documentUrls?:string[];photoUrl?:string;coverLetter:string;answers:{questionId:string;value:string}[]})=>{if(!userId)throw new Error("Sign in first.");const {data,error}=await supabase.rpc("submit_job_application",{p_job_id:jobId,p_cv_url:input.cvUrl,p_cover_letter:input.coverLetter,p_answers:input.answers,p_photo_url:input.photoUrl??null,p_document_urls:input.documentUrls??[]});if(error)throw error;return {id:String(data)};},onSuccess:()=>{qc.invalidateQueries({queryKey:["my-job-applications"]});qc.invalidateQueries({queryKey:["my-job-application",jobId]});qc.invalidateQueries({queryKey:["job-applicants",jobId]});}});
 }
 export function useMyJobApplications(){
  const {userId}=useAuth();
@@ -61,7 +62,7 @@ export function useRecruiterCbtQuestions(jobId:string|undefined){
 }
 export function useSaveCbtQuestions(jobId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{rows:{questionText:string;choices:string[];correctChoice:string}[];timeLimitSeconds:number})=>{const {data,error}=await supabase.rpc("save_job_cbt_questions",{p_job_id:jobId,p_questions:input.rows,p_time_limit_seconds:input.timeLimitSeconds});if(error)throw error;return Number(data);},onSuccess:()=>{qc.invalidateQueries({queryKey:["job-cbt-questions",jobId]});qc.invalidateQueries({queryKey:["recruiter-job-cbt-questions",jobId]});}});
+ return useMutation({mutationFn:async(input:{rows:{questionText:string;choices:string[];correctChoice:string}[];timeLimitSeconds:number})=>{const {data,error}=await supabase.rpc("save_job_cbt_questions",{p_job_id:jobId,p_questions:input.rows,p_time_limit_seconds:input.timeLimitSeconds});if(error)throw error;return Number(data);},onSuccess:()=>{qc.invalidateQueries({queryKey:["job-cbt-questions",jobId]});qc.invalidateQueries({queryKey:["recruiter-job-cbt-questions",jobId]});qc.invalidateQueries({queryKey:["hiring-job",jobId]});qc.invalidateQueries({queryKey:["organization-jobs"]});}});
 }
 export function useCbtAttempt(applicationId:string|undefined){
  return useQuery({queryKey:["job-cbt-attempt",applicationId],enabled:!!applicationId,queryFn:async()=>{const {data,error}=await supabase.from("job_cbt_attempts").select("*").eq("application_id",applicationId as string).maybeSingle();if(error)throw error;return data;}});
@@ -69,7 +70,7 @@ export function useCbtAttempt(applicationId:string|undefined){
 export function useStartCbt(applicationId:string){return useMutation({mutationFn:async()=>{const {data,error}=await supabase.rpc("start_job_cbt",{p_application_id:applicationId});if(error)throw error;return (data?.[0]??null) as {started_at:string;time_limit_seconds:number}|null;}});}
 export function useSubmitCbt(_jobId:string,applicationId:string){
  const qc=useQueryClient();
- return useMutation({mutationFn:async(input:{answers:Record<string,string>})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers});if(error)throw error;return Number(data);},onSuccess:()=>qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]})});
+ return useMutation({mutationFn:async(input:{answers:Record<string,string>})=>{const {data,error}=await supabase.rpc("submit_job_cbt",{p_application_id:applicationId,p_answers:input.answers});if(error)throw error;return Number(data);},onSuccess:()=>{qc.invalidateQueries({queryKey:["job-cbt-attempt",applicationId]});qc.invalidateQueries({queryKey:["application-review",applicationId]});qc.invalidateQueries({queryKey:["my-job-applications"]});}});
 }
 export function useMyJobApplication(jobId:string|undefined){
  const {userId}=useAuth();
@@ -116,5 +117,5 @@ export function useUpdateOrganization(organizationId:string){
 
 export function useMemberSearch(query:string,organizationId:string|undefined){
  const {userId}=useAuth();
- return useQuery({queryKey:["member-search",query,organizationId,userId],enabled:!!organizationId&&query.trim().length>0,queryFn:async()=>{const term=query.trim().replace(/^@/,"");const {data,error}=await supabase.from("profiles").select("id,full_name,username,avatar_url,headline,profession,location").neq("id",userId as string).or(`username.ilike.%${term}%,full_name.ilike.%${term}%`).limit(8);if(error)throw error;const {data:members}=await supabase.from("organization_members").select("user_id").eq("organization_id",organizationId as string);const existing=new Set((members??[]).map(m=>m.user_id));return (data??[]).filter(p=>!existing.has(p.id));}});
+ return useQuery({queryKey:["member-search",query,organizationId,userId],enabled:!!organizationId&&query.trim().length>0,queryFn:async()=>{const term=query.trim().replace(/^@/,"");const {data,error}=await supabase.from("profiles").select("id,full_name,username,avatar_url,headline,profession,location").neq("id",userId as string).or(searchFilter(["username","full_name"],term)).limit(8);if(error)throw error;const {data:members}=await supabase.from("organization_members").select("user_id").eq("organization_id",organizationId as string);const existing=new Set((members??[]).map(m=>m.user_id));return (data??[]).filter(p=>!existing.has(p.id));}});
 }

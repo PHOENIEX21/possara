@@ -2,7 +2,7 @@
 begin;
 select set_config('test.org',(select o.id::text from public.organizations o join public.organization_members m on m.organization_id=o.id and m.user_id=o.owner_id where m.role='owner' limit 1),true);
 select set_config('test.owner',(select owner_id::text from public.organizations where id=current_setting('test.org')::uuid),true);
-select set_config('test.applicant',(select p.id::text from public.profiles p where p.id<>current_setting('test.owner')::uuid and not exists(select 1 from public.organization_members m where m.organization_id=current_setting('test.org')::uuid and m.user_id=p.id) limit 1),true);
+select set_config('test.applicant',(select p.id::text from public.profiles p where p.email_verified_at is not null and p.id<>current_setting('test.owner')::uuid and not exists(select 1 from public.organization_members m where m.organization_id=current_setting('test.org')::uuid and m.user_id=p.id) limit 1),true);
 select set_config('request.jwt.claim.sub',current_setting('test.owner'),true);
 set local role authenticated;
 with job as (
