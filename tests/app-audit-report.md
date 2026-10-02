@@ -42,3 +42,14 @@ Reviewed app routing/auth guards, opportunity and community queries, job discove
 - `blocked_terms` has deny-by-default RLS with no client policies; the advisory is informational. Current advisory counts remain 1 policy info, 3 anonymous definer, 29 authenticated definer, and 1 leaked-password warning.
 - Organization plan is Free. Supabase's [password-security documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) states leaked-password protection requires Pro or above. It remains disabled; no paid upgrade was performed.
 - The employer-provided questions for one CBT job remain outstanding.
+
+## Computer-literacy assessment and polish — 2026-10-02
+
+- At the user's request, configured the missing AVORA Receptionist assessment with 12 original multiple-choice questions and a 15-minute limit. Topics cover booking lookup, reservation accuracy, spreadsheet totals and sorting, phishing, file naming, receipts, screen locking, double-booking prevention, email CC, outage handling and guest-record correction.
+- Job: `46dc9db2-a7c8-483a-9098-c446ed162a28`. Saved through the existing employer assessment RPC after confirming zero questions and zero started attempts. Verified 12 questions, four distinct choices per question and valid answer keys. Answer keys are stored only in the protected database, not in this repository or frontend assets.
+- The Receptionist deadline is September 24, 2026; it has passed. The existing deadline was preserved and the job was not reopened for new applications. The assessment is configured for its existing application workflow.
+- Live authorization check passed: a verified non-recruiter cannot read this assessment's answer keys. Test transaction rolled back.
+- Employer builder now requires only the first two options; extra choices are optional. Empty-option radios are disabled, question/option/radio/removal controls have accessible labels, and all form edits are disabled while a save is pending. Missing roles show an unavailable state. Job search has an accessible name and work-style buttons expose selection with `aria-pressed`.
+- Build and lint pass (existing warnings remain); all 10 relevant local regression checks pass. Isolated Edge browser checks confirmed a newly added two-choice question submits with only two choices, edits lock during a delayed save, and the success message appears afterward. Mobile builder screenshot inspected; no browser page errors reported.
+- Deployed to the existing Cloudflare Pages production project: https://possara.pages.dev (deployment https://2c2635e3.possara.pages.dev). Production HTML, Jobs asset and JobCbtBuilder asset match the tested local build byte-for-byte. Live browser verified the updated accessible job search.
+- Supabase remains on Free; paid leaked-password protection was not enabled.

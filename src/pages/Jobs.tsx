@@ -57,6 +57,7 @@ export function Jobs() {
         <label className="relative block">
           <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"/>
           <input
+            aria-label="Search jobs by role, organization or location"
             value={locationQuery}
             onChange={(event) => setLocationQuery(event.target.value)}
             placeholder="Search role, city or state — e.g. Ilorin, Lagos, Abuja…"
@@ -69,6 +70,7 @@ export function Jobs() {
             <button
               key={style}
               type="button"
+              aria-pressed={workStyle === style}
               onClick={() => setWorkStyle(style)}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${workStyle === style ? "border-brand bg-brand text-white" : "border-ink-faint/25 text-ink-light hover:bg-paper-dim"}`}
             >
