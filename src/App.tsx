@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { PageLoading } from "./components/PageLoading";
+import { NotFound } from "./pages/NotFound";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./store/auth";
@@ -135,6 +136,7 @@ export default function App() {
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfUse />} />
               <Route path="/security" element={<SecurityPage />} />
+              <Route path="*" element={<NotFound />} />
 
               <Route element={<RequireAuth />}>
                 <Route path="/groups" element={<Groups />} />
